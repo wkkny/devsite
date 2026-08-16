@@ -1,3 +1,4 @@
+import { AsciiText } from '@/components/ascii-text'
 import { ModeToggle } from '@/components/mode-toggle'
 
 function App() {
@@ -5,8 +6,13 @@ function App() {
     <main className="min-h-svh overflow-x-clip bg-background px-2 text-foreground">
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-sm">
         <nav className="screen-line-bottom mx-auto flex h-14 max-w-3xl items-center justify-between border-x border-line px-4">
-          <a href="/" className="text-sm font-medium">
-            Kritiraj
+          <a href="/" className="block text-foreground">
+            <AsciiText
+              text="KB"
+              variant="pixel"
+              size="md"
+              color="currentColor"
+            />
           </a>
 
           <ModeToggle />
