@@ -3,7 +3,7 @@ import { IconMoon } from '@tabler/icons-react'
 import { motion, useReducedMotion } from 'motion/react'
 
 import { Button } from '@/components/ui/button'
-import { useTheme } from '@/components/theme-provider'
+import { useTheme } from '@/components/theme-context'
 import { click8bitSound } from '@/lib/click-8bit'
 import { playSound } from '@/lib/sound-engine'
 
@@ -85,8 +85,7 @@ function SunIcon({ animate }: { animate: boolean }) {
       />
       {rays.map((ray, index) => (
         <motion.line
-          // eslint-disable-next-line react/no-array-index-key
-          key={index}
+          key={`${ray.x1}-${ray.y1}-${ray.x2}-${ray.y2}`}
           {...ray}
           initial={animate ? { opacity: 0, scale: 0.25 } : { opacity: 1, scale: 1 }}
           animate={{ opacity: 1, scale: 1 }}
