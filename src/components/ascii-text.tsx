@@ -48,10 +48,10 @@ const FIGLET_SIZE_CLASS_BY_SIZE: Record<AsciiTextSize, string> = {
 }
 
 const PIXEL_CELL_BY_SIZE: Record<AsciiTextSize, number> = {
-  sm: 4,
-  md: 5,
-  lg: 6,
-  xl: 8,
+  sm: 5,
+  md: 7,
+  lg: 9,
+  xl: 12,
 }
 
 const PIXEL_FONT: Record<string, string[]> = {

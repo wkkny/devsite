@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { IconMoon } from '@tabler/icons-react'
 import { motion, useReducedMotion } from 'motion/react'
 
@@ -8,6 +8,7 @@ import { useTheme } from '@/components/theme-provider'
 function ModeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const [animationKey, setAnimationKey] = useState(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const prefersReducedMotion = useReducedMotion()
   const isDark = resolvedTheme === 'dark'
   const shouldAnimate = animationKey > 0 && !prefersReducedMotion
@@ -19,8 +20,19 @@ function ModeToggle() {
       size="icon-lg"
       aria-label="Toggle color mode"
       onClick={() => {
+        const nextTheme = isDark ? 'light' : 'dark'
+        const soundSrc = nextTheme === 'dark' ? '/switch1.mp3' : '/switch2.mp3'
+
+        if (audioRef.current?.src !== new URL(soundSrc, window.location.origin).href) {
+          audioRef.current = new Audio(soundSrc)
+          audioRef.current.volume = 0.2
+        }
+
+        audioRef.current.currentTime = 0
+        void audioRef.current.play().catch(() => {})
+
         setAnimationKey((key) => key + 1)
-        setTheme(isDark ? 'light' : 'dark')
+        setTheme(nextTheme)
       }}
     >
       {isDark ? (
