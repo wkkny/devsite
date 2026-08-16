@@ -8,6 +8,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@property --reveal-radius {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -25,7 +31,7 @@
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.92 0.004 286.32);
-  --line: var(--border);
+  --line: oklch(0.92 0.004 286.32 / 55%);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
   --chart-1: oklch(0.871 0.006 286.286);
@@ -46,7 +52,7 @@
 
 @supports (color: color-mix(in oklab, red, red)) {
   :root {
-    --line: color-mix(in oklab, var(--border) 64%, var(--background));
+    --line: color-mix(in oklab, var(--border) 72%, transparent);
   }
 }
 
@@ -67,6 +73,7 @@
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
+  --line: oklch(1 0 0 / 7%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.552 0.016 285.938);
   --chart-1: oklch(0.871 0.006 286.286);
@@ -157,14 +164,12 @@
 }
 
 @layer components {
-  .screen-line-top,
   .screen-line-bottom {
     position: relative;
   }
 
-  .screen-line-top::before,
-  .screen-line-bottom::after {
-    content: '';
+  .screen-line-bottom::after,
+  .screen-wide-line {
     position: absolute;
     left: 50%;
     width: 100vw;
@@ -174,20 +179,9 @@
     transform: translateX(-50%);
   }
 
-  .screen-line-top::before {
-    top: 0;
-  }
-
   .screen-line-bottom::after {
+    content: '';
     bottom: 0;
-  }
-
-  .nav-shine.screen-line-bottom::after {
-    left: 50%;
-    z-index: 0;
-    width: 100vw;
-    background: var(--line);
-    transform: translateX(-50%);
   }
 
   .nav-shine::before {
@@ -217,18 +211,88 @@
     content: '';
     position: absolute;
     inset-block: 0;
-    left: -100vw;
-    width: 200vw;
+    left: 50%;
+    width: 100vw;
     pointer-events: none;
-    background-image: repeating-linear-gradient(
-      315deg,
-      color-mix(in oklab, var(--line) 56%, transparent) 0,
-      color-mix(in oklab, var(--line) 56%, transparent) 1px,
-      transparent 0,
-      transparent 50%
+    background-image:
+      linear-gradient(var(--line), var(--line)),
+      linear-gradient(var(--line), var(--line)),
+      repeating-linear-gradient(
+        315deg,
+        color-mix(in oklab, var(--line) 56%, transparent) 0,
+        color-mix(in oklab, var(--line) 56%, transparent) 1px,
+        transparent 0,
+        transparent 50%
+      );
+    background-position: top, bottom, 0 0;
+    background-repeat: no-repeat, no-repeat, repeat;
+    background-size: 100% 1px, 100% 1px, 10px 10px;
+    transform: translateX(-50%);
+  }
+
+  .halftone-bg {
+    background-position: center 70%;
+    background-size: cover;
+    filter: grayscale(1) contrast(1.35);
+    opacity: 0.5;
+    mask-image: radial-gradient(circle, black 1px, transparent 1.45px);
+    mask-size: 4px 4px;
+    -webkit-mask-image: radial-gradient(circle, black 1px, transparent 1.45px);
+    -webkit-mask-size: 4px 4px;
+  }
+
+  .halftone-bg:not(.halftone-bg-color)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      110deg,
+      transparent 44%,
+      white 50%,
+      transparent 56%
     );
-    background-size: 10px 10px;
+    filter: blur(3px);
+    transform: translateX(-120%);
+    animation: halftone-shimmer 2.8s ease-in-out infinite;
+  }
+
+  .halftone-bg-color {
+    --reveal-radius: var(--color-radius, 0px);
+    filter: grayscale(0) contrast(1.1) saturate(1.2);
+    opacity: var(--color-opacity, 0);
+    mask-image:
+      radial-gradient(
+        circle var(--reveal-radius) at var(--color-x, 50%) var(--color-y, 50%),
+        black 0,
+        black 62%,
+        transparent 100%
+      );
+    mask-composite: add;
+    mask-size: 100% 100%;
+    transition: var(
+      --color-transition,
+      --reveal-radius 0ms linear 1900ms,
+      opacity 1400ms ease-out 500ms
+    );
+    -webkit-mask-image:
+      radial-gradient(
+        circle var(--reveal-radius) at var(--color-x, 50%) var(--color-y, 50%),
+        black 0,
+        black 62%,
+        transparent 100%
+      );
+    -webkit-mask-composite: source-over;
+    -webkit-mask-size: 100% 100%;
   }
 }
 
+@keyframes halftone-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
 
+  55%,
+  100% {
+    transform: translateX(120%);
+  }
+}

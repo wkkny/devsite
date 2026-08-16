@@ -23,6 +23,7 @@
   "menuAccent": "subtle",
   "registries": {
     "@ncdai": "https://chanhdai.com/r/{name}.json",
-    "@soundcn": "https://soundcn.xyz/r/{name}.json"
+    "@soundcn": "https://soundcn.xyz/r/{name}.json",
+    "@grootstudio": "https://grootstudio.vercel.app/r/{name}.json"
   }
 }
