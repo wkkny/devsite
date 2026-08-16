@@ -22,6 +22,10 @@ type AsciiTextProps = {
   style?: CSSProperties
 }
 
+type SharedTextProps = Omit<AsciiTextProps, 'variant' | 'size'> & {
+  size: AsciiTextSize
+}
+
 type PixelBar = {
   row: number
   column: number
@@ -35,24 +39,24 @@ type PixelGlyph = {
   rows: number
 }
 
-const FIGLET_FONT_BY_VARIANT: Record<Exclude<AsciiTextVariant, 'pixel'>, string> = {
+const FIGLET_FONT_BY_VARIANT = {
   ansi: 'ANSI Regular',
   'ansi-shadow': 'ANSI Shadow',
-}
+} satisfies Record<Exclude<AsciiTextVariant, 'pixel'>, string>
 
-const FIGLET_SIZE_CLASS_BY_SIZE: Record<AsciiTextSize, string> = {
+const FIGLET_SIZE_CLASS_BY_SIZE = {
   sm: 'text-[3px] sm:text-[4px]',
   md: 'text-[4px] sm:text-[5px]',
   lg: 'text-[5px] sm:text-[6px]',
   xl: 'text-[6px] sm:text-[8px]',
-}
+} satisfies Record<AsciiTextSize, string>
 
-const PIXEL_CELL_BY_SIZE: Record<AsciiTextSize, number> = {
+const PIXEL_CELL_BY_SIZE = {
   sm: 5,
   md: 7,
   lg: 9,
   xl: 12,
-}
+} satisfies Record<AsciiTextSize, number>
 
 const PIXEL_FONT: Record<string, string[]> = {
   A: ['0110', '1001', '1111', '1001', '1001'],
@@ -106,7 +110,7 @@ function FigletText({
   backgroundColor,
   className,
   style,
-}: AsciiTextProps & { variant: Exclude<AsciiTextVariant, 'pixel'>; size: AsciiTextSize }) {
+}: SharedTextProps & { variant: Exclude<AsciiTextVariant, 'pixel'> }) {
   const ascii = useMemo(() => {
     return figlet.textSync(text, {
       font: FIGLET_FONT_BY_VARIANT[variant],
@@ -138,7 +142,7 @@ function PixelText({
   backgroundColor,
   className,
   style,
-}: AsciiTextProps & { size: AsciiTextSize }) {
+}: SharedTextProps) {
   const cell = PIXEL_CELL_BY_SIZE[size]
   const glyphs = useMemo(() => {
     return Array.from(text.toUpperCase()).map(getPixelGlyph)
@@ -148,58 +152,60 @@ function PixelText({
     <div
       aria-label={text}
       className={cn('flex items-center', className)}
+      style={{ gap: cell * 2, color, backgroundColor, ...style }}
+    >
+      {glyphs.map((glyph, index) => (
+        <PixelGlyphView
+          key={`${text[index] ?? ' '}-${index}`}
+          glyph={glyph}
+          cell={cell}
+        />
+      ))}
+    </div>
+  )
+}
+
+function PixelGlyphView({ glyph, cell }: { glyph: PixelGlyph; cell: number }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="relative shrink-0"
       style={{
-        gap: cell * 2,
-        color,
-        backgroundColor,
-        ...style,
+        width: glyph.columns * cell,
+        height: glyph.rows * cell,
       }}
     >
-      {glyphs.map((glyph, glyphIndex) => (
-        <div
-          // eslint-disable-next-line react/no-array-index-key
-          key={glyphIndex}
-          aria-hidden="true"
-          className="relative shrink-0"
+      {glyph.bars.map((bar) => (
+        <span
+          key={`${bar.row}-${bar.column}-${bar.width}-${bar.height}`}
+          className="absolute bg-current"
           style={{
-            width: glyph.columns * cell,
-            height: glyph.rows * cell,
+            left: bar.column * cell,
+            top: bar.row * cell,
+            width: bar.width * cell,
+            height: bar.height * cell,
           }}
-        >
-          {glyph.bars.map((bar) => (
-            <span
-              key={`${bar.row}-${bar.column}-${bar.width}-${bar.height}`}
-              className="absolute bg-current"
-              style={{
-                left: bar.column * cell,
-                top: bar.row * cell,
-                width: bar.width * cell,
-                height: bar.height * cell,
-              }}
-            />
-          ))}
-        </div>
+        />
       ))}
     </div>
   )
 }
 
 function getPixelGlyph(character: string) {
-  const cacheKey = PIXEL_FONT[character] ? character : ' '
-  const cachedGlyph = pixelGlyphCache.get(cacheKey)
+  const key = character in PIXEL_FONT ? character : ' '
+  const cachedGlyph = pixelGlyphCache.get(key)
 
   if (cachedGlyph) return cachedGlyph
 
-  const pattern = PIXEL_FONT[cacheKey]
+  const pattern = PIXEL_FONT[key]
   const columns = Math.max(...pattern.map((row) => row.length))
-  const glyph = {
+  const glyph: PixelGlyph = {
     bars: getPixelBars(pattern, columns),
     columns,
     rows: pattern.length,
   }
 
-  pixelGlyphCache.set(cacheKey, glyph)
-
+  pixelGlyphCache.set(key, glyph)
   return glyph
 }
 
@@ -215,11 +221,15 @@ function getPixelBars(pattern: string[], columns: number) {
       const horizontalWidth = getHorizontalRun(grid, visited, row, column)
       const verticalHeight = getVerticalRun(grid, visited, row, column)
       const useVertical = verticalHeight > horizontalWidth
-      const width = useVertical ? 1 : horizontalWidth
-      const height = useVertical ? verticalHeight : 1
+      const bar = {
+        row,
+        column,
+        width: useVertical ? 1 : horizontalWidth,
+        height: useVertical ? verticalHeight : 1,
+      }
 
-      markVisited(visited, row, column, width, height)
-      bars.push({ row, column, width, height })
+      markVisited(visited, bar)
+      bars.push(bar)
     }
   }
 
@@ -264,16 +274,10 @@ function getVerticalRun(
   return height
 }
 
-function markVisited(
-  visited: boolean[][],
-  row: number,
-  column: number,
-  width: number,
-  height: number,
-) {
-  for (let barRow = row; barRow < row + height; barRow++) {
-    for (let barColumn = column; barColumn < column + width; barColumn++) {
-      visited[barRow][barColumn] = true
+function markVisited(visited: boolean[][], bar: PixelBar) {
+  for (let row = bar.row; row < bar.row + bar.height; row++) {
+    for (let column = bar.column; column < bar.column + bar.width; column++) {
+      visited[row][column] = true
     }
   }
 }

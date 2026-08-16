@@ -172,33 +172,52 @@
     bottom: 0;
   }
 
-  .dot-divider {
-    position: relative;
-    overflow: hidden;
+  .nav-shine.screen-line-bottom::after {
+    left: 50%;
+    z-index: 0;
+    width: 100vw;
+    background: var(--line);
+    transform: translateX(-50%);
   }
 
-  .dot-divider::before {
+  .nav-shine::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    z-index: 1;
+    width: 100vw;
+    height: 1px;
+    pointer-events: none;
+    opacity: var(--shine-opacity, 0);
+    background: radial-gradient(
+      90px 8px at var(--shine-x, -90px) 50%,
+      color-mix(in oklab, var(--foreground) 32%, transparent),
+      transparent 70%
+    );
+    transform: translateX(-50%);
+    transition: opacity 300ms ease-out;
+  }
+
+  .stripe-divider {
+    position: relative;
+  }
+
+  .stripe-divider::before {
     content: '';
     position: absolute;
     inset-block: 0;
-    left: 50%;
-    width: 100vw;
+    left: -100vw;
+    width: 200vw;
     pointer-events: none;
-    background-image: radial-gradient(
-      circle,
-      color-mix(in oklab, var(--line) 80%, transparent) 0.8px,
-      transparent 1.2px
+    background-image: repeating-linear-gradient(
+      315deg,
+      color-mix(in oklab, var(--line) 56%, transparent) 0,
+      color-mix(in oklab, var(--line) 56%, transparent) 1px,
+      transparent 0,
+      transparent 50%
     );
-    background-position: center;
-    background-size: 12px 12px;
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      black 20%,
-      black 80%,
-      transparent
-    );
-    transform: translateX(-50%);
+    background-size: 10px 10px;
   }
 }
 
