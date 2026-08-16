@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
 import figlet from 'figlet'
+import { motion, useReducedMotion } from 'motion/react'
 import ansiRegular from 'figlet/fonts/ANSI Regular'
 import ansiShadow from 'figlet/fonts/ANSI Shadow'
 
@@ -11,6 +12,8 @@ figlet.parseFont('ANSI Shadow', ansiShadow)
 
 type AsciiTextVariant = 'ansi' | 'ansi-shadow' | 'pixel'
 type AsciiTextSize = 'sm' | 'md' | 'lg' | 'xl'
+type AsciiTextAnimation = 'none' | 'stagger' | 'wave' | 'tetris'
+type AsciiTextAnimationDirection = 'ltr' | 'rtl' | 'ttb' | 'btt'
 
 type AsciiTextProps = {
   text: string
@@ -20,6 +23,9 @@ type AsciiTextProps = {
   backgroundColor?: string
   className?: string
   style?: CSSProperties
+  animation?: AsciiTextAnimation
+  animationDirection?: AsciiTextAnimationDirection
+  animationKey?: string | number
 }
 
 type SharedTextProps = Omit<AsciiTextProps, 'variant' | 'size'> & {
@@ -142,8 +148,13 @@ function PixelText({
   backgroundColor,
   className,
   style,
+  animation = 'none',
+  animationDirection = 'btt',
+  animationKey,
 }: SharedTextProps) {
   const cell = PIXEL_CELL_BY_SIZE[size]
+  const prefersReducedMotion = useReducedMotion()
+  const shouldAnimate = animation !== 'none' && animationKey !== undefined && !prefersReducedMotion
   const glyphs = useMemo(() => {
     return Array.from(text.toUpperCase()).map(getPixelGlyph)
   }, [text])
@@ -159,13 +170,31 @@ function PixelText({
           key={`${text[index] ?? ' '}-${index}`}
           glyph={glyph}
           cell={cell}
+          animation={animation}
+          animationDirection={animationDirection}
+          shouldAnimate={shouldAnimate}
+          animationKey={animationKey}
         />
       ))}
     </div>
   )
 }
 
-function PixelGlyphView({ glyph, cell }: { glyph: PixelGlyph; cell: number }) {
+function PixelGlyphView({
+  glyph,
+  cell,
+  animation,
+  animationDirection,
+  shouldAnimate,
+  animationKey,
+}: {
+  glyph: PixelGlyph
+  cell: number
+  animation: AsciiTextAnimation
+  animationDirection: AsciiTextAnimationDirection
+  shouldAnimate: boolean
+  animationKey?: string | number
+}) {
   return (
     <div
       aria-hidden="true"
@@ -175,19 +204,60 @@ function PixelGlyphView({ glyph, cell }: { glyph: PixelGlyph; cell: number }) {
         height: glyph.rows * cell,
       }}
     >
-      {glyph.bars.map((bar) => (
-        <span
+      {glyph.bars.map((bar, index) => (
+        <PixelBarView
           key={`${bar.row}-${bar.column}-${bar.width}-${bar.height}`}
-          className="absolute bg-current"
-          style={{
-            left: bar.column * cell,
-            top: bar.row * cell,
-            width: bar.width * cell,
-            height: bar.height * cell,
-          }}
+          bar={bar}
+          cell={cell}
+          index={index}
+          animation={animation}
+          animationDirection={animationDirection}
+          shouldAnimate={shouldAnimate}
+          animationKey={animationKey}
         />
       ))}
     </div>
+  )
+}
+
+function PixelBarView({
+  bar,
+  cell,
+  index,
+  animation,
+  animationDirection,
+  shouldAnimate,
+  animationKey,
+}: {
+  bar: PixelBar
+  cell: number
+  index: number
+  animation: AsciiTextAnimation
+  animationDirection: AsciiTextAnimationDirection
+  shouldAnimate: boolean
+  animationKey?: string | number
+}) {
+  const style = {
+    left: bar.column * cell,
+    top: bar.row * cell,
+    width: bar.width * cell,
+    height: bar.height * cell,
+    transformOrigin: 'center',
+  }
+
+  if (!shouldAnimate) {
+    return <span className="absolute bg-current" style={style} />
+  }
+
+  return (
+    <motion.span
+      key={animationKey}
+      className="absolute bg-current"
+      initial={getPixelBarInitial(animation, animationDirection, bar, cell)}
+      animate={getPixelBarAnimate(animation, animationDirection, bar, cell)}
+      transition={getPixelBarTransition(animation, index, bar)}
+      style={style}
+    />
   )
 }
 
@@ -282,4 +352,89 @@ function markVisited(visited: boolean[][], bar: PixelBar) {
   }
 }
 
-export { AsciiText, type AsciiTextSize, type AsciiTextVariant }
+function getPixelBarInitial(
+  animation: AsciiTextAnimation,
+  direction: AsciiTextAnimationDirection,
+  bar: PixelBar,
+  cell: number,
+) {
+  if (animation === 'tetris') {
+    return { opacity: 1, y: getTetrisStartY(bar, cell) }
+  }
+
+  return {
+    opacity: 0,
+    scale: animation === 'stagger' ? 0.75 : 1,
+    ...getDirectionalOffset(direction, animation === 'wave' ? 4 : cell * 1.5),
+  }
+}
+
+function getPixelBarAnimate(
+  animation: AsciiTextAnimation,
+  direction: AsciiTextAnimationDirection,
+  bar: PixelBar,
+  cell: number,
+) {
+  if (animation === 'tetris') {
+    return { opacity: 1, y: [getTetrisStartY(bar, cell), 4, 0] }
+  }
+
+  return {
+    opacity: 1,
+    scale: 1,
+    x: direction === 'ltr' || direction === 'rtl' ? 0 : undefined,
+    y: direction === 'ttb' || direction === 'btt' ? 0 : undefined,
+  }
+}
+
+function getPixelBarTransition(
+  animation: AsciiTextAnimation,
+  index: number,
+  bar: PixelBar,
+) {
+  if (animation === 'tetris') {
+    return {
+      delay: bar.row * 0.055 + bar.column * 0.012,
+      duration: 0.4,
+      times: [0, 0.78, 1],
+      ease: 'easeOut' as const,
+    }
+  }
+
+  if (animation === 'wave') {
+    return {
+      delay: index * 0.045,
+      duration: 0.34,
+      ease: 'easeOut',
+    } as const
+  }
+
+  return {
+    delay: index * 0.035,
+    duration: 0.28,
+    ease: 'easeOut',
+  } as const
+}
+
+function getDirectionalOffset(
+  direction: AsciiTextAnimationDirection,
+  distance: number,
+) {
+  if (direction === 'ltr') return { x: -distance }
+  if (direction === 'rtl') return { x: distance }
+  if (direction === 'ttb') return { y: -distance }
+
+  return { y: distance }
+}
+
+function getTetrisStartY(bar: PixelBar, cell: number) {
+  return -(bar.row + 6) * cell
+}
+
+export {
+  AsciiText,
+  type AsciiTextAnimation,
+  type AsciiTextAnimationDirection,
+  type AsciiTextSize,
+  type AsciiTextVariant,
+}
