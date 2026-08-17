@@ -2,7 +2,7 @@ import { AsciiText } from '@/components/ascii-text'
 import { GithubCalendar } from '@/components/grootstudio/github-calendar'
 import { ModeToggle } from '@/components/mode-toggle'
 import { ProfileHero } from '@/components/profile-hero'
-import { SocialSection } from '@/components/social-section'
+import { InfoSection } from '@/components/info-section'
 import { StripeDivider } from '@/components/stripe-divider'
 
 function getCalendarStartDate() {
@@ -37,7 +37,7 @@ function App() {
               text="KB"
               variant="pixel"
               size="md"
-              animation="wave"
+              animation="tetris"
               animationDirection="ttb"
               animationKey="load"
             />
@@ -50,7 +50,7 @@ function App() {
       <div className="mx-auto max-w-3xl">
         <ProfileHero />
         <StripeDivider />
-        <SocialSection />
+        <InfoSection />
         <StripeDivider />
         <section className="border-x border-line">
           <GithubCalendar
@@ -63,6 +63,7 @@ function App() {
             className="border-0"
           />
         </section>
+        <StripeDivider />
       </div>
     </main>
   )

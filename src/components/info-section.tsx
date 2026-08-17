@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import {
+  IconCheck,
   IconClock,
   IconCode,
+  IconCopy,
   IconGenderMale,
   IconHeart,
   IconMail,
   IconMapPin,
   type Icon,
 } from '@tabler/icons-react'
+
+import { IconSwap, IconSwapItem } from '@/components/icon-swap'
 
 import { cn } from '@/lib/utils'
 
@@ -47,11 +51,11 @@ const SOCIAL_ITEMS: SocialItem[] = [
   },
 ]
 
-type SocialSectionProps = {
+type InfoSectionProps = {
   className?: string
 }
 
-function SocialSection({ className }: SocialSectionProps) {
+function InfoSection({ className }: InfoSectionProps) {
   return (
     <section className={cn('border-x border-line', className)}>
       <div className="grid gap-0 md:grid-cols-2">
@@ -189,7 +193,67 @@ function SocialLabel({ label }: { label: string }) {
   )
 }
 
+function EmailRow({ item }: SocialRowProps) {
+  const [copied, setCopied] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const Icon = item.icon
+  const href = item.href ?? ''
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (copied) return
+
+    navigator.clipboard.writeText('kritiraj.tech@gmail.com')
+    setCopied(true)
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+    timeoutRef.current = setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <a
+      href={href}
+      target={href.startsWith('http') ? '_blank' : undefined}
+      rel={href.startsWith('http') ? 'noreferrer' : undefined}
+      className="flex items-center gap-3 transition-colors hover:text-muted-foreground"
+    >
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-line bg-muted/40 text-muted-foreground shadow-inner">
+        <Icon className="size-4" />
+      </span>
+      <span className="flex items-center gap-2 min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
+        <span className="border-b border-transparent transition-colors hover:border-foreground">kritiraj.tech@gmail.com</span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          disabled={copied}
+          className="flex size-5 shrink-0 items-center justify-center rounded border border-line bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:cursor-default disabled:hover:bg-muted/40 active:scale-90"
+          aria-label={copied ? 'Copied!' : 'Copy email'}
+        >
+          <IconSwap>
+            {!copied ? (
+              <IconSwapItem key="copy" className="flex items-center">
+                <IconCopy className="size-3.5" />
+              </IconSwapItem>
+            ) : (
+              <IconSwapItem key="check" className="flex items-center text-green-500">
+                <IconCheck className="size-3.5" />
+              </IconSwapItem>
+            )}
+          </IconSwap>
+        </button>
+      </span>
+    </a>
+  )
+}
+
 function SocialRow({ item }: SocialRowProps) {
+  if (item.label === 'Email' && item.href) {
+    return <EmailRow item={item} />
+  }
+
   const Icon = item.icon
   const content = (
     <>
@@ -216,4 +280,4 @@ function SocialRow({ item }: SocialRowProps) {
   )
 }
 
-export { SocialSection }
+export { InfoSection }
