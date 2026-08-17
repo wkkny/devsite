@@ -1,9 +1,24 @@
 import { AsciiText } from '@/components/ascii-text'
+import { GithubCalendar } from '@/components/grootstudio/github-calendar'
 import { ModeToggle } from '@/components/mode-toggle'
 import { ProfileHero } from '@/components/profile-hero'
+import { SocialSection } from '@/components/social-section'
 import { StripeDivider } from '@/components/stripe-divider'
 
+function getCalendarStartDate() {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() - 1)
+  date.setMonth(date.getMonth(), 1)
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+
+  return `${year}-${month}-01`
+}
+
 function App() {
+  const calendarStartDate = getCalendarStartDate()
+
   return (
     <main className="min-h-svh overflow-x-clip bg-background px-2 text-foreground">
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-sm">
@@ -35,6 +50,19 @@ function App() {
       <div className="mx-auto max-w-3xl">
         <ProfileHero />
         <StripeDivider />
+        <SocialSection />
+        <StripeDivider />
+        <section className="border-x border-line">
+          <GithubCalendar
+            username="fuzzyKenny"
+            startDate={calendarStartDate}
+            cellSize={11}
+            cellGap={3}
+            cellShape="circle"
+            theme="minimal"
+            className="border-0"
+          />
+        </section>
       </div>
     </main>
   )
