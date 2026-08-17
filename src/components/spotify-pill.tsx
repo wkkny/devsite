@@ -371,6 +371,7 @@ export function SpotifyPill({
       style={{ height: config.size }}
       variants={containerVariants}
       custom={animationCustom}
+      initial={false}
       animate={animationState}
       transition={{ duration: 0.3, ease: "easeInOut" }}
       whileTap={{ scale: 0.98 }}
@@ -386,6 +387,7 @@ export function SpotifyPill({
         className="flex min-w-0 shrink-0 overflow-hidden leading-tight whitespace-nowrap"
         variants={textAreaVariants}
         custom={animationCustom}
+        initial={false}
         animate={animationState}
       >
         <motion.div
