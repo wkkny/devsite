@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import backgroundImg from '@/assets/background.jpeg'
 import profileImg from '@/assets/profile.png'
 import { ShimmerTextFlip } from '@/components/grootstudio/shimmer-text-flip'
-import { SpotifyStackedPill } from '@/components/spotify-pill'
+import { SpotifyInlinePill } from '@/components/spotify-pill'
 import { useBackgroundReveal } from '@/lib/use-background-reveal'
 import { useNowPlaying } from '@/lib/use-now-playing'
 import { cn } from '@/lib/utils'
@@ -71,7 +71,7 @@ function ProfileHero() {
 
         {hasTrack && (
           <div data-disable-bg-hover className="absolute top-4 right-4 z-20">
-            <SpotifyStackedPill trackName={trackName} artistName={artistName} />
+            <SpotifyInlinePill trackName={trackName} artistName={artistName} />
           </div>
         )}
       </div>
