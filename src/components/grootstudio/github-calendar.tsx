@@ -1,5 +1,3 @@
-"use client"
-
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -28,16 +26,16 @@ export type CellShape = "rounded" | "circle"
 
 export type GithubCalendarProps = {
 
-    username?: string // GitHub username 
+    username?: string // GitHub username
     data?: ContributionData //Optional - Only for manual data
     startDate?: string
     endDate?: string
-    startsOnSunday?: boolean //Want to start weeks on Sunday or not ? 
+    startsOnSunday?: boolean //Want to start weeks on Sunday or not ?
     cellSize?: number
     cellGap?: number
     cellShape?: CellShape //Rounded | Circle
     theme?: "github" | "blue" | "sunset" | "purple" | "gray" | "minimal" | ThemeColors
-    showMonthLabels?: boolean // Want the month labels on top 
+    showMonthLabels?: boolean // Want the month labels on top
     showStats?: boolean
     showLegend?: boolean
     className?: string // Custom class for custom styling
@@ -178,40 +176,16 @@ function getContributionSummaryLabel(count: number): string {
     return `contribution${count === 1 ? "" : "s"} this year`
 }
 
-function getContributionStats(data: ContributionData) {
-    const entries = Object.entries(data)
-    const total = entries.reduce((sum, [, value]) => sum + (value.count ?? (value.level > 0 ? 1 : 0)), 0)
-    const activeDays = entries.filter(([, value]) => value.level > 0).length
-
-    let maxStreak = 0
-    let currentStreak = 0
-    const activeDates = entries
-        .filter(([, value]) => value.level > 0)
-        .map(([date]) => date)
-        .sort()
-
-    for (let index = 0; index < activeDates.length; index++) {
-        if (index === 0) {
-            currentStreak = 1
-            maxStreak = 1
-            continue
-        }
-
-        const previousDate = parseDate(activeDates[index - 1]!)
-        const currentDate = parseDate(activeDates[index]!)
-        const dayDifference = (currentDate.getTime() - previousDate.getTime()) / 86400000
-
-        currentStreak = dayDifference === 1 ? currentStreak + 1 : 1
-        maxStreak = Math.max(maxStreak, currentStreak)
-    }
-
-    return { total, activeDays, maxStreak }
+function getContributionTotal(data: ContributionData) {
+    return Object.values(data).reduce(
+        (sum, value) => sum + (value.count ?? (value.level > 0 ? 1 : 0)),
+        0
+    )
 }
 
 // ─── API fetch ────────────────────────────────────────────────────────────────
 
 type APIResponse = {
-    total: Record<string, number>
     contributions: { date: string; count: number; level: number }[]
 }
 
@@ -422,7 +396,7 @@ export const GithubCalendar = memo(function GithubCalendar({
     )
 
     // ── Stats ──────────────────────────────────────────────────────────────
-    const stats = useMemo(() => getContributionStats(data), [data])
+    const contributionTotal = useMemo(() => getContributionTotal(data), [data])
 
     // ── Dimensions ────────────────────────────────────────────────────────
     const step = cellSize + cellGap
@@ -566,8 +540,8 @@ export const GithubCalendar = memo(function GithubCalendar({
                     {/* stats line (left) */}
                     {showStats && (
                         <div className="flex flex-1 flex-wrap gap-x-1 text-sm text-muted-foreground">
-                            <span className="font-semibold text-foreground">{stats.total.toLocaleString()}</span>
-                            <span>{getContributionSummaryLabel(stats.total)}</span>
+                            <span className="font-semibold text-foreground">{contributionTotal.toLocaleString()}</span>
+                            <span>{getContributionSummaryLabel(contributionTotal)}</span>
                         </div>
                     )}
 
