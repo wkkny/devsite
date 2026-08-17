@@ -342,7 +342,7 @@ export function SpotifyPill({
       {variant === "inline" && (
         <Separator
           orientation="vertical"
-          className="h-3 bg-[#1DB954]/50 dark:bg-white/50"
+          className="h-3 self-center bg-[#1DB954]/50 dark:bg-white/35"
         />
       )}
       <motion.span
@@ -366,7 +366,7 @@ export function SpotifyPill({
       title={`${trackName} — ${artistName}`}
       className={cn(
         "relative flex items-center justify-center overflow-hidden rounded-full text-white",
-        "bg-[#191414] dark:bg-[#1DB954]"
+        "bg-[#191414] dark:border dark:border-white/15 dark:bg-zinc-950 dark:text-white"
       )}
       style={{ height: config.size }}
       variants={containerVariants}
@@ -389,7 +389,7 @@ export function SpotifyPill({
         animate={animationState}
       >
         <motion.div
-          className="flex shrink-0 text-[#1DB954] dark:text-white"
+          className="flex shrink-0 text-[#1DB954] dark:text-white/90"
           style={{ x: shouldScroll ? scrollX : 0 }}
         >
           {trackDetails()}
