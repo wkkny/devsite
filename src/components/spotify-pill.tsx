@@ -10,7 +10,6 @@ import { animate, motion, useMotionValue, type Variants } from "motion/react"
 import { SiSpotify } from "react-icons/si"
 
 import { cn } from "@/lib/utils"
-import { Separator } from "@/components/ui/separator"
 
 export type SpotifyPillVariant = "inline" | "stacked"
 export type SpotifyPillArtistSize = "xs" | "sm" | "base"
@@ -340,9 +339,9 @@ export function SpotifyPill({
         {trackName}
       </motion.p>
       {variant === "inline" && (
-        <Separator
-          orientation="vertical"
-          className="h-3 self-center bg-[#1DB954]/50 dark:bg-white/35"
+        <span
+          aria-hidden="true"
+          className="h-3 w-px shrink-0 self-center rounded-full bg-[#1DB954]/50 dark:bg-white/35"
         />
       )}
       <motion.span
