@@ -1,7 +1,13 @@
+import { useEffect, useState } from 'react'
+
+import { IconBrandSpotify } from '@tabler/icons-react'
+
 import backgroundImg from '@/assets/background.jpeg'
 import profileImg from '@/assets/profile.png'
 import { ShimmerTextFlip } from '@/components/grootstudio/shimmer-text-flip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useBackgroundReveal } from '@/lib/use-background-reveal'
+import { cn } from '@/lib/utils'
 import { motion } from 'motion/react'
 
 const PROFILE_ROLES = [
@@ -9,6 +15,23 @@ const PROFILE_ROLES = [
   'UI/UX Designer.',
   'I love terminal apps.',
 ]
+
+function useImageLoader(src: string) {
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    const img = new Image()
+    img.src = src
+    img.onload = () => setIsLoading(false)
+    img.onerror = () => {
+      setIsLoading(false)
+      setHasError(true)
+    }
+  }, [src])
+
+  return { isLoading, hasError }
+}
 
 function ProfileHero() {
   const backgroundReveal = useBackgroundReveal()
@@ -24,13 +47,8 @@ function ProfileHero() {
 
       <div className="relative flex min-h-[460px] items-end">
         <div data-disable-bg-hover className="shrink-0">
-          <div className="size-40 overflow-hidden rounded-full border border-line/60">
-            <img
-              src={profileImg}
-              alt="Kritiraj B"
-              draggable={false}
-              className="size-full select-none object-cover object-[center_60%]"
-            />
+          <div className="relative size-40 overflow-hidden rounded-full border border-line/60 bg-muted/40">
+            <ProfileImage />
           </div>
         </div>
 
@@ -47,20 +65,74 @@ function ProfileHero() {
             </ShimmerTextFlip>
           </p>
         </div>
+
+        <div data-disable-bg-hover className="absolute top-4 right-4 z-20">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  className="flex size-8 items-center justify-center rounded-md border border-line bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80 hover:text-foreground"
+                />
+              }
+            >
+              <IconBrandSpotify className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent side="left">Coming Soon.</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
     </section>
   )
 }
 
+function ProfileImage() {
+  const { isLoading, hasError } = useImageLoader(profileImg)
+
+  return (
+    <>
+      {isLoading && (
+        <div className="absolute inset-0 animate-pulse bg-muted/60" />
+      )}
+      {hasError ? (
+        <div className="flex size-full items-center justify-center bg-muted/40 text-muted-foreground">
+          <span className="text-xs">Failed to load</span>
+        </div>
+      ) : (
+        <img
+          src={profileImg}
+          alt="Kritiraj B"
+          draggable={false}
+          className={cn(
+            'size-full select-none object-cover object-[center_60%] transition-opacity duration-500',
+            isLoading ? 'opacity-0' : 'opacity-100'
+          )}
+        />
+      )}
+    </>
+  )
+}
+
 function HeroBackground() {
+  const { isLoading } = useImageLoader(backgroundImg)
+
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      {isLoading && (
+        <div className="absolute inset-0 animate-pulse bg-muted/30" />
+      )}
       <div
-        className="halftone-bg absolute inset-0"
+        className={cn(
+          'halftone-bg absolute inset-0 transition-opacity duration-700',
+          isLoading && 'opacity-0'
+        )}
         style={{ backgroundImage: `url(${backgroundImg})` }}
       />
       <div
-        className="halftone-bg halftone-bg-color absolute inset-0"
+        className={cn(
+          'halftone-bg halftone-bg-color absolute inset-0',
+          isLoading && 'opacity-0'
+        )}
         style={{ backgroundImage: `url(${backgroundImg})` }}
       />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent" />
