@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 
-import { IconBrandSpotify } from '@tabler/icons-react'
-
 import backgroundImg from '@/assets/background.jpeg'
 import profileImg from '@/assets/profile.png'
 import { ShimmerTextFlip } from '@/components/grootstudio/shimmer-text-flip'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { SpotifyStackedPill } from '@/components/spotify-pill'
 import { useBackgroundReveal } from '@/lib/use-background-reveal'
+import { useNowPlaying } from '@/lib/use-now-playing'
 import { cn } from '@/lib/utils'
 import { motion } from 'motion/react'
 
@@ -35,6 +34,10 @@ function useImageLoader(src: string) {
 
 function ProfileHero() {
   const backgroundReveal = useBackgroundReveal()
+  const { data } = useNowPlaying()
+  const trackName = data?.item?.name ?? ''
+  const artistName = data?.item?.artists?.[0]?.name ?? ''
+  const hasTrack = Boolean(trackName)
 
   return (
     <section
@@ -66,21 +69,11 @@ function ProfileHero() {
           </p>
         </div>
 
-        <div data-disable-bg-hover className="absolute top-4 right-4 z-20">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  className="flex size-8 items-center justify-center rounded-md border border-line bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80 hover:text-foreground"
-                />
-              }
-            >
-              <IconBrandSpotify className="size-4" />
-            </TooltipTrigger>
-            <TooltipContent side="left">Coming Soon.</TooltipContent>
-          </Tooltip>
-        </div>
+        {hasTrack && (
+          <div data-disable-bg-hover className="absolute top-4 right-4 z-20">
+            <SpotifyStackedPill trackName={trackName} artistName={artistName} />
+          </div>
+        )}
       </div>
     </section>
   )
