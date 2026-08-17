@@ -1,3 +1,5 @@
+import process from "node:process"
+
 import type { VercelRequest, VercelResponse } from "@vercel/node"
 
 import {
@@ -92,10 +94,9 @@ async function sendPlaybackResponse(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { refreshToken, accessToken: initialAccessToken } = getSpotifyCookies(
-    req.headers.cookie
-  )
-  let accessToken = initialAccessToken
+  const spotifyCookies = getSpotifyCookies(req.headers.cookie)
+  const refreshToken = spotifyCookies.refreshToken ?? process.env.SPOTIFY_REFRESH_TOKEN
+  let accessToken = spotifyCookies.accessToken
 
   if (!accessToken && !refreshToken) {
     return res.status(401).json({ error: "Not authenticated" })
