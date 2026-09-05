@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import backgroundImg from '@/assets/background.jpeg'
-import profileImg from '@/assets/profile.png'
+import profileImg from '@/assets/profile.webp'
 import { ShimmerTextFlip } from '@/components/grootstudio/shimmer-text-flip'
 import { SpotifyInlinePill } from '@/components/spotify-pill'
 import { useBackgroundReveal } from '@/lib/use-background-reveal'
@@ -41,12 +41,11 @@ function ProfileHero() {
 
   return (
     <section
-      className="relative min-h-[460px] border-x border-line"
+      className="relative min-h-[460px]"
       onMouseMove={backgroundReveal.onMouseMove}
       onMouseLeave={backgroundReveal.onMouseLeave}
     >
       <HeroBackground />
-      <div aria-hidden="true" className="screen-wide-line bottom-40 z-10" />
 
       <div className="relative flex min-h-[460px] items-end">
         <div data-disable-bg-hover className="shrink-0">
@@ -59,10 +58,10 @@ function ProfileHero() {
           data-disable-bg-hover
           className="flex min-h-40 min-w-0 flex-1 flex-col justify-end pt-4"
         >
-          <p className="border-y border-l border-line px-4 py-1 font-mono text-3xl font-medium tracking-tight">
+          <p className="px-4 py-1 font-mono text-3xl font-medium tracking-tight">
             Kritiraj B
           </p>
-          <p className="border-l border-line px-4 py-1 font-mono text-base text-muted-foreground">
+          <p className="px-4 py-1 font-mono text-base text-muted-foreground">
             <ShimmerTextFlip interval={2.8} as={motion.span}>
               {PROFILE_ROLES}
             </ShimmerTextFlip>

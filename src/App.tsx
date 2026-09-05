@@ -3,27 +3,13 @@ import { GithubCalendar } from '@/components/grootstudio/github-calendar'
 import { ModeToggle } from '@/components/mode-toggle'
 import { ProfileHero } from '@/components/profile-hero'
 import { InfoSection } from '@/components/info-section'
-import { StripeDivider } from '@/components/stripe-divider'
-
-function getCalendarStartDate() {
-  const date = new Date()
-  date.setFullYear(date.getFullYear() - 1)
-  date.setMonth(date.getMonth(), 1)
-
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-
-  return `${year}-${month}-01`
-}
 
 function App() {
-  const calendarStartDate = getCalendarStartDate()
-
   return (
     <main className="min-h-svh overflow-x-clip bg-background px-2 text-foreground">
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-sm">
         <nav
-          className="nav-shine screen-line-bottom mx-auto flex h-14 max-w-3xl items-center justify-between"
+          className="nav-shine mx-auto flex h-14 max-w-3xl items-center justify-between"
           onMouseMove={(event) => {
             event.currentTarget.style.setProperty('--shine-x', `${event.clientX}px`)
             event.currentTarget.style.setProperty('--shine-opacity', '1')
@@ -32,7 +18,7 @@ function App() {
             event.currentTarget.style.setProperty('--shine-opacity', '0')
           }}
         >
-          <a href="/" className="block text-foreground">
+          <a href="/" className="block text-foreground" aria-label="Kritiraj's Portfolio">
             <AsciiText
               text="KB"
               variant="pixel"
@@ -47,15 +33,14 @@ function App() {
         </nav>
       </header>
 
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto flex max-w-3xl flex-col gap-8">
         <ProfileHero />
-        <StripeDivider />
         <InfoSection />
-        <StripeDivider />
-        <section className="border-x border-line">
+        <section>
           <GithubCalendar
             username="fuzzyKenny"
-            startDate={calendarStartDate}
+            startDate={`${new Date().getFullYear()}-01-01`}
+            fillWidth
             cellSize={11}
             cellGap={3}
             cellShape="circle"
@@ -63,7 +48,6 @@ function App() {
             className="border-0"
           />
         </section>
-        <StripeDivider />
       </div>
     </main>
   )

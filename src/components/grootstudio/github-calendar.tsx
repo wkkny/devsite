@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -33,6 +34,8 @@ export type GithubCalendarProps = {
     startsOnSunday?: boolean //Want to start weeks on Sunday or not ?
     cellSize?: number
     cellGap?: number
+    fillWidth?: boolean
+    maxCellSize?: number
     cellShape?: CellShape //Rounded | Circle
     theme?: "github" | "blue" | "sunset" | "purple" | "gray" | "minimal" | ThemeColors
     showMonthLabels?: boolean // Want the month labels on top
@@ -312,6 +315,8 @@ export const GithubCalendar = memo(function GithubCalendar({
     startsOnSunday = true,
     cellSize = 12,
     cellGap = 3,
+    fillWidth = false,
+    maxCellSize: maxCellSizeProp,
     cellShape = "rounded",
     theme = "github",
     showMonthLabels = true,
@@ -342,21 +347,21 @@ export const GithubCalendar = memo(function GithubCalendar({
     }, [])
 
     // ── Fetch state ────────────────────────────────────────────────────────
-    const [fetchedData, setFetchedData] = useState<ContributionData | null>(null)
-    const [loading, setLoading] = useState(!!username)
-    const [fetchError, setFetchError] = useState<string | null>(null)
+    const query = useQuery({
+        queryKey: ["github-contributions", username],
+        queryFn: () => fetchContributions(username!),
+        enabled: Boolean(username),
+        staleTime: 3_600_000,
+        retry: 2,
+    })
 
-    useEffect(() => {
-        if (!username) return
-        setFetchedData(null)
-        setFetchError(null)
-        setLoading(true)
-
-        fetchContributions(username)
-            .then((d) => setFetchedData(d))
-            .catch((e) => setFetchError(e instanceof Error ? e.message : String(e)))
-            .finally(() => setLoading(false))
-    }, [username])
+    const fetchedData = query.data ?? null
+    const loading = Boolean(username) && query.isPending
+    const fetchError = query.error
+        ? query.error instanceof Error
+            ? query.error.message
+            : String(query.error)
+        : null
 
     // ── Choose data source ─────────────────────────────────────────────────
     const data = dataProp ?? fetchedData ?? EMPTY_CONTRIBUTIONS
@@ -370,6 +375,35 @@ export const GithubCalendar = memo(function GithubCalendar({
         d.setDate(d.getDate() + 1)
         return formatDate(d)
     }, [startDate, resolvedEnd])
+
+    // ── Filter data to the visible range ──────────────────────────────────
+    const filteredData = useMemo(() => {
+        const filtered: ContributionData = {}
+        for (const [date, value] of Object.entries(data)) {
+            if (date >= resolvedStart && date <= resolvedEnd) {
+                filtered[date] = value
+            }
+        }
+        return filtered
+    }, [data, resolvedStart, resolvedEnd])
+
+    // ── Fill-width measurement ─────────────────────────────────────────────
+    const wrapRef = useRef<HTMLDivElement>(null)
+    const [wrapWidth, setWrapWidth] = useState(0)
+
+    useEffect(() => {
+        if (!fillWidth) return
+        const el = wrapRef.current
+        if (!el) return
+
+        const measure = () => setWrapWidth(el.clientWidth)
+        measure()
+
+        const observer = new ResizeObserver(measure)
+        observer.observe(el)
+
+        return () => observer.disconnect()
+    }, [fillWidth, loading])
 
     // ── Resolve theme colors ───────────────────────────────────────────────
     const lightColors: ThemeColors =
@@ -395,11 +429,22 @@ export const GithubCalendar = memo(function GithubCalendar({
         [resolvedStart, resolvedEnd, startsOnSunday]
     )
 
+    // ── Effective cell size ────────────────────────────────────────────────
+    const maxCellSize = maxCellSizeProp ?? cellSize * 1.5
+    const effectiveCellSize = useMemo(() => {
+        if (!fillWidth || wrapWidth === 0) return cellSize
+        const available = wrapWidth - 24
+        const fitted = Math.floor(
+            (available - (weeks.length - 1) * cellGap) / weeks.length
+        )
+        return Math.max(2, Math.min(fitted, maxCellSize))
+    }, [fillWidth, wrapWidth, weeks.length, cellGap, cellSize, maxCellSize])
+
     // ── Stats ──────────────────────────────────────────────────────────────
-    const contributionTotal = useMemo(() => getContributionTotal(data), [data])
+    const contributionTotal = useMemo(() => getContributionTotal(filteredData), [filteredData])
 
     // ── Dimensions ────────────────────────────────────────────────────────
-    const step = cellSize + cellGap
+    const step = effectiveCellSize + cellGap
     const monthLabelHeight = showMonthLabels ? 20 : 0
     const svgWidth = weeks.length * step - cellGap
     const svgHeight = monthLabelHeight + 7 * step - cellGap
@@ -427,10 +472,10 @@ export const GithubCalendar = memo(function GithubCalendar({
         )
     }
 
-    const cellRx = cellShape === "circle" ? cellSize / 2 : cellSize * 0.2
+    const cellRx = cellShape === "circle" ? effectiveCellSize / 2 : effectiveCellSize * 0.2
 
     return (
-        <div className={cn("w-full overflow-x-hidden border rounded-sm", className)}>
+        <div ref={wrapRef} className={cn("w-full overflow-x-hidden border rounded-sm", className)}>
             <div className="w-fit mx-auto max-w-full flex flex-col gap-3 p-3">
                 <div
                     ref={scrollRef}
@@ -466,7 +511,7 @@ export const GithubCalendar = memo(function GithubCalendar({
                         {/* cells */}
                         {weeks.map((week, wi) =>
                             week.map((date, di) => {
-                                const entry = date ? data[date] : undefined
+                                const entry = date ? filteredData[date] : undefined
                                 const level: ContributionLevel = entry?.level ?? 0
                                 const cellCenterX = wi * step + cellSize / 2
                                 const cellTopY = monthLabelHeight + di * step
@@ -481,8 +526,8 @@ export const GithubCalendar = memo(function GithubCalendar({
                                         key={`${wi}-${di}`}
                                         x={wi * step}
                                         y={cellTopY}
-                                        width={cellSize}
-                                        height={cellSize}
+                                        width={effectiveCellSize}
+                                        height={effectiveCellSize}
                                         rx={cellRx}
                                         fill={activeColors[`level${level}` as keyof ThemeColors]}
                                         style={{ transition: "opacity 0.1s" }}
@@ -524,11 +569,11 @@ export const GithubCalendar = memo(function GithubCalendar({
                             />
                             <TooltipContent side="top">
                                 <div className="font-medium">
-                                    {getContributionLabel(
-                                        tooltip.count,
-                                        data[tooltip.date]?.level,
-                                        tooltip.label
-                                    )}
+                                {getContributionLabel(
+                                    tooltip.count,
+                                    filteredData[tooltip.date]?.level,
+                                    tooltip.label
+                                )}
                                 </div>
                                 <div className="text-muted">{formatTooltipDate(tooltip.date)}</div>
                             </TooltipContent>
@@ -550,10 +595,10 @@ export const GithubCalendar = memo(function GithubCalendar({
                         <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                             <span>Less</span>
                             {CONTRIBUTION_LEVELS.map((level) => (
-                                <svg key={level} width={cellSize} height={cellSize}>
+                                <svg key={level} width={effectiveCellSize} height={effectiveCellSize}>
                                     <rect
-                                        width={cellSize}
-                                        height={cellSize}
+                                        width={effectiveCellSize}
+                                        height={effectiveCellSize}
                                         rx={cellRx}
                                         fill={activeColors[`level${level}`]}
                                     />

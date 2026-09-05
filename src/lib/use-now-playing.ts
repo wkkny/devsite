@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 
 import { USE_MOCK_SPOTIFY_DATA } from "@/config/spotify"
 
@@ -42,50 +42,32 @@ async function fetchNowPlayingData(): Promise<NowPlayingResponse> {
     return MOCK_NOW_PLAYING
   }
 
-  try {
-    const response = await fetch("/api/now-playing")
+  const response = await fetch("/api/now-playing")
 
-    if (response.status === 401) {
-      return { is_playing: false, error: "Not authenticated" }
-    }
-
-    if (!response.ok) {
-      return { is_playing: false, error: "Failed to fetch" }
-    }
-
-    return (await response.json()) as NowPlayingResponse
-  } catch {
-    return { is_playing: false, error: "Failed to fetch" }
+  if (response.status === 401) {
+    return { is_playing: false, error: "Not authenticated" }
   }
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch now playing")
+  }
+
+  return (await response.json()) as NowPlayingResponse
 }
 
 export function useNowPlaying(pollInterval = 10_000) {
-  const [data, setData] = useState<NowPlayingResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const query = useQuery({
+    queryKey: ["now-playing"],
+    queryFn: fetchNowPlayingData,
+    refetchInterval: USE_MOCK_SPOTIFY_DATA ? false : pollInterval,
+    refetchOnWindowFocus: true,
+    staleTime: 5_000,
+    retry: 2,
+  })
 
-  const refetch = useCallback(async () => {
-    const result = await fetchNowPlayingData()
-
-    setData(result)
-    setIsLoading(false)
-  }, [])
-
-  useEffect(() => {
-    fetchNowPlayingData().then((result) => {
-      setData(result)
-      setIsLoading(false)
-    })
-
-    if (USE_MOCK_SPOTIFY_DATA) {
-      return undefined
-    }
-
-    const interval = window.setInterval(() => {
-      fetchNowPlayingData().then(setData)
-    }, pollInterval)
-
-    return () => window.clearInterval(interval)
-  }, [pollInterval])
-
-  return { data, isLoading, refetch }
+  return {
+    data: query.data ?? null,
+    isLoading: query.isPending,
+    refetch: query.refetch,
+  }
 }

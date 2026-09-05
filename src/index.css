@@ -164,26 +164,6 @@
 }
 
 @layer components {
-  .screen-line-bottom {
-    position: relative;
-  }
-
-  .screen-line-bottom::after,
-  .screen-wide-line {
-    position: absolute;
-    left: 50%;
-    width: 100vw;
-    height: 1px;
-    pointer-events: none;
-    background: var(--line);
-    transform: translateX(-50%);
-  }
-
-  .screen-line-bottom::after {
-    content: '';
-    bottom: 0;
-  }
-
   .nav-shine::before {
     content: '';
     position: absolute;
@@ -201,33 +181,6 @@
     );
     transform: translateX(-50%);
     transition: opacity 300ms ease-out;
-  }
-
-  .stripe-divider {
-    position: relative;
-  }
-
-  .stripe-divider::before {
-    content: '';
-    position: absolute;
-    inset-block: 0;
-    left: 50%;
-    width: 100vw;
-    pointer-events: none;
-    background-image:
-      linear-gradient(var(--line), var(--line)),
-      linear-gradient(var(--line), var(--line)),
-      repeating-linear-gradient(
-        315deg,
-        color-mix(in oklab, var(--line) 56%, transparent) 0,
-        color-mix(in oklab, var(--line) 56%, transparent) 1px,
-        transparent 0,
-        transparent 50%
-      );
-    background-position: top, bottom, 0 0;
-    background-repeat: no-repeat, no-repeat, repeat;
-    background-size: 100% 1px, 100% 1px, 10px 10px;
-    transform: translateX(-50%);
   }
 
   .halftone-bg {

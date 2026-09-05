@@ -1,14 +1,9 @@
-import { useMemo, type CSSProperties } from 'react'
-import figlet from 'figlet'
+import { lazy, Suspense, useMemo, type CSSProperties } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
-import ansiRegular from 'figlet/fonts/ANSI Regular'
-import ansiShadow from 'figlet/fonts/ANSI Shadow'
 
 import { cn } from '@/lib/utils'
 
-figlet.defaults({ fetchFontIfMissing: false })
-figlet.parseFont('ANSI Regular', ansiRegular)
-figlet.parseFont('ANSI Shadow', ansiShadow)
+const FigletText = lazy(() => import('@/components/ascii-figlet'))
 
 type AsciiTextVariant = 'ansi' | 'ansi-shadow' | 'pixel'
 type AsciiTextSize = 'sm' | 'md' | 'lg' | 'xl'
@@ -44,18 +39,6 @@ type PixelGlyph = {
   columns: number
   rows: number
 }
-
-const FIGLET_FONT_BY_VARIANT = {
-  ansi: 'ANSI Regular',
-  'ansi-shadow': 'ANSI Shadow',
-} satisfies Record<Exclude<AsciiTextVariant, 'pixel'>, string>
-
-const FIGLET_SIZE_CLASS_BY_SIZE = {
-  sm: 'text-[3px] sm:text-[4px]',
-  md: 'text-[4px] sm:text-[5px]',
-  lg: 'text-[5px] sm:text-[6px]',
-  xl: 'text-[6px] sm:text-[8px]',
-} satisfies Record<AsciiTextSize, string>
 
 const PIXEL_CELL_BY_SIZE = {
   sm: 5,
@@ -105,39 +88,10 @@ function AsciiText({
     return <PixelText size={size} {...props} />
   }
 
-  return <FigletText variant={variant} size={size} {...props} />
-}
-
-function FigletText({
-  text,
-  variant,
-  size,
-  color,
-  backgroundColor,
-  className,
-  style,
-}: SharedTextProps & { variant: Exclude<AsciiTextVariant, 'pixel'> }) {
-  const ascii = useMemo(() => {
-    return figlet.textSync(text, {
-      font: FIGLET_FONT_BY_VARIANT[variant],
-      horizontalLayout: 'default',
-      verticalLayout: 'default',
-      whitespaceBreak: true,
-    })
-  }, [text, variant])
-
   return (
-    <pre
-      aria-label={text}
-      className={cn(
-        'font-mono leading-none tracking-normal',
-        FIGLET_SIZE_CLASS_BY_SIZE[size],
-        className,
-      )}
-      style={{ color, backgroundColor, ...style }}
-    >
-      {ascii}
-    </pre>
+    <Suspense fallback={null}>
+      <FigletText variant={variant} size={size} {...props} />
+    </Suspense>
   )
 }
 
@@ -209,6 +163,8 @@ function PixelGlyphView({
           key={`${bar.row}-${bar.column}-${bar.width}-${bar.height}`}
           bar={bar}
           cell={cell}
+          columns={glyph.columns}
+          rows={glyph.rows}
           index={index}
           animation={animation}
           animationDirection={animationDirection}
@@ -223,6 +179,8 @@ function PixelGlyphView({
 function PixelBarView({
   bar,
   cell,
+  columns,
+  rows,
   index,
   animation,
   animationDirection,
@@ -231,6 +189,8 @@ function PixelBarView({
 }: {
   bar: PixelBar
   cell: number
+  columns: number
+  rows: number
   index: number
   animation: AsciiTextAnimation
   animationDirection: AsciiTextAnimationDirection
@@ -253,9 +213,28 @@ function PixelBarView({
     <motion.span
       key={animationKey}
       className="absolute bg-current"
-      initial={getPixelBarInitial(animation, animationDirection, bar, cell)}
-      animate={getPixelBarAnimate(animation, animationDirection, bar, cell)}
-      transition={getPixelBarTransition(animation, index, bar)}
+      initial={getPixelBarInitial(
+        animation,
+        animationDirection,
+        bar,
+        columns,
+        rows,
+        cell,
+      )}
+      animate={getPixelBarAnimate(
+        animation,
+        animationDirection,
+        bar,
+        columns,
+        rows,
+        cell,
+      )}
+      transition={getPixelBarTransition(
+        animation,
+        animationDirection,
+        index,
+        bar,
+      )}
       style={style}
     />
   )
@@ -352,14 +331,48 @@ function markVisited(visited: boolean[][], bar: PixelBar) {
   }
 }
 
+const TETRIS_DROP_DEPTH = 6
+const TETRIS_OVERSHOOT_RATIO = 0.55
+
+type TetrisStart = { axis: 'x' | 'y'; from: number }
+
+function isVerticalDirection(direction: AsciiTextAnimationDirection) {
+  return direction === 'ttb' || direction === 'btt'
+}
+
+function getTetrisStartOffset(
+  direction: AsciiTextAnimationDirection,
+  bar: PixelBar,
+  columns: number,
+  rows: number,
+  cell: number,
+): TetrisStart {
+  switch (direction) {
+    case 'btt':
+      return { axis: 'y', from: (rows - bar.row + TETRIS_DROP_DEPTH) * cell }
+    case 'ltr':
+      return { axis: 'x', from: -(bar.column + TETRIS_DROP_DEPTH) * cell }
+    case 'rtl':
+      return { axis: 'x', from: (columns - bar.column + TETRIS_DROP_DEPTH) * cell }
+    default:
+      return { axis: 'y', from: -(bar.row + TETRIS_DROP_DEPTH) * cell }
+  }
+}
+
 function getPixelBarInitial(
   animation: AsciiTextAnimation,
   direction: AsciiTextAnimationDirection,
   bar: PixelBar,
+  columns: number,
+  rows: number,
   cell: number,
 ) {
   if (animation === 'tetris') {
-    return { opacity: 1, y: getTetrisStartY(bar, cell) }
+    const start = getTetrisStartOffset(direction, bar, columns, rows, cell)
+
+    return start.axis === 'x'
+      ? { opacity: 1, x: start.from }
+      : { opacity: 1, y: start.from }
   }
 
   return {
@@ -373,10 +386,18 @@ function getPixelBarAnimate(
   animation: AsciiTextAnimation,
   direction: AsciiTextAnimationDirection,
   bar: PixelBar,
+  columns: number,
+  rows: number,
   cell: number,
 ) {
   if (animation === 'tetris') {
-    return { opacity: 1, y: [getTetrisStartY(bar, cell), 4, 0] }
+    const start = getTetrisStartOffset(direction, bar, columns, rows, cell)
+    const overshoot = cell * TETRIS_OVERSHOOT_RATIO
+    const keyframes = [start.from, -Math.sign(start.from) * overshoot, 0]
+
+    return start.axis === 'x'
+      ? { opacity: 1, x: keyframes }
+      : { opacity: 1, y: keyframes }
   }
 
   return {
@@ -389,12 +410,15 @@ function getPixelBarAnimate(
 
 function getPixelBarTransition(
   animation: AsciiTextAnimation,
+  direction: AsciiTextAnimationDirection,
   index: number,
   bar: PixelBar,
 ) {
   if (animation === 'tetris') {
     return {
-      delay: bar.row * 0.055 + bar.column * 0.012,
+      delay: isVerticalDirection(direction)
+        ? bar.row * 0.055 + bar.column * 0.012
+        : bar.column * 0.055 + bar.row * 0.012,
       duration: 0.4,
       times: [0, 0.78, 1],
       ease: 'easeOut' as const,
@@ -425,10 +449,6 @@ function getDirectionalOffset(
   if (direction === 'ttb') return { y: -distance }
 
   return { y: distance }
-}
-
-function getTetrisStartY(bar: PixelBar, cell: number) {
-  return -(bar.row + 6) * cell
 }
 
 export {

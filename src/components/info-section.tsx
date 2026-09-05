@@ -57,10 +57,10 @@ type InfoSectionProps = {
 
 function InfoSection({ className }: InfoSectionProps) {
   return (
-    <section className={cn('border-x border-line', className)}>
+    <section className={className}>
       <div className="grid gap-0 md:grid-cols-2">
         <SocialColumn items={PROFILE_ITEMS} />
-        <SocialColumn className="border-t border-line md:border-t-0 md:border-l md:border-dashed">
+        <SocialColumn>
           <LocalTimeRow />
           {SOCIAL_ITEMS.map((item) => (
             <SocialRow key={item.label} item={item} />
