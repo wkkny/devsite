@@ -5,7 +5,8 @@ const REVEAL_RADIUS = '1200px'
 const REVEAL_OPACITY = '0.85'
 const REVEAL_IN_TRANSITION = '--reveal-radius 650ms ease-out, opacity 200ms ease-out'
 const REVEAL_OUT_TRANSITION = '--reveal-radius 650ms ease-out, opacity 700ms ease-out 650ms'
-const REVEAL_RESET_DELAY = 1400
+const REVEAL_QUICK_OUT_TRANSITION = '--reveal-radius 300ms ease-in, opacity 250ms ease-out'
+const FULL_REVEAL_MS = 650
 
 type PointerPosition = {
   x: number
@@ -18,8 +19,8 @@ type BackgroundRevealOptions = {
 
 function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: BackgroundRevealOptions = {}) {
   const revealDelayRef = useRef<number | null>(null)
-  const revealResetRef = useRef<number | null>(null)
   const revealStartedRef = useRef(false)
+  const revealStartedAtRef = useRef(0)
   const lastPointerRef = useRef<PointerPosition | null>(null)
 
   const clearRevealDelay = useCallback(() => {
@@ -29,13 +30,6 @@ function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: B
     revealDelayRef.current = null
   }, [])
 
-  const clearRevealReset = useCallback(() => {
-    if (revealResetRef.current === null) return
-
-    window.clearTimeout(revealResetRef.current)
-    revealResetRef.current = null
-  }, [])
-
   const setRevealPoint = useCallback((section: HTMLElement, pointer: PointerPosition) => {
     section.style.setProperty('--color-x', `${pointer.x}px`)
     section.style.setProperty('--color-y', `${pointer.y}px`)
@@ -43,17 +37,20 @@ function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: B
 
   const startReveal = useCallback(
     (section: HTMLElement) => {
-      clearRevealReset()
       revealStartedRef.current = true
+      revealStartedAtRef.current = performance.now()
 
       const pointer = lastPointerRef.current
       if (pointer) setRevealPoint(section, pointer)
 
+      section.style.setProperty('--color-transition', 'none')
+      section.style.setProperty('--color-radius', '0px')
+      void section.offsetWidth
       section.style.setProperty('--color-transition', REVEAL_IN_TRANSITION)
       section.style.setProperty('--color-radius', REVEAL_RADIUS)
       section.style.setProperty('--color-opacity', REVEAL_OPACITY)
     },
-    [clearRevealReset, setRevealPoint],
+    [setRevealPoint],
   )
 
   const finishReveal = useCallback(
@@ -62,19 +59,18 @@ function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: B
 
       if (!revealStartedRef.current) return
 
-      clearRevealReset()
       revealStartedRef.current = false
-      section.style.setProperty('--color-transition', REVEAL_OUT_TRANSITION)
-      section.style.setProperty('--color-radius', REVEAL_RADIUS)
-      section.style.setProperty('--color-opacity', '0')
+      const heldMs = performance.now() - revealStartedAtRef.current
+      const quickExit = heldMs < FULL_REVEAL_MS
 
-      revealResetRef.current = window.setTimeout(() => {
-        section.style.setProperty('--color-transition', '--reveal-radius 0ms linear')
-        section.style.setProperty('--color-radius', '0px')
-        revealResetRef.current = null
-      }, REVEAL_RESET_DELAY)
+      section.style.setProperty(
+        '--color-transition',
+        quickExit ? REVEAL_QUICK_OUT_TRANSITION : REVEAL_OUT_TRANSITION
+      )
+      section.style.setProperty('--color-radius', quickExit ? '0px' : REVEAL_RADIUS)
+      section.style.setProperty('--color-opacity', '0')
     },
-    [clearRevealDelay, clearRevealReset],
+    [clearRevealDelay],
   )
 
   const onMouseMove: MouseEventHandler<HTMLElement> = useCallback(
@@ -116,11 +112,8 @@ function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: B
   )
 
   useEffect(() => {
-    return () => {
-      clearRevealDelay()
-      clearRevealReset()
-    }
-  }, [clearRevealDelay, clearRevealReset])
+    return () => clearRevealDelay()
+  }, [clearRevealDelay])
 
   return { onMouseLeave, onMouseMove }
 }

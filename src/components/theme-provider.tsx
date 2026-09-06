@@ -6,10 +6,13 @@ function getSystemTheme(): ResolvedTheme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+function getStoredTheme(): Theme {
+  const stored = localStorage.getItem('theme')
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark'
+}
+
 function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    return (localStorage.getItem('theme') as Theme | null) ?? 'system'
-  })
+  const [theme, setThemeState] = useState<Theme>(getStoredTheme)
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => getSystemTheme())
 
   useEffect(() => {

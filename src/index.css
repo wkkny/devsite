@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/geist-pixel";
 @import "@fontsource/ibm-plex-serif";
 @import "@fontsource-variable/caveat";
 
@@ -95,6 +96,7 @@
   --font-sans: 'Geist Variable', sans-serif;
   --font-heading: var(--font-sans);
   --font-mono: 'Geist Mono Variable', monospace;
+  --font-pixel: 'Geist Pixel Variable', monospace;
   --font-serif: 'IBM Plex Serif', serif;
   --font-handwritten: 'Caveat Variable', cursive;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -164,25 +166,6 @@
 }
 
 @layer components {
-  .nav-shine::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    z-index: 1;
-    width: 100vw;
-    height: 1px;
-    pointer-events: none;
-    opacity: var(--shine-opacity, 0);
-    background: radial-gradient(
-      90px 8px at var(--shine-x, -90px) 50%,
-      color-mix(in oklab, var(--foreground) 32%, transparent),
-      transparent 70%
-    );
-    transform: translateX(-50%);
-    transition: opacity 300ms ease-out;
-  }
-
   .halftone-bg {
     background-position: center 70%;
     background-size: cover;
@@ -192,21 +175,6 @@
     mask-size: 4px 4px;
     -webkit-mask-image: radial-gradient(circle, black 1px, transparent 1.45px);
     -webkit-mask-size: 4px 4px;
-  }
-
-  .halftone-bg:not(.halftone-bg-color)::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      110deg,
-      transparent 44%,
-      white 50%,
-      transparent 56%
-    );
-    filter: blur(3px);
-    transform: translateX(-120%);
-    animation: halftone-shimmer 2.8s ease-in-out infinite;
   }
 
   .halftone-bg-color {
@@ -239,13 +207,3 @@
   }
 }
 
-@keyframes halftone-shimmer {
-  0% {
-    transform: translateX(-120%);
-  }
-
-  55%,
-  100% {
-    transform: translateX(120%);
-  }
-}

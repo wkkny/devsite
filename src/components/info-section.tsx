@@ -14,6 +14,8 @@ import {
 
 import { IconSwap, IconSwapItem } from '@/components/icon-swap'
 
+import archLogo from '@/assets/archlinux-icon-crystal-32.svg'
+
 import { cn } from '@/lib/utils'
 
 const OWNER_TIME_ZONE = 'Asia/Kolkata'
@@ -167,10 +169,18 @@ type SocialRowProps = {
   item: SocialItem
 }
 
+function ArchLabel() {
+  return (
+    <span className="inline-block border-b border-transparent leading-none transition-opacity duration-200 delay-[1200ms] group-hover:opacity-0 group-hover:delay-0">
+      Arch
+    </span>
+  )
+}
+
 function SocialLabel({ label }: { label: string }) {
   if (label === 'New Delhi, India') {
     return (
-      <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
+      <span className="min-w-0 truncate cursor-pointer font-mono text-xs text-foreground sm:text-sm">
         <span className="inline-block border-b border-transparent leading-none hover:border-foreground">New Delhi, India</span>
       </span>
     )
@@ -178,9 +188,17 @@ function SocialLabel({ label }: { label: string }) {
 
   if (label === 'I used to use Arch btw') {
     return (
-      <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
+      <span className="relative min-w-0 font-mono text-xs text-foreground sm:text-sm">
         I used to use{' '}
-        <span className="inline-block border-b border-transparent leading-none hover:border-foreground">Arch</span>{' '}
+        <span className="group relative inline-block cursor-pointer align-baseline">
+          <ArchLabel />
+          <img
+            src={archLogo}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[1.6em] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 opacity-0 blur-lg transition-[opacity,filter] duration-300 delay-900 group-hover:opacity-100 group-hover:blur-none group-hover:delay-0"
+          />
+        </span>{' '}
         btw
       </span>
     )

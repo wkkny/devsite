@@ -61,7 +61,7 @@ function ProfileHero() {
           <p className="px-4 py-1 font-mono text-3xl font-medium tracking-tight">
             Kritiraj B
           </p>
-          <p className="px-4 py-1 font-mono text-base text-muted-foreground">
+          <p className="px-4 py-1 font-pixel text-base text-muted-foreground">
             <ShimmerTextFlip interval={2.8} as={motion.span}>
               {PROFILE_ROLES}
             </ShimmerTextFlip>

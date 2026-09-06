@@ -9,14 +9,7 @@ function App() {
     <main className="min-h-svh overflow-x-clip bg-background px-2 text-foreground">
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-sm">
         <nav
-          className="nav-shine mx-auto flex h-14 max-w-3xl items-center justify-between"
-          onMouseMove={(event) => {
-            event.currentTarget.style.setProperty('--shine-x', `${event.clientX}px`)
-            event.currentTarget.style.setProperty('--shine-opacity', '1')
-          }}
-          onMouseLeave={(event) => {
-            event.currentTarget.style.setProperty('--shine-opacity', '0')
-          }}
+          className="mx-auto flex h-14 max-w-3xl items-center justify-between"
         >
           <a href="/" className="block text-foreground" aria-label="Kritiraj's Portfolio">
             <AsciiText
