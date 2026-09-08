@@ -269,37 +269,157 @@ type TooltipState = {
 
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 
-function CalendarSkeleton({ cellSize = 12, cellGap = 3, className }: { cellSize?: number; cellGap?: number; className?: string }) {
-    const step = cellSize + cellGap
-    const weeks = 53
-    const days = 7
+function CalendarSkeleton({
+    cellSize = 12,
+    cellGap = 3,
+    fillWidth = false,
+    maxCellSize,
+    cellShape = "rounded",
+    showMonthLabels = true,
+    showStats = true,
+    showLegend = true,
+    startsOnSunday = true,
+    startDate,
+    endDate,
+    className,
+}: {
+    cellSize?: number
+    cellGap?: number
+    fillWidth?: boolean
+    maxCellSize?: number
+    cellShape?: CellShape
+    showMonthLabels?: boolean
+    showStats?: boolean
+    showLegend?: boolean
+    startsOnSunday?: boolean
+    startDate?: string
+    endDate?: string
+    className?: string
+}) {
+    const maxCellSizeResolved = maxCellSize ?? cellSize * 1.5
+
+    // Same date logic as the real grid so label positions / week count match exactly
+    const resolvedEnd = endDate ?? formatDate(new Date())
+    const resolvedStart = useMemo(() => {
+        if (startDate) return startDate
+        const d = parseDate(resolvedEnd)
+        d.setFullYear(d.getFullYear() - 1)
+        d.setDate(d.getDate() + 1)
+        return formatDate(d)
+    }, [startDate, resolvedEnd])
+
+    const { weeks, monthLabels, gridStart } = useMemo(
+        () => buildGrid(resolvedStart, resolvedEnd, startsOnSunday),
+        [resolvedStart, resolvedEnd, startsOnSunday]
+    )
+
+    // Match the real component's fill-to-width measurement
+    const wrapRef = useRef<HTMLDivElement>(null)
+    const [wrapWidth, setWrapWidth] = useState(0)
+
+    useEffect(() => {
+        if (!fillWidth) return
+        const el = wrapRef.current
+        if (!el) return
+
+        const measure = () => setWrapWidth(el.clientWidth)
+        measure()
+
+        const observer = new ResizeObserver(measure)
+        observer.observe(el)
+
+        return () => observer.disconnect()
+    }, [fillWidth])
+
+    const effectiveCellSize = useMemo(() => {
+        if (!fillWidth || wrapWidth === 0) return cellSize
+        const available = wrapWidth - 24
+        const fitted = Math.floor(
+            (available - (weeks.length - 1) * cellGap) / weeks.length
+        )
+        return Math.max(2, Math.min(fitted, maxCellSizeResolved))
+    }, [fillWidth, wrapWidth, weeks.length, cellGap, cellSize, maxCellSizeResolved])
+
+    const step = effectiveCellSize + cellGap
+    const monthLabelHeight = showMonthLabels ? 20 : 0
+    const svgWidth = weeks.length * step - cellGap
+    const svgHeight = monthLabelHeight + 7 * step - cellGap
+    const cellRx = cellShape === "circle" ? effectiveCellSize / 2 : effectiveCellSize * 0.2
+
+    const labelByWeek = new Map<number, string>()
+    monthLabels.forEach(({ label, weekIndex }) => {
+        if (!labelByWeek.has(weekIndex)) labelByWeek.set(weekIndex, label)
+    })
+
     return (
-        <div className={cn("w-fit mx-auto space-y-3 animate-pulse", className)}>
-            <div className="flex gap-6">
-                <div className="h-4 w-32 rounded bg-muted" />
-                <div className="h-4 w-20 rounded bg-muted" />
-                <div className="h-4 w-24 rounded bg-muted" />
-            </div>
-            <div className="overflow-x-auto">
-                <svg
-                    width={weeks * step - cellGap}
-                    height={16 + days * step - cellGap}
-                    className="overflow-visible"
+        <div ref={wrapRef} className={cn("w-full overflow-x-hidden border rounded-sm", className)}>
+            <div className="w-fit mx-auto max-w-full flex flex-col gap-3 p-3 animate-pulse">
+                <div
+                    className="relative overflow-x-auto"
+                    style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
                 >
-                    {Array.from({ length: weeks }).map((_, wi) =>
-                        Array.from({ length: days }).map((_, di) => (
+                    <svg width={svgWidth} height={svgHeight} className="overflow-visible">
+                        {/* month label placeholders */}
+                        {showMonthLabels && ([...labelByWeek.entries()].map(([weekIndex, label]) => (
                             <rect
-                                key={`${wi}-${di}`}
-                                x={wi * step}
-                                y={16 + di * step}
-                                width={cellSize}
-                                height={cellSize}
-                                rx={cellSize * 0.2}
+                                key={`label-${weekIndex}-${label}`}
+                                x={weekIndex * step}
+                                y={2}
+                                width={label.length * 7.5}
+                                height={11}
+                                rx={3}
                                 className="fill-muted"
                             />
-                        ))
+                        )))}
+
+                        {/* cell placeholders */}
+                        {weeks.map((week, wi) =>
+                            week.map((date, di) => {
+                                if (!date) {
+                                    const cellDate = formatDate(addDays(parseDate(gridStart), wi * 7 + di))
+                                    if (cellDate > resolvedEnd) return null
+                                }
+                                return (
+                                    <rect
+                                        key={`${wi}-${di}`}
+                                        x={wi * step}
+                                        y={monthLabelHeight + di * step}
+                                        width={effectiveCellSize}
+                                        height={effectiveCellSize}
+                                        rx={cellRx}
+                                        className="fill-muted"
+                                    />
+                                )
+                            })
+                        )}
+                    </svg>
+                </div>
+
+                {/* stats + legend placeholders */}
+                <div className="flex items-start justify-between gap-x-4">
+                    {showStats && (
+                        <div className="flex flex-1 flex-wrap items-center gap-x-1.5">
+                            <div className="h-4 w-16 rounded bg-muted" />
+                            <div className="h-4 w-28 rounded bg-muted" />
+                        </div>
                     )}
-                </svg>
+                    {showLegend && (
+                        <div className="flex shrink-0 items-center gap-1.5">
+                            <div className="h-3 w-8 rounded bg-muted" />
+                            {CONTRIBUTION_LEVELS.map((level) => (
+                                <svg key={level} width={effectiveCellSize} height={effectiveCellSize}>
+                                    <rect
+                                        width={effectiveCellSize}
+                                        height={effectiveCellSize}
+                                        rx={cellRx}
+                                        className="fill-muted"
+                                    />
+                                </svg>
+                            ))}
+                            <div className="h-3 w-10 rounded bg-muted" />
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     )
@@ -458,7 +578,22 @@ export const GithubCalendar = memo(function GithubCalendar({
 
     // ── Loading / error states ───────────────────────────
     if (loading) {
-        return <CalendarSkeleton cellSize={cellSize} cellGap={cellGap} className={className} />
+        return (
+            <CalendarSkeleton
+                cellSize={cellSize}
+                cellGap={cellGap}
+                fillWidth={fillWidth}
+                maxCellSize={maxCellSize}
+                cellShape={cellShape}
+                showMonthLabels={showMonthLabels}
+                showStats={showStats}
+                showLegend={showLegend}
+                startsOnSunday={startsOnSunday}
+                startDate={startDate}
+                endDate={endDate}
+                className={className}
+            />
+        )
     }
 
     if (fetchError) {

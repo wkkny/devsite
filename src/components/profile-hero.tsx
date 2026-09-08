@@ -58,7 +58,7 @@ function ProfileHero() {
           data-disable-bg-hover
           className="flex min-h-40 min-w-0 flex-1 flex-col justify-end pt-4"
         >
-          <p className="px-4 py-1 font-mono text-3xl font-medium tracking-tight">
+          <p className="truncate px-4 py-1 font-mono text-2xl font-medium tracking-tight whitespace-nowrap sm:text-3xl">
             Kritiraj B
           </p>
           <p className="px-4 py-1 font-pixel text-base text-muted-foreground">
@@ -115,7 +115,7 @@ function HeroBackground() {
       )}
       <div
         className={cn(
-          'halftone-bg absolute inset-0 transition-opacity duration-700',
+          'halftone-bg absolute inset-0 transition-opacity duration-500',
           isLoading && 'opacity-0'
         )}
         style={{ backgroundImage: `url(${backgroundImg})` }}

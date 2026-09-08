@@ -1,0 +1,31 @@
+- main [ref=e3]:
+  - navigation [ref=e5]:
+    - link "Kritiraj's Portfolio" [ref=e6] [cursor=pointer]:
+      - /url: /
+      - generic "KB" [ref=e7]
+    - button "Toggle color mode" [ref=e22] [cursor=pointer]
+  - generic [ref=e24]:
+    - generic [ref=e27]:
+      - img "Kritiraj B" [ref=e30]
+      - generic [ref=e31]:
+        - paragraph [ref=e32]: Kritiraj B
+        - paragraph [ref=e33]:
+          - generic [ref=e34]: Full Stack Developer.
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - generic [ref=e39]: Full Stack Developer
+        - generic [ref=e46]: New Delhi, India
+        - generic [ref=e57]:
+          - text: I used to use
+          - generic [ref=e58] [cursor=pointer]: Arch
+          - text: btw
+      - generic [ref=e60]:
+        - generic [ref=e66]:
+          - text: 04:36 PM
+          - generic [ref=e67]: // same time
+        - link "kritiraj.tech@gmail.com Copy email" [ref=e68] [cursor=pointer]:
+          - /url: mailto:kritiraj.tech@gmail.com
+          - generic [ref=e73]:
+            - generic [ref=e74]: kritiraj.tech@gmail.com
+            - button "Copy email" [ref=e75]
+        - generic [ref=e80]: he/him

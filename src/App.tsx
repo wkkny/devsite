@@ -3,10 +3,13 @@ import { GithubCalendar } from '@/components/grootstudio/github-calendar'
 import { ModeToggle } from '@/components/mode-toggle'
 import { ProfileHero } from '@/components/profile-hero'
 import { InfoSection } from '@/components/info-section'
+import { PixelReveal } from '@/components/pixel-reveal'
+import ProjectsSection from '@/components/projects-section'
 
 function App() {
   return (
     <main className="min-h-svh overflow-x-clip bg-background px-2 text-foreground">
+      <PixelReveal />
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-sm">
         <nav
           className="mx-auto flex h-14 max-w-3xl items-center justify-between"
@@ -41,6 +44,7 @@ function App() {
             className="border-0"
           />
         </section>
+        <ProjectsSection />
       </div>
     </main>
   )

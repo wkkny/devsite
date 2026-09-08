@@ -1,0 +1,15 @@
+- main [ref=f1e3]:
+  - navigation [ref=f1e5]:
+    - link "Kritiraj's Portfolio" [ref=f1e6] [cursor=pointer]:
+      - /url: /
+      - generic "KB" [ref=f1e7]
+    - button "Toggle color mode" [ref=f1e22] [cursor=pointer]
+  - generic [ref=f1e24]:
+    - generic [ref=f1e26]:
+      - img "Kritiraj B" [ref=f1e29]
+      - generic [ref=f1e30]:
+        - paragraph [ref=f1e31]: Kritiraj B
+        - paragraph [ref=f1e32]:
+          - generic [ref=f1e33]: Full Stack Developer.
+    - link [ref=f1e46] [cursor=pointer]:
+      - /url: mailto:kritiraj.tech@gmail.com
