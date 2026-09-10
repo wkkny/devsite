@@ -43,6 +43,7 @@ function ProfileHero() {
       className="relative min-h-[460px]"
       onMouseMove={backgroundReveal.onMouseMove}
       onMouseLeave={backgroundReveal.onMouseLeave}
+      onPointerDown={backgroundReveal.onPointerDown}
     >
       <HeroBackground />
 

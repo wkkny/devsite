@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useId, useMemo, useState, useEffect, useRef } from "react"
+import { memo, useId, useMemo, useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -304,8 +304,6 @@ export const GithubCalendar = memo(function GithubCalendar({
     showLegend = true,
     className,
 }: GithubCalendarProps) {
-    // Scroll ref — used to auto-scroll to most recent months on compact viewports
-    const scrollRef = useRef<HTMLDivElement>(null)
     const [isDark, setIsDark] = useState(false)
     const graphTitleId = useId()
     const graphDescriptionId = useId()
@@ -419,13 +417,6 @@ export const GithubCalendar = memo(function GithubCalendar({
     const svgWidth = weeks.length * step - cellGap
     const svgHeight = monthLabelHeight + 7 * step - cellGap
 
-    // Auto-scroll to the right end (most recent months) — must be before early returns
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollLeft = scrollRef.current.scrollWidth
-        }
-    }, [fetchedData, dataProp])
-
     // ── Loading / error states ───────────────────────────
     if (loading) {
         return <CalendarSkeleton cellSize={cellSize} cellGap={cellGap} className={className} />
@@ -448,7 +439,6 @@ export const GithubCalendar = memo(function GithubCalendar({
         <div className={cn("w-full overflow-x-hidden border rounded-sm", className)}>
             <div className="w-fit mx-auto max-w-full flex flex-col gap-3 p-3">
                 <div
-                    ref={scrollRef}
                     className="relative overflow-x-auto"
                     style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
                 >

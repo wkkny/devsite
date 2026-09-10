@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type MouseEventHandler } from 'react'
+import { useCallback, useEffect, useRef, type MouseEventHandler, type PointerEventHandler } from 'react'
 
 const HOVER_INTENT_DELAY = 140
 const REVEAL_RADIUS = '1200px'
@@ -28,6 +28,7 @@ function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: B
   const rectRef = useRef<DOMRect | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const enabledRef = useRef(false)
+  const reducedMotionRef = useRef(false)
 
   const clearRevealDelay = useCallback(() => {
     if (revealDelayRef.current === null) return
@@ -156,11 +157,49 @@ function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: B
 
   const onMouseLeave: MouseEventHandler<HTMLElement> = useCallback(
     (event) => {
+      if (!enabledRef.current) return
+
       clearPointerFrame()
       pendingPointerRef.current = null
       finishReveal(event.currentTarget)
     },
     [clearPointerFrame, finishReveal],
+  )
+
+  // Touch has no hover, so a tap toggles the reveal: first tap starts it at
+  // the tapped point, the next tap (anywhere in the section) dismisses it.
+  const onPointerDown: PointerEventHandler<HTMLElement> = useCallback(
+    (event) => {
+      if (event.pointerType === 'mouse') return
+      if (reducedMotionRef.current) return
+
+      const section = event.currentTarget
+      const target = event.target as HTMLElement
+      watchSection(section)
+
+      if (revealDelayRef.current !== null) {
+        window.clearTimeout(revealDelayRef.current)
+        revealDelayRef.current = null
+      }
+      clearPointerFrame()
+      pendingPointerRef.current = null
+
+      const rect = section.getBoundingClientRect()
+      const localPointer = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      }
+
+      if (revealStartedRef.current || target.closest(disabledSelector)) {
+        lastPointerRef.current = localPointer
+        finishReveal(section)
+        return
+      }
+
+      lastPointerRef.current = localPointer
+      startReveal(section)
+    },
+    [clearPointerFrame, disabledSelector, finishReveal, startReveal, watchSection],
   )
 
   useEffect(() => {
@@ -170,6 +209,7 @@ function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: B
       rectRef.current = null
     }
     const updateEnabled = () => {
+      reducedMotionRef.current = reducedMotion.matches
       enabledRef.current = !reducedMotion.matches && fineHover.matches
       if (enabledRef.current) return
 
@@ -203,7 +243,7 @@ function useBackgroundReveal({ disabledSelector = '[data-disable-bg-hover]' }: B
     }
   }, [clearPointerFrame, clearRevealDelay])
 
-  return { onMouseLeave, onMouseMove }
+  return { onMouseLeave, onMouseMove, onPointerDown }
 }
 
 export { useBackgroundReveal }

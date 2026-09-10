@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 
 import {
   IconCheck,
@@ -363,6 +363,42 @@ function SocialColumn({ items = [], children, className, slotsRef, iconVisible }
   )
 }
 
+// Split-flap style reveal: when `text` changes, only the characters that
+// differ flip in place (old one rotates out, new one rotates in).
+function FlipText({ text }: { text: string }) {
+  const reduced = useReducedMotion() ?? false
+
+  if (reduced) {
+    return <span className="whitespace-pre">{text}</span>
+  }
+
+  return (
+    <span className="inline-block whitespace-pre">
+      {Array.from(text).map((char, index) => (
+        <span
+          key={index}
+          className="relative inline-block w-[1ch]"
+          aria-hidden="true"
+        >
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.span
+              key={`${index}-${char}`}
+              className="inline-block will-change-transform"
+              style={{ transformPerspective: 300 }}
+              initial={{ rotateX: -90, opacity: 0 }}
+              animate={{ rotateX: 0, opacity: 1 }}
+              exit={{ rotateX: 90, opacity: 0 }}
+              transition={{ duration: 0.28, ease: 'easeOut' }}
+            >
+              {char}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+      ))}
+    </span>
+  )
+}
+
 function LocalTimeRow({ slotsRef, iconVisible }: { slotsRef: SocialColumnProps['slotsRef']; iconVisible: 'visible' | 'hidden' }) {
   const { phase, typeDelayFor } = useIntro()
   const reveal = phase === 'done'
@@ -378,6 +414,10 @@ function LocalTimeRow({ slotsRef, iconVisible }: { slotsRef: SocialColumnProps['
     return () => window.clearInterval(interval)
   }, [])
 
+  const timeText = `${formatOwnerTime(now)} // ${formatTimeDifference(now, viewerTimeZone)}`
+  // Frozen at reveal so the intro typing doesn't restart on every timer tick.
+  const [typedTimeText] = useState(timeText)
+
   return (
     <div className="flex items-center gap-3">
       <span
@@ -392,14 +432,33 @@ function LocalTimeRow({ slotsRef, iconVisible }: { slotsRef: SocialColumnProps['
       {!reveal ? (
         <span className="font-mono text-xs sm:text-sm">&nbsp;</span>
       ) : (
-        <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
-          <TypedText
-            text={`${formatOwnerTime(now)} // ${formatTimeDifference(now, viewerTimeZone)}`}
-            delayMs={typeDelayFor('time')}
-          />
-        </span>
+        <LocalTimeText
+          typedText={typedTimeText}
+          text={timeText}
+          delayMs={typeDelayFor('time')}
+        />
       )}
     </div>
+  )
+}
+
+function LocalTimeText({ typedText, text, delayMs }: { typedText: string; text: string; delayMs: number }) {
+  const { typed, done } = useTypedText(typedText, delayMs)
+
+  return (
+    <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
+      <span className="sr-only">{text}</span>
+      <span aria-hidden="true">
+        {done ? (
+          <FlipText text={text} />
+        ) : (
+          <>
+            {typed}
+            <span className="ml-0.5 inline-block w-[2px] animate-pulse self-stretch bg-foreground align-middle" />
+          </>
+        )}
+      </span>
+    </span>
   )
 }
 
