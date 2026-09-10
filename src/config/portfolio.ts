@@ -85,8 +85,8 @@ export const portfolio = {
     },
     twitter: {
       label: 'Twitter',
-      username: 'wkkny',
-      href: 'https://x.com/wkkny',
+      username: 'wkknyy',
+      href: 'https://x.com/wkknyy',
     },
   },
   projects: [
