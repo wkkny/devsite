@@ -47,7 +47,7 @@ function ProfileHero() {
     >
       <HeroBackground />
 
-      <div className="relative flex min-h-[360px] flex-wrap items-end sm:min-h-[460px]">
+      <div className="relative flex min-h-[360px] flex-col items-center gap-1 px-4 pt-8 text-center sm:min-h-[460px] sm:flex-row sm:items-end sm:gap-0 sm:px-0 sm:pt-0 sm:text-left">
         <div data-disable-bg-hover className="shrink-0">
           <div className="relative size-40 overflow-hidden rounded-full border border-line/60 bg-muted/40">
             <ProfileImage />
@@ -56,7 +56,7 @@ function ProfileHero() {
 
         <div
           data-disable-bg-hover
-          className="flex min-w-0 flex-1 flex-col"
+          className="flex min-w-0 flex-col sm:flex-1"
         >
           <h1 className="break-words px-4 py-1 font-mono text-2xl font-medium tracking-tight sm:text-3xl">
             {portfolio.profile.displayName}
@@ -114,7 +114,7 @@ function HeroBackground() {
   const { isLoading } = useImageLoader(backgroundImg)
 
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden overflow-hidden sm:block">
       {isLoading && (
         <div className="absolute inset-0 animate-pulse bg-muted/30" />
       )}
