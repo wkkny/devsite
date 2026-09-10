@@ -7,6 +7,24 @@ import { PixelReveal } from '@/components/pixel-reveal'
 import ProjectsSection from '@/components/projects-section'
 import { portfolio } from '@/config/portfolio'
 
+// Rolling 12-month window: first day of last month through one year later
+function toISODate(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
+const calendarStart = new Date()
+calendarStart.setDate(1)
+calendarStart.setMonth(calendarStart.getMonth() - 1)
+const calendarEnd = new Date(calendarStart)
+calendarEnd.setFullYear(calendarEnd.getFullYear() + 1)
+calendarEnd.setDate(0)
+const calendarStartDate = toISODate(calendarStart)
+const calendarEndDate = toISODate(calendarEnd)
+
 function App() {
   return (
     <main className="min-h-svh overflow-x-clip bg-background px-2 text-foreground">
@@ -35,8 +53,9 @@ function App() {
         <InfoSection />
         <section>
           <GithubCalendar
-            startDate={`${new Date().getFullYear()}-01-01`}
-            fillWidth
+            username={portfolio.links.github.username}
+            startDate={calendarStartDate}
+            endDate={calendarEndDate}
             cellSize={11}
             cellGap={3}
             cellShape="circle"
@@ -44,7 +63,9 @@ function App() {
             className="border-0"
           />
         </section>
-        <ProjectsSection />
+        <section>
+          <ProjectsSection />
+        </section>
       </div>
     </main>
   )

@@ -21,7 +21,6 @@ import archLogo from '@/assets/archlinux-icon-crystal-32.svg'
 import { cn } from '@/lib/utils'
 
 type SocialItem = {
-  id: 'occupation' | 'location' | 'note' | 'email' | 'pronouns'
   label: string
   icon: Icon
   href?: string
@@ -29,17 +28,14 @@ type SocialItem = {
 
 const PROFILE_ITEMS: SocialItem[] = [
   {
-    id: 'occupation',
     label: portfolio.profile.occupation,
     icon: IconCode,
   },
   {
-    id: 'location',
     label: portfolio.profile.location.label,
     icon: IconMapPin,
   },
   {
-    id: 'note',
     label: portfolio.profile.note.label,
     icon: IconHeart,
   },
@@ -47,13 +43,11 @@ const PROFILE_ITEMS: SocialItem[] = [
 
 const SOCIAL_ITEMS: SocialItem[] = [
   {
-    id: 'email',
     label: portfolio.links.email.label,
     href: portfolio.links.email.href,
     icon: IconMail,
   },
   {
-    id: 'pronouns',
     label: portfolio.profile.pronouns,
     icon: IconGenderMale,
   },
@@ -65,36 +59,40 @@ type IntroPhase = 'line' | 'travel' | 'done'
 
 const LINE_AT_S = 0.9
 const TRAVEL_AT_S = 1.9
-const DONE_AT_S = 2.9
+const DONE_AT_S = 3.0
 const TYPE_FIRST_S = 0.2
 const TYPE_ROW_STAGGER_S = 0.15
 const TYPE_SPEED_MS = 22
 const BIG_SIZE = 64
 const SMALL_SIZE = 24
+const BIG_GLYPH = 36
+const SMALL_GLYPH = 16
+const BIG_RADIUS = 12
+const SMALL_RADIUS = 6
 
-type InfoRowId = SocialItem['id'] | 'time'
-
-const LINE_ICONS: { icon: Icon; key: InfoRowId }[] = [
-  { icon: IconCode, key: 'occupation' },
+const LINE_ICONS: { icon: Icon; key: string }[] = [
+  { icon: IconCode, key: portfolio.profile.occupation },
   { icon: IconClock, key: 'time' },
-  { icon: IconMapPin, key: 'location' },
-  { icon: IconMail, key: 'email' },
-  { icon: IconHeart, key: 'note' },
-  { icon: IconGenderMale, key: 'pronouns' },
+  { icon: IconMapPin, key: portfolio.profile.location.label },
+  { icon: IconMail, key: portfolio.links.email.label },
+  { icon: IconHeart, key: portfolio.profile.note.label },
+  { icon: IconGenderMale, key: portfolio.profile.pronouns },
 ]
 
-const ROW_KEYS: readonly InfoRowId[] = ['occupation', 'location', 'note', 'time', 'email', 'pronouns']
+const ROW_KEYS = [
+  portfolio.profile.occupation,
+  portfolio.profile.location.label,
+  portfolio.profile.note.label,
+  'time',
+  portfolio.links.email.label,
+  portfolio.profile.pronouns,
+] as const
 
 type RowSlotMeasure = { x: number; y: number }
-type IntroMetrics = {
-  w: number
-  h: number
-  targets: Partial<Record<InfoRowId, RowSlotMeasure>>
-}
 
 type IntroContextValue = {
   phase: IntroPhase
-  typeDelayFor: (id: InfoRowId) => number
+  typeDelayFor: (label: string) => number
 }
 
 const IntroContext = createContext<IntroContextValue>({
@@ -108,7 +106,7 @@ function useIntro() {
 
 function useTypedText(text: string, delayMs: number) {
   const reduced = useReducedMotion() ?? false
-  const [typed, setTyped] = useState(() => reduced ? text : '')
+  const [typed, setTyped] = useState(reduced ? text : '')
   const [done, setDone] = useState(reduced)
 
   useEffect(() => {
@@ -161,20 +159,25 @@ function SemanticPlaceholder({ text }: { text: string }) {
 
 type IconIntroOverlayProps = {
   phase: IntroPhase
-  slotsRef: React.MutableRefObject<Map<InfoRowId, HTMLElement | null>>
+  slotsRef: React.MutableRefObject<Map<string, HTMLElement | null>>
 }
 
 function IconIntroOverlay({ phase, slotsRef }: IconIntroOverlayProps) {
   const sectionRef = useRef<HTMLDivElement | null>(null)
 
-  const [metrics, setMetrics] = useState<IntroMetrics | null>(null)
+  const [metrics, setMetrics] = useState<{
+    w: number
+    h: number
+    targets: Record<string, RowSlotMeasure>
+  } | null>(null)
+
   useEffect(() => {
     if (phase === 'done') return
     const el = sectionRef.current
     if (!el) return
     const measure = () => {
       const sectionRect = el.getBoundingClientRect()
-      const targets: IntroMetrics['targets'] = {}
+      const targets: Record<string, RowSlotMeasure> = {}
       slotsRef.current.forEach((slot, key) => {
         if (!slot) return
         const slotRect = slot.getBoundingClientRect()
@@ -183,8 +186,15 @@ function IconIntroOverlay({ phase, slotsRef }: IconIntroOverlayProps) {
           y: slotRect.top - sectionRect.top + slotRect.height / 2,
         }
       })
-
-      setMetrics({ w: el.offsetWidth, h: el.offsetHeight, targets })
+      const next = { w: el.offsetWidth, h: el.offsetHeight, targets }
+      setMetrics((prev) =>
+        prev &&
+        prev.w === next.w &&
+        prev.h === next.h &&
+        JSON.stringify(prev.targets) === JSON.stringify(next.targets)
+          ? prev
+          : next
+      )
     }
     measure()
     const observer = new ResizeObserver(measure)
@@ -218,37 +228,63 @@ function IconIntroOverlay({ phase, slotsRef }: IconIntroOverlayProps) {
       className="pointer-events-none absolute inset-0 z-20 overflow-hidden"
       aria-hidden="true"
     >
-      {LINE_ICONS.map(({ icon: Icon, key }, i) => {
+      {metrics &&
+        w > 0 &&
+        h > 0 &&
+        LINE_ICONS.map(({ icon: Icon, key }, i) => {
           const { row, col, cols } = layout[i]
           const lineX = (w - (cols - 1) * spacing) / 2 + col * spacing
           const lineY = canFitOneLine ? centerY : centerY + (row - 0.5) * rowSpacing
-          const target = phase === 'travel' ? metrics?.targets[key] : null
+          const target = phase === 'travel' ? metrics.targets[key] : null
+          const travelTransition = {
+            duration: 0.62,
+            ease: [0.23, 1, 0.32, 1] as const,
+            delay: i * 0.07,
+            rotate: { times: [0, 0.4, 1], duration: 0.62, delay: i * 0.07, ease: 'easeInOut' as const },
+          }
           return (
             <motion.div
               key={key}
-              className="absolute flex items-center justify-center rounded-xl border border-line bg-muted/40 text-muted-foreground shadow-inner"
-              style={{ width: BIG_SIZE, height: BIG_SIZE, left: lineX, top: lineY }}
-              initial={{ x: -BIG_SIZE / 2, y: -BIG_SIZE / 2, opacity: 0, scale: 0.4 }}
+              className="pointer-events-none absolute flex items-center justify-center border border-line bg-muted/40 text-muted-foreground shadow-inner"
+              style={{ width: BIG_SIZE, height: BIG_SIZE, left: lineX - BIG_SIZE / 2, top: lineY - BIG_SIZE / 2 }}
+              initial={{ left: w / 2 - BIG_SIZE / 2, top: h / 2 - BIG_SIZE / 2, opacity: 0, scale: 0.4 }}
               animate={
-                phase === 'line'
-                  ? { x: -BIG_SIZE / 2, y: -BIG_SIZE / 2, opacity: 1, scale: 1, rotate: 0 }
-                  : target
-                    ? {
-                        x: target.x - lineX - BIG_SIZE / 2,
-                        y: target.y - lineY - BIG_SIZE / 2,
-                        opacity: 1,
-                        scale: SMALL_SIZE / BIG_SIZE,
-                        rotate: [0, (i % 2 === 0 ? -1 : 1) * 8, 0],
-                      }
-                    : { x: -BIG_SIZE / 2, y: -BIG_SIZE / 2, opacity: 1, scale: 1 }
+                target
+                  ? {
+                      left: target.x - SMALL_SIZE / 2,
+                      top: target.y - SMALL_SIZE / 2,
+                      width: SMALL_SIZE,
+                      height: SMALL_SIZE,
+                      borderRadius: SMALL_RADIUS,
+                      opacity: 1,
+                      scale: 1,
+                      rotate: [0, (i % 2 === 0 ? -1 : 1) * 8, 0],
+                    }
+                  : {
+                      left: lineX - BIG_SIZE / 2,
+                      top: lineY - BIG_SIZE / 2,
+                      width: BIG_SIZE,
+                      height: BIG_SIZE,
+                      borderRadius: BIG_RADIUS,
+                      opacity: 1,
+                      scale: 1,
+                      rotate: 0,
+                    }
               }
-            transition={
-              phase === 'line'
-                ? { type: 'spring', stiffness: 480, damping: 26, delay: LINE_AT_S + i * 0.06 }
-                : { duration: 0.62, ease: [0.23, 1, 0.32, 1], delay: i * 0.07, rotate: { times: [0, 0.4, 1], duration: 0.62 } }
-            }
+              transition={target ? travelTransition : { type: 'spring', stiffness: 480, damping: 26, delay: LINE_AT_S + i * 0.06 }}
             >
-              <Icon className="size-9" />
+              <motion.span
+                className="flex"
+                style={{ width: BIG_GLYPH, height: BIG_GLYPH }}
+                animate={
+                  target
+                    ? { width: SMALL_GLYPH, height: SMALL_GLYPH }
+                    : { width: BIG_GLYPH, height: BIG_GLYPH }
+                }
+                transition={target ? travelTransition : { duration: 0 }}
+              >
+                <Icon className="size-full" />
+              </motion.span>
             </motion.div>
           )
         })}
@@ -262,9 +298,8 @@ type InfoSectionProps = {
 
 function InfoSection({ className }: InfoSectionProps) {
   const reduced = useReducedMotion() ?? false
-  const slotsRef = useRef<Map<InfoRowId, HTMLElement | null>>(new Map())
-  const [animatedPhase, setPhase] = useState<IntroPhase>(reduced ? 'done' : 'line')
-  const phase: IntroPhase = reduced ? 'done' : animatedPhase
+  const slotsRef = useRef<Map<string, HTMLElement | null>>(new Map())
+  const [phase, setPhase] = useState<IntroPhase>(reduced ? 'done' : 'line')
   const iconVisible: 'visible' | 'hidden' = reduced || phase === 'done' ? 'visible' : 'hidden'
 
   useEffect(() => {
@@ -282,8 +317,8 @@ function InfoSection({ className }: InfoSectionProps) {
   const value = useMemo<IntroContextValue>(
     () => ({
       phase,
-      typeDelayFor: (id) => {
-        const idx = ROW_KEYS.indexOf(id)
+      typeDelayFor: (label: string) => {
+        const idx = ROW_KEYS.indexOf(label as (typeof ROW_KEYS)[number])
         const safe = idx >= 0 ? idx : 0
         return (TYPE_FIRST_S + safe * TYPE_ROW_STAGGER_S) * 1000
       },
@@ -313,7 +348,7 @@ type SocialColumnProps = {
   items?: SocialItem[]
   children?: ReactNode
   className?: string
-  slotsRef: React.MutableRefObject<Map<InfoRowId, HTMLElement | null>>
+  slotsRef: React.MutableRefObject<Map<string, HTMLElement | null>>
   iconVisible: 'visible' | 'hidden'
 }
 
@@ -343,8 +378,6 @@ function LocalTimeRow({ slotsRef, iconVisible }: { slotsRef: SocialColumnProps['
     return () => window.clearInterval(interval)
   }, [])
 
-  const timeLabel = `${formatOwnerTime(now)} // ${formatTimeDifference(now, viewerTimeZone)}`
-
   return (
     <div className="flex items-center gap-3">
       <span
@@ -357,11 +390,11 @@ function LocalTimeRow({ slotsRef, iconVisible }: { slotsRef: SocialColumnProps['
         <IconClock className="size-4" />
       </span>
       {!reveal ? (
-        <SemanticPlaceholder text={timeLabel} />
+        <span className="font-mono text-xs sm:text-sm">&nbsp;</span>
       ) : (
         <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
           <TypedText
-            text={timeLabel}
+            text={`${formatOwnerTime(now)} // ${formatTimeDifference(now, viewerTimeZone)}`}
             delayMs={typeDelayFor('time')}
           />
         </span>
@@ -422,7 +455,7 @@ function getTimeZoneOffset(date: Date, timeZone: string): number {
 
 type SocialRowProps = {
   item: SocialItem
-  slotsRef: React.MutableRefObject<Map<InfoRowId, HTMLElement | null>>
+  slotsRef: React.MutableRefObject<Map<string, HTMLElement | null>>
   iconVisible: 'visible' | 'hidden'
 }
 
@@ -434,17 +467,17 @@ function ArchLabel({ children }: { children: ReactNode }) {
   )
 }
 
-function SocialLabel({ item }: { item: SocialItem }) {
-  if (item.id === 'location') {
+function SocialLabel({ label }: { label: string }) {
+  if (label === portfolio.profile.location.label) {
     return (
       <span className="min-w-0 truncate cursor-pointer font-mono text-xs text-foreground sm:text-sm">
-        <span className="inline-block border-b border-transparent leading-none hover:border-foreground">{item.label}</span>
+        <span className="inline-block border-b border-transparent leading-none hover:border-foreground">{label}</span>
       </span>
     )
   }
 
-  if (item.id === 'note') {
-    const [beforeHighlight, afterHighlight = ''] = item.label.split(portfolio.profile.note.highlight)
+  if (label === portfolio.profile.note.label) {
+    const [beforeHighlight, afterHighlight = ''] = label.split(portfolio.profile.note.highlight)
 
     return (
       <span className="relative min-w-0 font-mono text-xs text-foreground sm:text-sm">
@@ -465,7 +498,7 @@ function SocialLabel({ item }: { item: SocialItem }) {
 
   return (
     <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
-      {item.label}
+      {label}
     </span>
   )
 }
@@ -476,6 +509,7 @@ function EmailRow({ item, slotsRef, iconVisible }: SocialRowProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle')
   const Icon = item.icon
   const href = item.href ?? ''
+  const email = portfolio.links.email
   const copied = copyStatus === 'success'
 
   useEffect(() => {
@@ -490,7 +524,7 @@ function EmailRow({ item, slotsRef, iconVisible }: SocialRowProps) {
     setCopyStatus('copying')
     try {
       if (!navigator.clipboard) throw new Error('Clipboard API is unavailable')
-      await navigator.clipboard.writeText(portfolio.links.email.address)
+      await navigator.clipboard.writeText(email.address)
       setCopyStatus('success')
     } catch {
       setCopyStatus('error')
@@ -501,7 +535,7 @@ function EmailRow({ item, slotsRef, iconVisible }: SocialRowProps) {
     <div className="flex items-center gap-3">
       <span
         ref={(el) => {
-          slotsRef.current.set(item.id, el)
+          slotsRef.current.set(email.label, el)
         }}
         style={{ visibility: iconVisible }}
         className="flex size-6 shrink-0 items-center justify-center rounded-md border border-line bg-muted/40 text-muted-foreground shadow-inner"
@@ -516,11 +550,11 @@ function EmailRow({ item, slotsRef, iconVisible }: SocialRowProps) {
           className="min-w-0 truncate transition-colors hover:text-muted-foreground"
         >
           {!reveal ? (
-            <SemanticPlaceholder text={portfolio.links.email.address} />
+            <SemanticPlaceholder text={email.address} />
           ) : (
             <TypedText
-              text={portfolio.links.email.address}
-              delayMs={typeDelayFor(item.id)}
+              text={email.address}
+              delayMs={typeDelayFor(email.label)}
               className="border-b border-transparent transition-colors hover:border-foreground"
             />
           )}
@@ -530,7 +564,7 @@ function EmailRow({ item, slotsRef, iconVisible }: SocialRowProps) {
             copied={copied}
             copying={copyStatus === 'copying'}
             onCopy={handleCopy}
-            popDelayMs={typeDelayFor(item.id) + portfolio.links.email.address.length * TYPE_SPEED_MS + 200}
+            popDelayMs={typeDelayFor(email.label) + email.address.length * TYPE_SPEED_MS + 200}
           />
         )}
         <span className="sr-only" role="status" aria-live="polite">
@@ -600,7 +634,7 @@ function CopyButton({
 function SocialRow({ item, slotsRef, iconVisible }: SocialRowProps) {
   const { phase, typeDelayFor } = useIntro()
 
-  if (item.id === 'email' && item.href) {
+  if (item.label === portfolio.links.email.label && item.href) {
     return <EmailRow item={item} slotsRef={slotsRef} iconVisible={iconVisible} />
   }
 
@@ -611,7 +645,7 @@ function SocialRow({ item, slotsRef, iconVisible }: SocialRowProps) {
     <>
       <span
         ref={(el) => {
-          slotsRef.current.set(item.id, el)
+          slotsRef.current.set(item.label, el)
         }}
         style={{ visibility: iconVisible }}
         className="flex size-6 shrink-0 items-center justify-center rounded-md border border-line bg-muted/40 text-muted-foreground shadow-inner"
@@ -621,7 +655,7 @@ function SocialRow({ item, slotsRef, iconVisible }: SocialRowProps) {
       {!reveal ? (
         <SemanticPlaceholder text={item.label} />
       ) : (
-        <TypedSocialLabel item={item} delayMs={typeDelayFor(item.id)} />
+        <TypedSocialLabel label={item.label} delayMs={typeDelayFor(item.label)} />
       )}
     </>
   )
@@ -642,24 +676,22 @@ function SocialRow({ item, slotsRef, iconVisible }: SocialRowProps) {
   )
 }
 
-function TypedSocialLabel({ item, delayMs }: { item: SocialItem; delayMs: number }) {
-  const { typed, done } = useTypedText(item.label, delayMs)
+function TypedSocialLabel({ label, delayMs }: { label: string; delayMs: number }) {
+  const { typed, done } = useTypedText(label, delayMs)
 
-  return (
-    <>
-      <span className="sr-only">{item.label}</span>
-      <span aria-hidden="true">
-        {done ? (
-          <SocialLabel item={item} />
-        ) : (
-          <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
-            {typed}
-            <span className="ml-0.5 inline-block w-[2px] animate-pulse self-stretch bg-foreground align-middle" />
-          </span>
-        )}
+  if (!done) {
+    return (
+      <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
+        <span className="sr-only">{label}</span>
+        <span aria-hidden="true">
+          {typed}
+          <span className="ml-0.5 inline-block w-[2px] animate-pulse self-stretch bg-foreground align-middle" />
+        </span>
       </span>
-    </>
-  )
+    )
+  }
+
+  return <SocialLabel label={label} />
 }
 
 export { InfoSection }
