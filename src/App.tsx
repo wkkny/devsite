@@ -34,7 +34,7 @@ function App() {
         <InfoSection />
         <section>
           <GithubCalendar
-            username="fuzzyKenny"
+            username="wkkny"
             startDate={`${new Date().getFullYear()}-01-01`}
             fillWidth
             cellSize={11}
