@@ -1,4 +1,6 @@
 import { AsciiText } from '@/components/ascii-text'
+import { BottomNav } from '@/components/bottom-nav'
+import { Connections } from '@/components/connections'
 import { GithubCalendar } from '@/components/grootstudio/github-calendar'
 import { ModeToggle } from '@/components/mode-toggle'
 import { ProfileHero } from '@/components/profile-hero'
@@ -27,7 +29,7 @@ const calendarEndDate = toISODate(calendarEnd)
 
 function App() {
   return (
-    <main className="min-h-svh overflow-x-clip bg-background px-2 text-foreground">
+    <main id="top" className="min-h-svh overflow-x-clip bg-background px-2 pb-32 text-foreground md:pb-8">
       <PixelReveal />
       <header className="sticky top-0 z-50 hidden bg-background/90 backdrop-blur-sm md:block">
         <nav
@@ -50,8 +52,13 @@ function App() {
 
       <div className="mx-auto flex max-w-3xl flex-col gap-8">
         <ProfileHero />
-        <InfoSection />
-        <section>
+        <div id="info" className="hidden scroll-mt-20 md:block">
+          <InfoSection />
+        </div>
+        <div className="md:hidden">
+          <Connections />
+        </div>
+        <section id="github" className="scroll-mt-20">
           <GithubCalendar
             username={portfolio.links.github.username}
             startDate={calendarStartDate}
@@ -63,10 +70,11 @@ function App() {
             className="border-0"
           />
         </section>
-        <section>
+        <section id="projects" className="scroll-mt-20">
           <ProjectsSection />
         </section>
       </div>
+      <BottomNav />
     </main>
   )
 }

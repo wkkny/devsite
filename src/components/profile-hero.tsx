@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { IconCirclePlus } from '@tabler/icons-react'
 
 import backgroundImg from '@/assets/background.jpeg'
 import profileImg from '@/assets/profile.webp'
+import { HeroPills } from '@/components/hero-pills'
 import { ShimmerTextFlip } from '@/components/grootstudio/shimmer-text-flip'
 import { SpotifyInlinePill } from '@/components/spotify-pill'
 import { portfolio } from '@/config/portfolio'
@@ -47,21 +49,42 @@ function ProfileHero() {
     >
       <HeroBackground />
 
-      <div className="relative flex min-h-[360px] flex-col items-center gap-1 px-4 pt-8 text-center sm:min-h-[460px] sm:flex-row sm:items-end sm:gap-0 sm:px-0 sm:pt-0 sm:text-left">
-        <div data-disable-bg-hover className="shrink-0">
-          <div className="relative size-40 overflow-hidden rounded-full border border-line/60 bg-muted/40">
-            <ProfileImage />
+      <div className="relative flex min-h-[360px] flex-col items-start px-4 pt-6 text-left sm:min-h-[460px] sm:flex-row sm:items-end sm:px-0 sm:pt-0">
+        <div className="flex items-end gap-3 sm:contents" data-disable-bg-hover>
+          <div className="relative shrink-0">
+            <div className="relative size-40 overflow-hidden rounded-full border border-line/60 bg-muted/40">
+              <ProfileImage />
+            </div>
+            <StatusDot playing={playbackStatus === 'playing'} />
+          </div>
+
+          {/* Thought bubble with rotating roles — mobile only */}
+          <div className="relative mb-4 flex items-center gap-2 rounded-[22px] bg-muted px-4 py-2.5 sm:hidden">
+            <span aria-hidden="true" className="absolute bottom-0 -left-2 size-3.5 rounded-full bg-muted" />
+            <span aria-hidden="true" className="absolute -bottom-1.5 -left-3.5 size-2 rounded-full bg-muted" />
+            <IconCirclePlus className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="font-mono text-sm italic text-muted-foreground">
+              <ShimmerTextFlip interval={2.8} as={motion.span}>
+                {portfolio.profile.roles}
+              </ShimmerTextFlip>
+            </span>
           </div>
         </div>
 
         <div
           data-disable-bg-hover
-          className="flex min-w-0 flex-col sm:flex-1"
+          className="flex w-full min-w-0 flex-col sm:flex-1"
         >
           <h1 className="break-words px-4 py-1 font-mono text-2xl font-medium tracking-tight sm:text-3xl">
             {portfolio.profile.displayName}
           </h1>
-          <p className="px-4 py-1 font-pixel text-base text-muted-foreground">
+          <p className="px-4 py-1 font-mono text-sm text-muted-foreground sm:hidden">
+            {portfolio.profile.occupation} • {portfolio.profile.pronouns}
+          </p>
+          <div className="px-4 py-1 sm:px-0 md:hidden">
+            <HeroPills />
+          </div>
+          <p className="hidden px-4 py-1 font-pixel text-base text-muted-foreground sm:block">
             <ShimmerTextFlip interval={2.8} as={motion.span}>
               {portfolio.profile.roles}
             </ShimmerTextFlip>
@@ -107,6 +130,21 @@ function ProfileImage() {
         />
       )}
     </>
+  )
+}
+
+function StatusDot({ playing }: { playing: boolean }) {
+  return (
+    <span
+      className={cn(
+        'absolute -right-0.5 -bottom-0.5 size-5 rounded-full border-4 border-background',
+        playing ? 'bg-green-500' : 'bg-muted-foreground/40',
+      )}
+    >
+      <span className="sr-only">
+        {playing ? 'Currently playing on Spotify' : 'Not playing'}
+      </span>
+    </span>
   )
 }
 
