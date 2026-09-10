@@ -1,6 +1,6 @@
 # Kritiraj's Portfolio
 
-Personal site built with Vite, React, and Tailwind. The Spotify now-playing pill runs on a small serverless function that lives in `api/`, so the site needs Vercel (or any host that runs those functions) to show it.
+Personal site built with Vite, React, and Tailwind. Two serverless functions live in `api/`: the Spotify now-playing pill and a GitHub contributions proxy for the calendar, so the site needs Vercel (or any host that runs those functions) to show them.
 
 ## Local development
 
@@ -27,8 +27,22 @@ Then run:
 pnpm dev:spotify
 ```
 
-This starts Vercel's dev server so the `api/` function works. Plain `pnpm dev`
+This starts Vercel's dev server so the `api/` functions work. Plain `pnpm dev`
 runs the UI with mock Spotify data. The mock never runs in production.
+
+## Site content
+
+Name, roles, email, timezone, GitHub username, and project entries all live in
+`src/config/portfolio.ts`. Edit that file to change what the site shows — no
+component changes needed.
+
+## API endpoints
+
+| Endpoint | What it does |
+| --- | --- |
+| `GET /api/now-playing` | Owner's current/recent Spotify playback, CDN-cached ~10s |
+| `GET /api/github-contributions` | Owner's GitHub contribution graph, CDN-cached ~1h |
+| `POST /api/clear-spotify-cookies` | One-time cleanup of legacy Spotify cookies |
 
 ## Deploy to Vercel
 
@@ -44,6 +58,12 @@ runs the UI with mock Spotify data. The mock never runs in production.
    These are server-only credentials; do not give them a `VITE_` prefix. Visitors
    never authenticate with Spotify and no Spotify token is stored in cookies.
 3. Deploy. Every push to `main` deploys automatically after that.
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs `pnpm lint`, `pnpm test`, and
+`pnpm build` on every push and pull request. The build type-checks both the
+frontend (`src/`) and the serverless functions (`api/`) in strict mode.
 
 ## Scripts
 
