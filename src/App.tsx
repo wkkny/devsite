@@ -35,8 +35,8 @@ function App() {
         <section>
           <GithubCalendar
             username="wkkny"
-            startDate={`${new Date().getFullYear()}-01-01`}
-            fillWidth
+            startDate="2026-08-01"
+            endDate="2027-07-31"
             cellSize={11}
             cellGap={3}
             cellShape="circle"
@@ -44,7 +44,9 @@ function App() {
             className="border-0"
           />
         </section>
-        <ProjectsSection />
+        <section>
+          <ProjectsSection />
+        </section>
       </div>
     </main>
   )

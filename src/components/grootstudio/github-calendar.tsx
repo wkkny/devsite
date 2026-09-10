@@ -1,7 +1,8 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+"use client"
+
+import { memo, useMemo, useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,18 +28,16 @@ export type CellShape = "rounded" | "circle"
 
 export type GithubCalendarProps = {
 
-    username?: string // GitHub username
+    username?: string // GitHub username 
     data?: ContributionData //Optional - Only for manual data
     startDate?: string
     endDate?: string
-    startsOnSunday?: boolean //Want to start weeks on Sunday or not ?
+    startsOnSunday?: boolean //Want to start weeks on Sunday or not ? 
     cellSize?: number
     cellGap?: number
-    fillWidth?: boolean
-    maxCellSize?: number
     cellShape?: CellShape //Rounded | Circle
     theme?: "github" | "blue" | "sunset" | "purple" | "gray" | "minimal" | ThemeColors
-    showMonthLabels?: boolean // Want the month labels on top
+    showMonthLabels?: boolean // Want the month labels on top 
     showStats?: boolean
     showLegend?: boolean
     className?: string // Custom class for custom styling
@@ -160,35 +159,11 @@ function addDays(date: Date, days: number): Date {
 }
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-const CONTRIBUTION_LEVELS: ContributionLevel[] = [0, 1, 2, 3, 4]
-const EMPTY_CONTRIBUTIONS: ContributionData = {}
-
-function formatTooltipDate(dateStr: string): string {
-    const date = parseDate(dateStr)
-    return `${MONTH_NAMES[date.getMonth()]} ${date.getDate()}`
-}
-
-function getContributionLabel(count?: number, level?: ContributionLevel, label?: string): string {
-    if (label) return label
-    if (count !== undefined) return `${count} contribution${count === 1 ? "" : "s"}`
-    if (level !== undefined) return `Level ${level}`
-    return "No contributions"
-}
-
-function getContributionSummaryLabel(count: number): string {
-    return `contribution${count === 1 ? "" : "s"} this year`
-}
-
-function getContributionTotal(data: ContributionData) {
-    return Object.values(data).reduce(
-        (sum, value) => sum + (value.count ?? (value.level > 0 ? 1 : 0)),
-        0
-    )
-}
 
 // ─── API fetch ────────────────────────────────────────────────────────────────
 
 type APIResponse = {
+    total: Record<string, number>
     contributions: { date: string; count: number; level: number }[]
 }
 
@@ -269,157 +244,37 @@ type TooltipState = {
 
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
 
-function CalendarSkeleton({
-    cellSize = 12,
-    cellGap = 3,
-    fillWidth = false,
-    maxCellSize,
-    cellShape = "rounded",
-    showMonthLabels = true,
-    showStats = true,
-    showLegend = true,
-    startsOnSunday = true,
-    startDate,
-    endDate,
-    className,
-}: {
-    cellSize?: number
-    cellGap?: number
-    fillWidth?: boolean
-    maxCellSize?: number
-    cellShape?: CellShape
-    showMonthLabels?: boolean
-    showStats?: boolean
-    showLegend?: boolean
-    startsOnSunday?: boolean
-    startDate?: string
-    endDate?: string
-    className?: string
-}) {
-    const maxCellSizeResolved = maxCellSize ?? cellSize * 1.5
-
-    // Same date logic as the real grid so label positions / week count match exactly
-    const resolvedEnd = endDate ?? formatDate(new Date())
-    const resolvedStart = useMemo(() => {
-        if (startDate) return startDate
-        const d = parseDate(resolvedEnd)
-        d.setFullYear(d.getFullYear() - 1)
-        d.setDate(d.getDate() + 1)
-        return formatDate(d)
-    }, [startDate, resolvedEnd])
-
-    const { weeks, monthLabels, gridStart } = useMemo(
-        () => buildGrid(resolvedStart, resolvedEnd, startsOnSunday),
-        [resolvedStart, resolvedEnd, startsOnSunday]
-    )
-
-    // Match the real component's fill-to-width measurement
-    const wrapRef = useRef<HTMLDivElement>(null)
-    const [wrapWidth, setWrapWidth] = useState(0)
-
-    useEffect(() => {
-        if (!fillWidth) return
-        const el = wrapRef.current
-        if (!el) return
-
-        const measure = () => setWrapWidth(el.clientWidth)
-        measure()
-
-        const observer = new ResizeObserver(measure)
-        observer.observe(el)
-
-        return () => observer.disconnect()
-    }, [fillWidth])
-
-    const effectiveCellSize = useMemo(() => {
-        if (!fillWidth || wrapWidth === 0) return cellSize
-        const available = wrapWidth - 24
-        const fitted = Math.floor(
-            (available - (weeks.length - 1) * cellGap) / weeks.length
-        )
-        return Math.max(2, Math.min(fitted, maxCellSizeResolved))
-    }, [fillWidth, wrapWidth, weeks.length, cellGap, cellSize, maxCellSizeResolved])
-
-    const step = effectiveCellSize + cellGap
-    const monthLabelHeight = showMonthLabels ? 20 : 0
-    const svgWidth = weeks.length * step - cellGap
-    const svgHeight = monthLabelHeight + 7 * step - cellGap
-    const cellRx = cellShape === "circle" ? effectiveCellSize / 2 : effectiveCellSize * 0.2
-
-    const labelByWeek = new Map<number, string>()
-    monthLabels.forEach(({ label, weekIndex }) => {
-        if (!labelByWeek.has(weekIndex)) labelByWeek.set(weekIndex, label)
-    })
-
+function CalendarSkeleton({ cellSize = 12, cellGap = 3, className }: { cellSize?: number; cellGap?: number; className?: string }) {
+    const step = cellSize + cellGap
+    const weeks = 53
+    const days = 7
     return (
-        <div ref={wrapRef} className={cn("w-full overflow-x-hidden border rounded-sm", className)}>
-            <div className="w-fit mx-auto max-w-full flex flex-col gap-3 p-3 animate-pulse">
-                <div
-                    className="relative overflow-x-auto"
-                    style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
+        <div className={cn("w-fit mx-auto space-y-3 animate-pulse", className)}>
+            <div className="flex gap-6">
+                <div className="h-4 w-32 rounded bg-muted" />
+                <div className="h-4 w-20 rounded bg-muted" />
+                <div className="h-4 w-24 rounded bg-muted" />
+            </div>
+            <div className="overflow-x-auto">
+                <svg
+                    width={weeks * step - cellGap}
+                    height={16 + days * step - cellGap}
+                    className="overflow-visible"
                 >
-                    <svg width={svgWidth} height={svgHeight} className="overflow-visible">
-                        {/* month label placeholders */}
-                        {showMonthLabels && ([...labelByWeek.entries()].map(([weekIndex, label]) => (
+                    {Array.from({ length: weeks }).map((_, wi) =>
+                        Array.from({ length: days }).map((_, di) => (
                             <rect
-                                key={`label-${weekIndex}-${label}`}
-                                x={weekIndex * step}
-                                y={2}
-                                width={label.length * 7.5}
-                                height={11}
-                                rx={3}
+                                key={`${wi}-${di}`}
+                                x={wi * step}
+                                y={16 + di * step}
+                                width={cellSize}
+                                height={cellSize}
+                                rx={cellSize * 0.2}
                                 className="fill-muted"
                             />
-                        )))}
-
-                        {/* cell placeholders */}
-                        {weeks.map((week, wi) =>
-                            week.map((date, di) => {
-                                if (!date) {
-                                    const cellDate = formatDate(addDays(parseDate(gridStart), wi * 7 + di))
-                                    if (cellDate > resolvedEnd) return null
-                                }
-                                return (
-                                    <rect
-                                        key={`${wi}-${di}`}
-                                        x={wi * step}
-                                        y={monthLabelHeight + di * step}
-                                        width={effectiveCellSize}
-                                        height={effectiveCellSize}
-                                        rx={cellRx}
-                                        className="fill-muted"
-                                    />
-                                )
-                            })
-                        )}
-                    </svg>
-                </div>
-
-                {/* stats + legend placeholders */}
-                <div className="flex items-start justify-between gap-x-4">
-                    {showStats && (
-                        <div className="flex flex-1 flex-wrap items-center gap-x-1.5">
-                            <div className="h-4 w-16 rounded bg-muted" />
-                            <div className="h-4 w-28 rounded bg-muted" />
-                        </div>
+                        ))
                     )}
-                    {showLegend && (
-                        <div className="flex shrink-0 items-center gap-1.5">
-                            <div className="h-3 w-8 rounded bg-muted" />
-                            {CONTRIBUTION_LEVELS.map((level) => (
-                                <svg key={level} width={effectiveCellSize} height={effectiveCellSize}>
-                                    <rect
-                                        width={effectiveCellSize}
-                                        height={effectiveCellSize}
-                                        rx={cellRx}
-                                        className="fill-muted"
-                                    />
-                                </svg>
-                            ))}
-                            <div className="h-3 w-10 rounded bg-muted" />
-                        </div>
-                    )}
-                </div>
+                </svg>
             </div>
         </div>
     )
@@ -435,8 +290,6 @@ export const GithubCalendar = memo(function GithubCalendar({
     startsOnSunday = true,
     cellSize = 12,
     cellGap = 3,
-    fillWidth = false,
-    maxCellSize: maxCellSizeProp,
     cellShape = "rounded",
     theme = "github",
     showMonthLabels = true,
@@ -467,24 +320,24 @@ export const GithubCalendar = memo(function GithubCalendar({
     }, [])
 
     // ── Fetch state ────────────────────────────────────────────────────────
-    const query = useQuery({
-        queryKey: ["github-contributions", username],
-        queryFn: () => fetchContributions(username!),
-        enabled: Boolean(username),
-        staleTime: 3_600_000,
-        retry: 2,
-    })
+    const [fetchedData, setFetchedData] = useState<ContributionData | null>(null)
+    const [loading, setLoading] = useState(!!username)
+    const [fetchError, setFetchError] = useState<string | null>(null)
 
-    const fetchedData = query.data ?? null
-    const loading = Boolean(username) && query.isPending
-    const fetchError = query.error
-        ? query.error instanceof Error
-            ? query.error.message
-            : String(query.error)
-        : null
+    useEffect(() => {
+        if (!username) return
+        setFetchedData(null)
+        setFetchError(null)
+        setLoading(true)
+
+        fetchContributions(username)
+            .then((d) => setFetchedData(d))
+            .catch((e) => setFetchError(e instanceof Error ? e.message : String(e)))
+            .finally(() => setLoading(false))
+    }, [username])
 
     // ── Choose data source ─────────────────────────────────────────────────
-    const data = dataProp ?? fetchedData ?? EMPTY_CONTRIBUTIONS
+    const data: ContributionData = useMemo(() => dataProp ?? fetchedData ?? {}, [dataProp, fetchedData])
 
     // ── Resolve dates ──────────────────────────────────────────────────────
     const resolvedEnd = endDate ?? formatDate(new Date())
@@ -495,35 +348,6 @@ export const GithubCalendar = memo(function GithubCalendar({
         d.setDate(d.getDate() + 1)
         return formatDate(d)
     }, [startDate, resolvedEnd])
-
-    // ── Filter data to the visible range ──────────────────────────────────
-    const filteredData = useMemo(() => {
-        const filtered: ContributionData = {}
-        for (const [date, value] of Object.entries(data)) {
-            if (date >= resolvedStart && date <= resolvedEnd) {
-                filtered[date] = value
-            }
-        }
-        return filtered
-    }, [data, resolvedStart, resolvedEnd])
-
-    // ── Fill-width measurement ─────────────────────────────────────────────
-    const wrapRef = useRef<HTMLDivElement>(null)
-    const [wrapWidth, setWrapWidth] = useState(0)
-
-    useEffect(() => {
-        if (!fillWidth) return
-        const el = wrapRef.current
-        if (!el) return
-
-        const measure = () => setWrapWidth(el.clientWidth)
-        measure()
-
-        const observer = new ResizeObserver(measure)
-        observer.observe(el)
-
-        return () => observer.disconnect()
-    }, [fillWidth, loading])
 
     // ── Resolve theme colors ───────────────────────────────────────────────
     const lightColors: ThemeColors =
@@ -549,22 +373,33 @@ export const GithubCalendar = memo(function GithubCalendar({
         [resolvedStart, resolvedEnd, startsOnSunday]
     )
 
-    // ── Effective cell size ────────────────────────────────────────────────
-    const maxCellSize = maxCellSizeProp ?? cellSize * 1.5
-    const effectiveCellSize = useMemo(() => {
-        if (!fillWidth || wrapWidth === 0) return cellSize
-        const available = wrapWidth - 24
-        const fitted = Math.floor(
-            (available - (weeks.length - 1) * cellGap) / weeks.length
-        )
-        return Math.max(2, Math.min(fitted, maxCellSize))
-    }, [fillWidth, wrapWidth, weeks.length, cellGap, cellSize, maxCellSize])
-
     // ── Stats ──────────────────────────────────────────────────────────────
-    const contributionTotal = useMemo(() => getContributionTotal(filteredData), [filteredData])
+    const stats = useMemo(() => {
+        const entries = Object.entries(data)
+        const total = entries.reduce((sum, [, v]) => sum + (v.count ?? (v.level > 0 ? 1 : 0)), 0)
+        const activeDays = entries.filter(([, v]) => v.level > 0).length
+        const maxStreak = (() => {
+            let max = 0
+            let cur = 0
+            const sorted = entries
+                .filter(([, v]) => v.level > 0)
+                .map(([d]) => d)
+                .sort()
+            for (let i = 0; i < sorted.length; i++) {
+                if (i === 0) { cur = 1; max = 1; continue }
+                const prev = parseDate(sorted[i - 1]!)
+                const curr = parseDate(sorted[i]!)
+                const diff = (curr.getTime() - prev.getTime()) / 86400000
+                if (diff === 1) { cur++; max = Math.max(max, cur) }
+                else cur = 1
+            }
+            return max
+        })()
+        return { total, activeDays, maxStreak }
+    }, [data])
 
     // ── Dimensions ────────────────────────────────────────────────────────
-    const step = effectiveCellSize + cellGap
+    const step = cellSize + cellGap
     const monthLabelHeight = showMonthLabels ? 20 : 0
     const svgWidth = weeks.length * step - cellGap
     const svgHeight = monthLabelHeight + 7 * step - cellGap
@@ -578,22 +413,7 @@ export const GithubCalendar = memo(function GithubCalendar({
 
     // ── Loading / error states ───────────────────────────
     if (loading) {
-        return (
-            <CalendarSkeleton
-                cellSize={cellSize}
-                cellGap={cellGap}
-                fillWidth={fillWidth}
-                maxCellSize={maxCellSize}
-                cellShape={cellShape}
-                showMonthLabels={showMonthLabels}
-                showStats={showStats}
-                showLegend={showLegend}
-                startsOnSunday={startsOnSunday}
-                startDate={startDate}
-                endDate={endDate}
-                className={className}
-            />
-        )
+        return <CalendarSkeleton cellSize={cellSize} cellGap={cellGap} className={className} />
     }
 
     if (fetchError) {
@@ -607,10 +427,10 @@ export const GithubCalendar = memo(function GithubCalendar({
         )
     }
 
-    const cellRx = cellShape === "circle" ? effectiveCellSize / 2 : effectiveCellSize * 0.2
+    const cellRx = cellShape === "circle" ? cellSize / 2 : cellSize * 0.2
 
     return (
-        <div ref={wrapRef} className={cn("w-full overflow-x-hidden border rounded-sm", className)}>
+        <div className={cn("w-full overflow-x-hidden border rounded-sm", className)}>
             <div className="w-fit mx-auto max-w-full flex flex-col gap-3 p-3">
                 <div
                     ref={scrollRef}
@@ -646,7 +466,7 @@ export const GithubCalendar = memo(function GithubCalendar({
                         {/* cells */}
                         {weeks.map((week, wi) =>
                             week.map((date, di) => {
-                                const entry = date ? filteredData[date] : undefined
+                                const entry = date ? data[date] : undefined
                                 const level: ContributionLevel = entry?.level ?? 0
                                 const cellCenterX = wi * step + cellSize / 2
                                 const cellTopY = monthLabelHeight + di * step
@@ -661,11 +481,15 @@ export const GithubCalendar = memo(function GithubCalendar({
                                         key={`${wi}-${di}`}
                                         x={wi * step}
                                         y={cellTopY}
-                                        width={effectiveCellSize}
-                                        height={effectiveCellSize}
+                                        width={cellSize}
+                                        height={cellSize}
                                         rx={cellRx}
                                         fill={activeColors[`level${level}` as keyof ThemeColors]}
-                                        style={{ transition: "opacity 0.1s" }}
+                                        className="calendar-cell-shimmer"
+                                        style={{
+                                            animationDelay: `${(wi + di) * 14}ms`,
+                                            transition: "opacity 0.1s",
+                                        }}
                                         onMouseEnter={() => {
                                             if (!date) return
                                             setTooltip({
@@ -688,58 +512,61 @@ export const GithubCalendar = memo(function GithubCalendar({
 
                     {/* tooltip */}
                     {tooltip.visible && (
-                        <Tooltip open>
-                            <TooltipTrigger
-                                render={
-                                    <div
-                                        className="pointer-events-none absolute z-50"
-                                        style={{
-                                            left: tooltip.x,
-                                            top: tooltip.y,
-                                            width: 1,
-                                            height: 1,
-                                        }}
-                                    />
-                                }
-                            />
-                            <TooltipContent side="top">
-                                <div className="font-medium">
-                                {getContributionLabel(
-                                    tooltip.count,
-                                    filteredData[tooltip.date]?.level,
-                                    tooltip.label
-                                )}
-                                </div>
-                                <div className="text-muted">{formatTooltipDate(tooltip.date)}</div>
-                            </TooltipContent>
-                        </Tooltip>
+                        <TooltipProvider>
+                            <Tooltip open>
+                                <TooltipTrigger render={<div className="pointer-events-none absolute z-50" style={{
+                                                                            left: tooltip.x,
+                                                                            top: tooltip.y,
+                                                                            width: 1,
+                                                                            height: 1,
+                                                                        }} />}></TooltipTrigger>
+                                <TooltipContent side="top">
+                                    <div className="font-medium">
+                                        {tooltip.label
+                                            ? tooltip.label
+                                            : tooltip.count !== undefined
+                                                ? `${tooltip.count} contribution${tooltip.count !== 1 ? "s" : ""}`
+                                        : data[tooltip.date]?.level !== undefined
+                                                    ? `Level ${data[tooltip.date]?.level}`
+                                                    : "No contributions"}
+                                    </div>
+                                    <div className="text-muted">{tooltip.date}</div>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     )}
                 </div>
 
                 <div className="flex items-start justify-between gap-x-4">
-                    {/* stats line (left) */}
-                    {showStats && (
-                        <div className="flex flex-1 flex-wrap gap-x-1 text-sm text-muted-foreground">
-                            <span className="font-semibold text-foreground">{contributionTotal.toLocaleString()}</span>
-                            <span>{getContributionSummaryLabel(contributionTotal)}</span>
-                        </div>
-                    )}
 
-                    {/* legend (right) */}
+                    {/* legend (left) */}
                     {showLegend && (
-                        <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground shrink-0 mt-0.5">
                             <span>Less</span>
-                            {CONTRIBUTION_LEVELS.map((level) => (
-                                <svg key={level} width={effectiveCellSize} height={effectiveCellSize}>
+                            {([0, 1, 2, 3, 4] as ContributionLevel[]).map((level) => (
+                                <svg key={level} width={cellSize} height={cellSize}>
                                     <rect
-                                        width={effectiveCellSize}
-                                        height={effectiveCellSize}
+                                        width={cellSize}
+                                        height={cellSize}
                                         rx={cellRx}
                                         fill={activeColors[`level${level}`]}
                                     />
                                 </svg>
                             ))}
                             <span>More</span>
+                        </div>
+                    )}
+
+                    {/* stats line (right) */}
+                    {showStats && (
+                        <div className="flex flex-1 flex-wrap justify-end gap-x-1 text-sm text-muted-foreground ml-auto">
+                            {username && (
+                                <span className="font-semibold text-foreground">@{username}</span>
+                            )}
+                            <span>contributed</span>
+                            <span className="font-semibold text-foreground">{stats.total.toLocaleString()}</span>
+                            <span>this year on</span>
+                            <a href={`https://github.com/${username}`} className="underline font-medium text-foreground">GitHub</a>
                         </div>
                     )}
                 </div>
