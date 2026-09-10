@@ -40,14 +40,14 @@ function ProfileHero() {
 
   return (
     <section
-      className="relative min-h-[460px]"
+      className="relative min-h-[360px] sm:min-h-[460px]"
       onMouseMove={backgroundReveal.onMouseMove}
       onMouseLeave={backgroundReveal.onMouseLeave}
       onPointerDown={backgroundReveal.onPointerDown}
     >
       <HeroBackground />
 
-      <div className="relative flex min-h-[460px] flex-wrap items-end">
+      <div className="relative flex min-h-[360px] flex-wrap items-end sm:min-h-[460px]">
         <div data-disable-bg-hover className="shrink-0">
           <div className="relative size-40 overflow-hidden rounded-full border border-line/60 bg-muted/40">
             <ProfileImage />
@@ -120,14 +120,14 @@ function HeroBackground() {
       )}
       <div
         className={cn(
-          'halftone-bg absolute inset-0 transition-opacity duration-500',
+          'halftone-bg absolute inset-0 bg-bottom transition-opacity duration-500 sm:bg-[position:center_70%]',
           isLoading && 'opacity-0'
         )}
         style={{ backgroundImage: `url(${backgroundImg})` }}
       />
       <div
         className={cn(
-          'halftone-bg halftone-bg-color absolute inset-0',
+          'halftone-bg halftone-bg-color absolute inset-0 bg-bottom sm:bg-[position:center_70%]',
           isLoading && 'opacity-0'
         )}
         style={{ backgroundImage: `url(${backgroundImg})` }}

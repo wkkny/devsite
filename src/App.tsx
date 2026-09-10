@@ -29,7 +29,7 @@ function App() {
   return (
     <main className="min-h-svh overflow-x-clip bg-background px-2 text-foreground">
       <PixelReveal />
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-50 hidden bg-background/90 backdrop-blur-sm md:block">
         <nav
           className="mx-auto flex h-14 max-w-3xl items-center justify-between"
         >
