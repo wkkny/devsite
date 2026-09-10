@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import {
   IconClock,
   IconCode,
@@ -10,22 +9,18 @@ import {
 } from '@tabler/icons-react'
 
 import { portfolio } from '@/config/portfolio'
-import { click8bitSound } from '@/lib/click-8bit'
-import { playSound } from '@/lib/sound-engine'
+import { toast } from '@/components/ui/toast'
 import { formatOwnerTime, formatTimeDifference } from '@/lib/time'
-import { cn } from '@/lib/utils'
 
 type PillItem = {
-  id: string
   icon: Icon
-  label: string
+  title: string
+  description: string
   ariaLabel: string
 }
 
-// Discord-style tag pills: icons that expand into a labelled pill on press.
+// Discord-style info icons: pressing one pops a toast with the details.
 function HeroPills() {
-  const prefersReducedMotion = useReducedMotion() ?? false
-  const [active, setActive] = useState<string | null>(null)
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -37,59 +32,34 @@ function HeroPills() {
   const timeText = `${formatOwnerTime(now)} // ${formatTimeDifference(now, viewerTimeZone)}`
 
   const pills: PillItem[] = [
-    { id: 'occupation', icon: IconCode, label: portfolio.profile.occupation, ariaLabel: portfolio.profile.occupation },
-    { id: 'time', icon: IconClock, label: timeText, ariaLabel: "Owner's local time" },
-    { id: 'location', icon: IconMapPin, label: portfolio.profile.location.label, ariaLabel: portfolio.profile.location.label },
-    { id: 'email', icon: IconMail, label: portfolio.links.email.address, ariaLabel: portfolio.links.email.address },
-    { id: 'note', icon: IconHeart, label: portfolio.profile.note.label, ariaLabel: portfolio.profile.note.label },
+    { icon: IconCode, title: 'Occupation', description: portfolio.profile.occupation, ariaLabel: 'Show occupation' },
+    { icon: IconClock, title: "Owner's local time", description: timeText, ariaLabel: "Show owner's local time" },
+    { icon: IconMapPin, title: 'Location', description: portfolio.profile.location.label, ariaLabel: 'Show location' },
+    { icon: IconMail, title: 'Email', description: portfolio.links.email.address, ariaLabel: 'Show email address' },
+    { icon: IconHeart, title: 'Note', description: portfolio.profile.note.label, ariaLabel: 'Show note' },
   ]
 
   return (
-    <div className="flex flex-wrap gap-2" data-disable-bg-hover>
+    <div className="flex flex-wrap justify-center gap-2" data-disable-bg-hover>
       {pills.map((pill) => {
-        const isActive = active === pill.id
         const Icon = pill.icon
 
         return (
-          <motion.button
-            key={pill.id}
-            layout={!prefersReducedMotion}
+          <button
+            key={pill.ariaLabel}
             type="button"
-            aria-expanded={isActive}
             aria-label={pill.ariaLabel}
             onClick={() => {
-              void playSound(click8bitSound.dataUri, {
-                volume: 0.2,
-                playbackRate: isActive ? 0.9 : 1.1,
-              }).catch(() => {
-                // Pill toggling should still work when audio is unavailable.
+              toast.add({
+                type: 'info',
+                title: pill.title,
+                description: pill.description,
               })
-              setActive((current) => (current === pill.id ? null : pill.id))
             }}
-            className={cn(
-              'flex h-9 items-center rounded-full border text-xs font-medium transition-colors',
-              isActive
-                ? 'border-line bg-muted/70 text-foreground'
-                : 'border-line bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-            )}
+            className="flex size-9 items-center justify-center rounded-full border border-line bg-muted/40 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:scale-90"
           >
-            <span className="flex size-9 shrink-0 items-center justify-center">
-              <Icon className="size-4" />
-            </span>
-            <AnimatePresence initial={false}>
-              {isActive && (
-                <motion.span
-                  initial={prefersReducedMotion ? false : { width: 0, opacity: 0 }}
-                  animate={{ width: 'auto', opacity: 1 }}
-                  exit={prefersReducedMotion ? { width: 0, opacity: 0, transition: { duration: 0 } } : { width: 0, opacity: 0 }}
-                  transition={{ duration: 0.22, ease: 'easeOut' }}
-                  className="overflow-hidden whitespace-nowrap pr-3"
-                >
-                  {pill.label}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            <Icon className="size-4" aria-hidden="true" />
+          </button>
         )
       })}
     </div>

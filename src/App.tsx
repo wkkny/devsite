@@ -7,6 +7,7 @@ import { ProfileHero } from '@/components/profile-hero'
 import { InfoSection } from '@/components/info-section'
 import { PixelReveal } from '@/components/pixel-reveal'
 import ProjectsSection from '@/components/projects-section'
+import { Toaster } from '@/components/ui/toast'
 import { portfolio } from '@/config/portfolio'
 
 // Rolling 12-month window: first day of last month through one year later
@@ -75,6 +76,7 @@ function App() {
         </section>
       </div>
       <BottomNav />
+      <Toaster />
     </main>
   )
 }

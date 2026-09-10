@@ -1,4 +1,4 @@
-import { IconArrowUpRight, IconBrandGithub, IconMail } from '@tabler/icons-react'
+import { IconArrowUpRight, IconBrandGithub, IconBrandX } from '@tabler/icons-react'
 
 import { portfolio } from '@/config/portfolio'
 
@@ -7,25 +7,22 @@ type Connection = {
   subtitle: string
   href: string
   icon: typeof IconBrandGithub
-  external: boolean
 }
 
 // Discord-style connections list for the socials.
 function Connections() {
   const connections: Connection[] = [
     {
-      title: 'Email',
-      subtitle: portfolio.links.email.address,
-      href: portfolio.links.email.href,
-      icon: IconMail,
-      external: false,
+      title: portfolio.links.twitter.label,
+      subtitle: `@${portfolio.links.twitter.username}`,
+      href: portfolio.links.twitter.href,
+      icon: IconBrandX,
     },
     {
-      title: 'GitHub',
+      title: portfolio.links.github.label,
       subtitle: `@${portfolio.links.github.username}`,
       href: portfolio.links.github.href,
       icon: IconBrandGithub,
-      external: true,
     },
   ]
 
@@ -42,8 +39,8 @@ function Connections() {
             <a
               key={connection.title}
               href={connection.href}
-              target={connection.external ? '_blank' : undefined}
-              rel={connection.external ? 'noreferrer' : undefined}
+              target="_blank"
+              rel="noreferrer"
               className="flex items-center gap-3 p-4 transition-colors hover:bg-muted/30"
             >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-muted/40 text-muted-foreground">

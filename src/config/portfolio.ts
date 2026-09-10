@@ -38,6 +38,11 @@ type PortfolioConfig = {
       username: string
       href: HttpsUrl
     }
+    twitter: {
+      label: string
+      username: string
+      href: HttpsUrl
+    }
   }
   projects: readonly PortfolioProject[]
 }
@@ -77,6 +82,11 @@ export const portfolio = {
       label: 'GitHub',
       username: githubUsername,
       href: `${githubBaseUrl}/${githubUsername}`,
+    },
+    twitter: {
+      label: 'Twitter',
+      username: 'wkkny',
+      href: 'https://x.com/wkkny',
     },
   },
   projects: [
