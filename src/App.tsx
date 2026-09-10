@@ -7,7 +7,6 @@ import { ProfileHero } from '@/components/profile-hero'
 import { InfoSection } from '@/components/info-section'
 import { PixelReveal } from '@/components/pixel-reveal'
 import ProjectsSection from '@/components/projects-section'
-import { Toaster } from '@/components/ui/toast'
 import { portfolio } from '@/config/portfolio'
 
 // Rolling 12-month window: first day of last month through one year later
@@ -56,7 +55,7 @@ function App() {
         <div id="info" className="hidden scroll-mt-20 md:block">
           <InfoSection />
         </div>
-        <div className="md:hidden">
+        <div className="-mt-6 md:hidden">
           <Connections />
         </div>
         <section id="github" className="scroll-mt-20">
@@ -76,7 +75,6 @@ function App() {
         </section>
       </div>
       <BottomNav />
-      <Toaster />
     </main>
   )
 }

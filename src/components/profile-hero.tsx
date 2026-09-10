@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { IconCheck, IconCopy } from '@tabler/icons-react'
 
 import backgroundImg from '@/assets/background.jpeg'
 import profileImg from '@/assets/profile.webp'
-import { HeroPills } from '@/components/hero-pills'
+import { IconSwap, IconSwapItem } from '@/components/icon-swap'
 import { ShimmerTextFlip } from '@/components/grootstudio/shimmer-text-flip'
 import { SpotifyInlinePill } from '@/components/spotify-pill'
 import { portfolio } from '@/config/portfolio'
@@ -53,7 +54,6 @@ function ProfileHero() {
           <div className="relative size-40 overflow-hidden rounded-full border border-line/60 bg-muted/40">
             <ProfileImage />
           </div>
-          <StatusDot playing={playbackStatus === 'playing'} />
         </div>
 
         <div
@@ -71,9 +71,7 @@ function ProfileHero() {
           <p className="px-4 py-1 font-mono text-sm text-muted-foreground sm:hidden">
             {portfolio.profile.occupation} • {portfolio.profile.pronouns}
           </p>
-          <div className="px-4 py-1 sm:px-0 md:hidden">
-            <HeroPills />
-          </div>
+          <EmailCopyRow />
         </div>
 
         {hasTrack && (
@@ -118,18 +116,54 @@ function ProfileImage() {
   )
 }
 
-function StatusDot({ playing }: { playing: boolean }) {
+function EmailCopyRow() {
+  const [copied, setCopied] = useState(false)
+  const email = portfolio.links.email
+
+  useEffect(() => {
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(false), 2000)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+
+  const handleCopy = async () => {
+    if (copied) return
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard API is unavailable')
+      await navigator.clipboard.writeText(email.address)
+      setCopied(true)
+    } catch {
+      // Copying is best-effort; the mailto link remains usable.
+    }
+  }
+
   return (
-    <span
-      className={cn(
-        'absolute -right-0.5 -bottom-0.5 size-5 rounded-full border-4 border-background',
-        playing ? 'bg-green-500' : 'bg-muted-foreground/40',
-      )}
-    >
-      <span className="sr-only">
-        {playing ? 'Currently playing on Spotify' : 'Not playing'}
-      </span>
-    </span>
+    <div className="flex items-center justify-center gap-2 px-4 py-1 md:hidden">
+      <a
+        href={email.href}
+        className="truncate font-mono text-sm text-foreground underline-offset-4 hover:underline"
+      >
+        {email.address}
+      </a>
+      <button
+        type="button"
+        onClick={() => void handleCopy()}
+        aria-label={copied ? 'Email copied' : 'Copy email address'}
+        className="flex size-6 shrink-0 items-center justify-center rounded border border-line bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-90"
+      >
+        <IconSwap>
+          {copied ? (
+            <IconSwapItem key="check" className="flex items-center text-green-500">
+              <IconCheck className="size-3.5" />
+            </IconSwapItem>
+          ) : (
+            <IconSwapItem key="copy" className="flex items-center">
+              <IconCopy className="size-3.5" />
+            </IconSwapItem>
+          )}
+        </IconSwap>
+      </button>
+    </div>
   )
 }
 

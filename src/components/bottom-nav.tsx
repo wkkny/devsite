@@ -2,7 +2,6 @@ import {
   IconBrandGithub,
   IconCode,
   IconHome,
-  IconInfoCircle,
   type Icon,
 } from '@tabler/icons-react'
 
@@ -16,7 +15,6 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home', href: '#top', icon: IconHome },
-  { label: 'Info', href: '#info', icon: IconInfoCircle },
   { label: 'GitHub', href: '#github', icon: IconBrandGithub },
   { label: 'Projects', href: '#projects', icon: IconCode },
 ]
