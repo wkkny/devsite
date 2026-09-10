@@ -6,10 +6,17 @@ import {
   useState,
   type MutableRefObject,
 } from "react"
-import { animate, motion, useMotionValue, type Variants } from "motion/react"
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  type Variants,
+} from "motion/react"
 import { SiSpotify } from "react-icons/si"
 
 import { cn } from "@/lib/utils"
+import type { PlaybackStatus } from "../../shared/now-playing"
 
 export type SpotifyPillVariant = "inline" | "stacked"
 export type SpotifyPillArtistSize = "xs" | "sm" | "base"
@@ -17,6 +24,8 @@ export type SpotifyPillArtistSize = "xs" | "sm" | "base"
 export interface SpotifyPillProps {
   trackName: string
   artistName: string
+  spotifyUrl: string
+  status: Exclude<PlaybackStatus, "idle">
   variant?: SpotifyPillVariant
   artistSize?: SpotifyPillArtistSize
   maxWidth?: number
@@ -34,10 +43,15 @@ const INLINE_MARQUEE_REPEAT_DELAY = 1.2
 
 const COLLAPSE_DELAY = 2_000
 const SCROLL_DELAY = 800
-const SPIN_DURATION = 2
 
 const FONT_FAMILY = "'Geist Variable', sans-serif"
 const TRACK_FONT = `500 14px ${FONT_FAMILY}`
+const STATUS_FONT = `600 11px ${FONT_FAMILY}`
+
+const STATUS_LABELS: Record<Exclude<PlaybackStatus, "idle">, string> = {
+  playing: "Now playing",
+  recent: "Recently played",
+}
 
 const ARTIST_TEXT_CLASS: Record<SpotifyPillArtistSize, string> = {
   xs: "text-xs",
@@ -54,7 +68,7 @@ const ARTIST_FONT_SIZE: Record<SpotifyPillArtistSize, number> = {
 const VARIANT_CONFIG = {
   inline: {
     size: 36,
-    iconClassName: "size-5",
+    iconClassName: "size-[21px]",
     textPadding: 16,
     contentClassName: "flex-row items-center gap-1.5",
   },
@@ -85,7 +99,6 @@ const textAreaVariants: Variants = {
     width: textWidth,
     opacity: 1,
     marginLeft: ICON_TEXT_GAP,
-    transition: { duration: 0.3, ease: "easeInOut" },
   }),
 }
 
@@ -94,7 +107,6 @@ const trackVariants: Variants = {
   expanded: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.3, ease: "easeOut", delay: 0.1 },
   },
 }
 
@@ -103,7 +115,6 @@ const artistVariants: Variants = {
   expanded: {
     opacity: 0.8,
     y: 0,
-    transition: { duration: 0.3, ease: "easeOut", delay: 0.2 },
   },
 }
 
@@ -145,11 +156,16 @@ function getTrackDetailsWidth({
   trackName,
   artistName,
   artistSize,
+  status,
   variant,
 }: Required<
-  Pick<SpotifyPillProps, "trackName" | "artistName" | "artistSize" | "variant">
+  Pick<
+    SpotifyPillProps,
+    "trackName" | "artistName" | "artistSize" | "status" | "variant"
+  >
 >) {
   const trackWidth = getTextWidth(trackName, TRACK_FONT)
+  const statusWidth = getTextWidth(`${STATUS_LABELS[status]}:`, STATUS_FONT)
   const artistFontSize =
     variant === "inline" ? 14 : ARTIST_FONT_SIZE[artistSize]
   const artistWidth = getTextWidth(
@@ -159,43 +175,57 @@ function getTrackDetailsWidth({
 
   if (variant === "inline") {
     return (
-      trackWidth + artistWidth + INLINE_SEPARATOR_WIDTH + INLINE_ITEM_GAP * 2
+      statusWidth +
+      trackWidth +
+      artistWidth +
+      INLINE_SEPARATOR_WIDTH +
+      INLINE_ITEM_GAP * 3
     )
   }
 
-  return Math.max(trackWidth, artistWidth)
+  return Math.max(statusWidth, trackWidth, artistWidth)
 }
 
 export function SpotifyPill({
   trackName,
   artistName,
+  spotifyUrl,
+  status,
   variant = "stacked",
   artistSize = "xs",
   maxWidth = DEFAULT_MAX_TEXT_WIDTH,
 }: SpotifyPillProps) {
   const [expanded, setExpanded] = useState(false)
+  const prefersReducedMotion = useReducedMotion() ?? false
 
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const spinAnimation = useRef<ReturnType<typeof animate> | null>(null)
   const scrollAnimation = useRef<ReturnType<typeof animate> | null>(null)
+  const shouldExpandOnTouch = useRef(false)
 
-  const rotation = useMotionValue(0)
   const scrollX = useMotionValue(0)
 
-  const prevTrackRef = useRef({ trackName, artistName })
+  const prevTrackRef = useRef({ trackName, artistName, status })
 
   const config = VARIANT_CONFIG[variant]
   const [responsiveMaxWidth, setResponsiveMaxWidth] = useState(() =>
     getViewportTextWidth(config.size, maxWidth)
   )
   const contentWidth = useMemo(
-    () => getTrackDetailsWidth({ trackName, artistName, artistSize, variant }),
-    [artistName, artistSize, trackName, variant]
+    () =>
+      getTrackDetailsWidth({
+        trackName,
+        artistName,
+        artistSize,
+        status,
+        variant,
+      }),
+    [artistName, artistSize, status, trackName, variant]
   )
   const animationState = expanded ? "expanded" : "collapsed"
   const paddedContentWidth = Math.ceil(contentWidth) + config.textPadding
-  const shouldScroll = paddedContentWidth > responsiveMaxWidth
+  const shouldScroll =
+    !prefersReducedMotion && paddedContentWidth > responsiveMaxWidth
   const textAreaWidth = Math.min(paddedContentWidth, responsiveMaxWidth)
   const animationCustom: VariantCustom = {
     size: config.size,
@@ -216,35 +246,20 @@ export function SpotifyPill({
     }
   }, [config.size, maxWidth])
 
-  const stopSpin = useCallback(() => {
-    spinAnimation.current?.stop()
-    spinAnimation.current = null
-
-    animate(rotation, Math.ceil(rotation.get() / 360) * 360, {
-      duration: 0.3,
-      ease: "easeOut",
-    })
-  }, [rotation])
-
   const stopScroll = useCallback(() => {
     clearTimer(scrollDelayTimer)
     scrollAnimation.current?.stop()
     scrollAnimation.current = null
 
-    animate(scrollX, 0, { duration: 0.3, ease: "easeOut" })
-  }, [scrollX])
-
-  const startSpin = useCallback(() => {
-    spinAnimation.current?.stop()
-    spinAnimation.current = animate(rotation, rotation.get() + 360, {
-      repeat: Infinity,
-      duration: SPIN_DURATION,
-      ease: "linear",
-    })
-  }, [rotation])
+    if (prefersReducedMotion) {
+      scrollX.set(0)
+    } else {
+      animate(scrollX, 0, { duration: 0.3, ease: "easeOut" })
+    }
+  }, [prefersReducedMotion, scrollX])
 
   const startScroll = useCallback(() => {
-    if (!shouldScroll) return
+    if (prefersReducedMotion || !shouldScroll) return
 
     clearTimer(scrollDelayTimer)
     scrollAnimation.current?.stop()
@@ -267,6 +282,7 @@ export function SpotifyPill({
   }, [
     config.textPadding,
     contentWidth,
+    prefersReducedMotion,
     scrollX,
     shouldScroll,
     textAreaWidth,
@@ -276,65 +292,71 @@ export function SpotifyPill({
   const expand = useCallback(() => {
     clearTimer(collapseTimer)
     setExpanded(true)
-    startSpin()
     startScroll()
-  }, [startScroll, startSpin])
+  }, [startScroll])
 
   const collapseNow = useCallback(() => {
     clearTimer(collapseTimer)
     setExpanded(false)
-    stopSpin()
     stopScroll()
-  }, [stopScroll, stopSpin])
+  }, [stopScroll])
 
   const collapse = useCallback(() => {
     clearTimer(collapseTimer)
     collapseTimer.current = setTimeout(collapseNow, COLLAPSE_DELAY)
   }, [collapseNow])
 
-  const toggleOnTouch = useCallback(
-    (event: MouseEvent | PointerEvent | TouchEvent) => {
-      if (!(event instanceof PointerEvent) || event.pointerType !== "touch") {
-        return
-      }
-
-      if (expanded) {
-        collapseNow()
-        return
-      }
-
-      expand()
-    },
-    [collapseNow, expanded, expand]
-  )
+  useEffect(() => {
+    if (prefersReducedMotion) stopScroll()
+  }, [prefersReducedMotion, stopScroll])
 
   useEffect(() => {
     return () => {
       clearTimer(collapseTimer)
       clearTimer(scrollDelayTimer)
-      spinAnimation.current?.stop()
       scrollAnimation.current?.stop()
     }
   }, [])
 
   useEffect(() => {
     const prev = prevTrackRef.current
-    if (prev.trackName !== trackName || prev.artistName !== artistName) {
-      prevTrackRef.current = { trackName, artistName }
+    if (
+      prev.trackName !== trackName ||
+      prev.artistName !== artistName ||
+      prev.status !== status
+    ) {
+      prevTrackRef.current = { trackName, artistName, status }
       expand()
       collapse()
     }
-  }, [trackName, artistName, expand, collapse])
+  }, [trackName, artistName, status, expand, collapse])
 
   const trackDetails = (ariaHidden = false) => (
     <div
       aria-hidden={ariaHidden || undefined}
       className={cn("flex shrink-0", config.contentClassName)}
     >
+      <motion.span
+        className="shrink-0 text-[11px] font-semibold tracking-wide text-white/70"
+        variants={artistVariants}
+        animate={animationState}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { duration: 0.3, ease: "easeOut", delay: 0.2 }
+        }
+      >
+        {STATUS_LABELS[status]}:
+      </motion.span>
       <motion.p
         className="m-0 shrink-0 text-sm font-medium"
         variants={trackVariants}
         animate={animationState}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { duration: 0.3, ease: "easeOut", delay: 0.1 }
+        }
       >
         {trackName}
       </motion.p>
@@ -351,6 +373,11 @@ export function SpotifyPill({
         )}
         variants={artistVariants}
         animate={animationState}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { duration: 0.3, ease: "easeOut", delay: 0.2 }
+        }
       >
         {artistName}
       </motion.span>
@@ -358,29 +385,50 @@ export function SpotifyPill({
   )
 
   return (
-    <motion.button
-      type="button"
-      aria-label={`${trackName} by ${artistName} on Spotify`}
-      aria-pressed={expanded}
-      title={`${trackName} — ${artistName}`}
+    <motion.a
+      href={spotifyUrl}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`${STATUS_LABELS[status]} on Spotify: ${trackName} by ${artistName}. Open track on Spotify`}
+      title={`${STATUS_LABELS[status]}: ${trackName} — ${artistName}`}
       className={cn(
         "relative flex items-center justify-center overflow-hidden rounded-full text-white",
-        "bg-[#191414] dark:border dark:border-white/15 dark:bg-zinc-950 dark:text-white"
+        "bg-[#191414] dark:border dark:border-white/15 dark:bg-zinc-950 dark:text-white",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1DB954] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
       style={{ height: config.size }}
       variants={containerVariants}
       custom={animationCustom}
       initial={false}
       animate={animationState}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      whileTap={{ scale: 0.98 }}
+      transition={
+        prefersReducedMotion
+          ? { duration: 0 }
+          : { duration: 0.3, ease: "easeInOut" }
+      }
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
       onHoverStart={expand}
       onHoverEnd={collapse}
-      onTap={toggleOnTouch}
+      onFocus={expand}
+      onBlur={collapseNow}
+      onPointerDown={(event) => {
+        shouldExpandOnTouch.current =
+          event.pointerType === "touch" && !expanded
+      }}
+      onPointerCancel={() => {
+        shouldExpandOnTouch.current = false
+      }}
+      onClick={(event) => {
+        if (shouldExpandOnTouch.current) {
+          event.preventDefault()
+          expand()
+        }
+        shouldExpandOnTouch.current = false
+      }}
     >
-      <motion.span className="z-10 shrink-0" style={{ rotate: rotation }}>
+      <span className="z-10 shrink-0">
         <SiSpotify className={config.iconClassName} aria-hidden="true" />
-      </motion.span>
+      </span>
 
       <motion.div
         className="flex min-w-0 shrink-0 overflow-hidden leading-tight whitespace-nowrap"
@@ -388,6 +436,11 @@ export function SpotifyPill({
         custom={animationCustom}
         initial={false}
         animate={animationState}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : { duration: 0.3, ease: "easeInOut" }
+        }
       >
         <motion.div
           className="flex shrink-0 text-[#1DB954] dark:text-white/90"
@@ -400,7 +453,7 @@ export function SpotifyPill({
           {variant === "inline" && shouldScroll && trackDetails(true)}
         </motion.div>
       </motion.div>
-    </motion.button>
+    </motion.a>
   )
 }
 

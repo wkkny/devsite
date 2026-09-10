@@ -4,16 +4,11 @@ import backgroundImg from '@/assets/background.jpeg'
 import profileImg from '@/assets/profile.webp'
 import { ShimmerTextFlip } from '@/components/grootstudio/shimmer-text-flip'
 import { SpotifyInlinePill } from '@/components/spotify-pill'
+import { portfolio } from '@/config/portfolio'
 import { useBackgroundReveal } from '@/lib/use-background-reveal'
 import { useNowPlaying } from '@/lib/use-now-playing'
 import { cn } from '@/lib/utils'
 import { motion } from 'motion/react'
-
-const PROFILE_ROLES = [
-  'Full Stack Developer.',
-  'UI/UX Designer.',
-  'I love terminal apps.',
-]
 
 function useImageLoader(src: string) {
   const [isLoading, setIsLoading] = useState(true)
@@ -35,9 +30,13 @@ function useImageLoader(src: string) {
 function ProfileHero() {
   const backgroundReveal = useBackgroundReveal()
   const { data } = useNowPlaying()
-  const trackName = data?.item?.name ?? ''
-  const artistName = data?.item?.artists?.[0]?.name ?? ''
-  const hasTrack = Boolean(trackName)
+  const trackName = data?.track?.title ?? ''
+  const artistName = data?.track?.artist ?? ''
+  const spotifyUrl = data?.track?.spotifyUrl ?? ''
+  const playbackStatus = data?.status
+  const hasTrack =
+    Boolean(trackName && artistName && spotifyUrl) &&
+    (playbackStatus === 'playing' || playbackStatus === 'recent')
 
   return (
     <section
@@ -47,7 +46,7 @@ function ProfileHero() {
     >
       <HeroBackground />
 
-      <div className="relative flex min-h-[460px] items-end">
+      <div className="relative flex min-h-[460px] flex-wrap items-end">
         <div data-disable-bg-hover className="shrink-0">
           <div className="relative size-40 overflow-hidden rounded-full border border-line/60 bg-muted/40">
             <ProfileImage />
@@ -56,21 +55,26 @@ function ProfileHero() {
 
         <div
           data-disable-bg-hover
-          className="flex min-h-40 min-w-0 flex-1 flex-col justify-end pt-4"
+          className="flex min-h-40 min-w-0 flex-1 basis-40 flex-col justify-end pt-4"
         >
-          <p className="truncate px-4 py-1 font-mono text-2xl font-medium tracking-tight whitespace-nowrap sm:text-3xl">
-            Kritiraj B
-          </p>
+          <h1 className="break-words px-4 py-1 font-mono text-2xl font-medium tracking-tight sm:text-3xl">
+            {portfolio.profile.displayName}
+          </h1>
           <p className="px-4 py-1 font-pixel text-base text-muted-foreground">
             <ShimmerTextFlip interval={2.8} as={motion.span}>
-              {PROFILE_ROLES}
+              {portfolio.profile.roles}
             </ShimmerTextFlip>
           </p>
         </div>
 
         {hasTrack && (
           <div data-disable-bg-hover className="absolute top-4 right-4 z-20">
-            <SpotifyInlinePill trackName={trackName} artistName={artistName} />
+            <SpotifyInlinePill
+              trackName={trackName}
+              artistName={artistName}
+              spotifyUrl={spotifyUrl}
+              status={playbackStatus}
+            />
           </div>
         )}
       </div>
@@ -93,7 +97,7 @@ function ProfileImage() {
       ) : (
         <img
           src={profileImg}
-          alt="Kritiraj B"
+          alt={portfolio.profile.displayName}
           draggable={false}
           className={cn(
             'size-full select-none object-cover object-[center_60%] transition-opacity duration-500',

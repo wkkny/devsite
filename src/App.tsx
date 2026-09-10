@@ -5,6 +5,7 @@ import { ProfileHero } from '@/components/profile-hero'
 import { InfoSection } from '@/components/info-section'
 import { PixelReveal } from '@/components/pixel-reveal'
 import ProjectsSection from '@/components/projects-section'
+import { portfolio } from '@/config/portfolio'
 
 function App() {
   return (
@@ -14,9 +15,9 @@ function App() {
         <nav
           className="mx-auto flex h-14 max-w-3xl items-center justify-between"
         >
-          <a href="/" className="block text-foreground" aria-label="Kritiraj's Portfolio">
+          <a href="/" className="block text-foreground" aria-label={portfolio.profile.homeLabel}>
             <AsciiText
-              text="KB"
+              text={portfolio.profile.monogram}
               variant="pixel"
               size="md"
               animation="tetris"
@@ -34,7 +35,6 @@ function App() {
         <InfoSection />
         <section>
           <GithubCalendar
-            username="fuzzyKenny"
             startDate={`${new Date().getFullYear()}-01-01`}
             fillWidth
             cellSize={11}

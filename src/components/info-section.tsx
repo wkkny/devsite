@@ -14,14 +14,14 @@ import {
 } from '@tabler/icons-react'
 
 import { IconSwap, IconSwapItem } from '@/components/icon-swap'
+import { portfolio } from '@/config/portfolio'
 
 import archLogo from '@/assets/archlinux-icon-crystal-32.svg'
 
 import { cn } from '@/lib/utils'
 
-const OWNER_TIME_ZONE = 'Asia/Kolkata'
-
 type SocialItem = {
+  id: 'occupation' | 'location' | 'note' | 'email' | 'pronouns'
   label: string
   icon: Icon
   href?: string
@@ -29,27 +29,32 @@ type SocialItem = {
 
 const PROFILE_ITEMS: SocialItem[] = [
   {
-    label: 'Full Stack Developer',
+    id: 'occupation',
+    label: portfolio.profile.occupation,
     icon: IconCode,
   },
   {
-    label: 'New Delhi, India',
+    id: 'location',
+    label: portfolio.profile.location.label,
     icon: IconMapPin,
   },
   {
-    label: 'I used to use Arch btw',
+    id: 'note',
+    label: portfolio.profile.note.label,
     icon: IconHeart,
   },
 ]
 
 const SOCIAL_ITEMS: SocialItem[] = [
   {
-    label: 'Email',
-    href: 'mailto:kritiraj.tech@gmail.com',
+    id: 'email',
+    label: portfolio.links.email.label,
+    href: portfolio.links.email.href,
     icon: IconMail,
   },
   {
-    label: 'he/him',
+    id: 'pronouns',
+    label: portfolio.profile.pronouns,
     icon: IconGenderMale,
   },
 ]
@@ -67,22 +72,29 @@ const TYPE_SPEED_MS = 22
 const BIG_SIZE = 64
 const SMALL_SIZE = 24
 
-const LINE_ICONS: { icon: Icon; key: string }[] = [
-  { icon: IconCode, key: 'Full Stack Developer' },
+type InfoRowId = SocialItem['id'] | 'time'
+
+const LINE_ICONS: { icon: Icon; key: InfoRowId }[] = [
+  { icon: IconCode, key: 'occupation' },
   { icon: IconClock, key: 'time' },
-  { icon: IconMapPin, key: 'New Delhi, India' },
-  { icon: IconMail, key: 'Email' },
-  { icon: IconHeart, key: 'I used to use Arch btw' },
-  { icon: IconGenderMale, key: 'he/him' },
+  { icon: IconMapPin, key: 'location' },
+  { icon: IconMail, key: 'email' },
+  { icon: IconHeart, key: 'note' },
+  { icon: IconGenderMale, key: 'pronouns' },
 ]
 
-const ROW_KEYS = ['Full Stack Developer', 'New Delhi, India', 'I used to use Arch btw', 'time', 'Email', 'he/him'] as const
+const ROW_KEYS: readonly InfoRowId[] = ['occupation', 'location', 'note', 'time', 'email', 'pronouns']
 
 type RowSlotMeasure = { x: number; y: number }
+type IntroMetrics = {
+  w: number
+  h: number
+  targets: Partial<Record<InfoRowId, RowSlotMeasure>>
+}
 
 type IntroContextValue = {
   phase: IntroPhase
-  typeDelayFor: (label: string) => number
+  typeDelayFor: (id: InfoRowId) => number
 }
 
 const IntroContext = createContext<IntroContextValue>({
@@ -95,10 +107,13 @@ function useIntro() {
 }
 
 function useTypedText(text: string, delayMs: number) {
-  const [typed, setTyped] = useState('')
-  const [done, setDone] = useState(false)
+  const reduced = useReducedMotion() ?? false
+  const [typed, setTyped] = useState(() => reduced ? text : '')
+  const [done, setDone] = useState(reduced)
 
   useEffect(() => {
+    if (reduced) return
+
     let interval = 0
     const start = window.setTimeout(() => {
       const began = performance.now()
@@ -117,55 +132,70 @@ function useTypedText(text: string, delayMs: number) {
       window.clearTimeout(start)
       if (interval) window.clearInterval(interval)
     }
-  }, [text, delayMs])
+  }, [text, delayMs, reduced])
 
-  return { typed, done }
+  return reduced ? { typed: text, done: true } : { typed, done }
 }
 
 function TypedText({ text, delayMs, className }: { text: string; delayMs: number; className?: string }) {
   const { typed, done } = useTypedText(text, delayMs)
   return (
     <span className={className}>
-      {typed}
-      {!done && <span className="ml-0.5 inline-block w-[2px] animate-pulse self-stretch bg-foreground align-middle" />}
+      <span className="sr-only">{text}</span>
+      <span aria-hidden="true">
+        {typed}
+        {!done && <span className="ml-0.5 inline-block w-[2px] animate-pulse self-stretch bg-foreground align-middle" />}
+      </span>
+    </span>
+  )
+}
+
+function SemanticPlaceholder({ text }: { text: string }) {
+  return (
+    <span className="font-mono text-xs sm:text-sm">
+      <span className="sr-only">{text}</span>
+      <span aria-hidden="true">&nbsp;</span>
     </span>
   )
 }
 
 type IconIntroOverlayProps = {
   phase: IntroPhase
-  slotsRef: React.MutableRefObject<Map<string, HTMLElement | null>>
+  slotsRef: React.MutableRefObject<Map<InfoRowId, HTMLElement | null>>
 }
 
 function IconIntroOverlay({ phase, slotsRef }: IconIntroOverlayProps) {
   const sectionRef = useRef<HTMLDivElement | null>(null)
 
-  const [metrics, setMetrics] = useState<{ w: number; h: number } | null>(null)
+  const [metrics, setMetrics] = useState<IntroMetrics | null>(null)
   useEffect(() => {
     if (phase === 'done') return
     const el = sectionRef.current
     if (!el) return
     const measure = () => {
-      const w = el.offsetWidth
-      const h = el.offsetHeight
-      setMetrics((prev) => (prev && prev.w === w && prev.h === h ? prev : { w, h }))
+      const sectionRect = el.getBoundingClientRect()
+      const targets: IntroMetrics['targets'] = {}
+      slotsRef.current.forEach((slot, key) => {
+        if (!slot) return
+        const slotRect = slot.getBoundingClientRect()
+        targets[key] = {
+          x: slotRect.left - sectionRect.left + slotRect.width / 2,
+          y: slotRect.top - sectionRect.top + slotRect.height / 2,
+        }
+      })
+
+      setMetrics({ w: el.offsetWidth, h: el.offsetHeight, targets })
     }
     measure()
-    let raf = 0
-    if (phase === 'line') {
-      const loop = () => {
-        measure()
-        raf = window.requestAnimationFrame(loop)
-      }
-      raf = window.requestAnimationFrame(loop)
-    }
     const observer = new ResizeObserver(measure)
     observer.observe(el)
+    slotsRef.current.forEach((slot) => {
+      if (slot) observer.observe(slot)
+    })
     return () => {
-      window.cancelAnimationFrame(raf)
       observer.disconnect()
     }
-  }, [phase])
+  }, [phase, slotsRef])
 
   if (phase === 'done') return null
 
@@ -182,22 +212,17 @@ function IconIntroOverlay({ phase, slotsRef }: IconIntroOverlayProps) {
   const spacing = canFitOneLine ? lineSpacing : Math.min(lineSpacing, (w - BIG_SIZE) / 2)
   const centerY = h / 2
 
-  const targetFor = (label: string): RowSlotMeasure => {
-    const slot = slotsRef.current.get(label)
-    const el = sectionRef.current
-    if (!slot || !el) return { x: 0, y: 0 }
-    const sr = slot.getBoundingClientRect()
-    const er = el.getBoundingClientRect()
-    return { x: sr.left - er.left + sr.width / 2, y: sr.top - er.top + sr.height / 2 }
-  }
-
   return (
-    <div ref={sectionRef} className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+    <div
+      ref={sectionRef}
+      className="pointer-events-none absolute inset-0 z-20 overflow-hidden"
+      aria-hidden="true"
+    >
       {LINE_ICONS.map(({ icon: Icon, key }, i) => {
           const { row, col, cols } = layout[i]
           const lineX = (w - (cols - 1) * spacing) / 2 + col * spacing
           const lineY = canFitOneLine ? centerY : centerY + (row - 0.5) * rowSpacing
-          const target = phase === 'travel' ? targetFor(key) : null
+          const target = phase === 'travel' ? metrics?.targets[key] : null
           return (
             <motion.div
               key={key}
@@ -237,12 +262,16 @@ type InfoSectionProps = {
 
 function InfoSection({ className }: InfoSectionProps) {
   const reduced = useReducedMotion() ?? false
-  const slotsRef = useRef<Map<string, HTMLElement | null>>(new Map())
-  const [phase, setPhase] = useState<IntroPhase>(reduced ? 'done' : 'line')
+  const slotsRef = useRef<Map<InfoRowId, HTMLElement | null>>(new Map())
+  const [animatedPhase, setPhase] = useState<IntroPhase>(reduced ? 'done' : 'line')
+  const phase: IntroPhase = reduced ? 'done' : animatedPhase
   const iconVisible: 'visible' | 'hidden' = reduced || phase === 'done' ? 'visible' : 'hidden'
 
   useEffect(() => {
-    if (reduced) return
+    if (reduced) {
+      setPhase('done')
+      return
+    }
     const timers = [
       window.setTimeout(() => setPhase('travel'), TRAVEL_AT_S * 1000),
       window.setTimeout(() => setPhase('done'), DONE_AT_S * 1000),
@@ -253,8 +282,8 @@ function InfoSection({ className }: InfoSectionProps) {
   const value = useMemo<IntroContextValue>(
     () => ({
       phase,
-      typeDelayFor: (label: string) => {
-        const idx = ROW_KEYS.indexOf(label as (typeof ROW_KEYS)[number])
+      typeDelayFor: (id) => {
+        const idx = ROW_KEYS.indexOf(id)
         const safe = idx >= 0 ? idx : 0
         return (TYPE_FIRST_S + safe * TYPE_ROW_STAGGER_S) * 1000
       },
@@ -284,7 +313,7 @@ type SocialColumnProps = {
   items?: SocialItem[]
   children?: ReactNode
   className?: string
-  slotsRef: React.MutableRefObject<Map<string, HTMLElement | null>>
+  slotsRef: React.MutableRefObject<Map<InfoRowId, HTMLElement | null>>
   iconVisible: 'visible' | 'hidden'
 }
 
@@ -314,6 +343,8 @@ function LocalTimeRow({ slotsRef, iconVisible }: { slotsRef: SocialColumnProps['
     return () => window.clearInterval(interval)
   }, [])
 
+  const timeLabel = `${formatOwnerTime(now)} // ${formatTimeDifference(now, viewerTimeZone)}`
+
   return (
     <div className="flex items-center gap-3">
       <span
@@ -326,11 +357,11 @@ function LocalTimeRow({ slotsRef, iconVisible }: { slotsRef: SocialColumnProps['
         <IconClock className="size-4" />
       </span>
       {!reveal ? (
-        <span className="font-mono text-xs sm:text-sm">&nbsp;</span>
+        <SemanticPlaceholder text={timeLabel} />
       ) : (
         <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
           <TypedText
-            text={`${formatOwnerTime(now)} // ${formatTimeDifference(now, viewerTimeZone)}`}
+            text={timeLabel}
             delayMs={typeDelayFor('time')}
           />
         </span>
@@ -341,14 +372,14 @@ function LocalTimeRow({ slotsRef, iconVisible }: { slotsRef: SocialColumnProps['
 
 function formatOwnerTime(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: OWNER_TIME_ZONE,
+    timeZone: portfolio.profile.location.timeZone,
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
 }
 
 function formatTimeDifference(date: Date, viewerTimeZone: string): string {
-  const difference = getTimeZoneOffset(date, OWNER_TIME_ZONE) - getTimeZoneOffset(date, viewerTimeZone)
+  const difference = getTimeZoneOffset(date, portfolio.profile.location.timeZone) - getTimeZoneOffset(date, viewerTimeZone)
 
   if (difference === 0) return 'same time'
 
@@ -391,48 +422,50 @@ function getTimeZoneOffset(date: Date, timeZone: string): number {
 
 type SocialRowProps = {
   item: SocialItem
-  slotsRef: React.MutableRefObject<Map<string, HTMLElement | null>>
+  slotsRef: React.MutableRefObject<Map<InfoRowId, HTMLElement | null>>
   iconVisible: 'visible' | 'hidden'
 }
 
-function ArchLabel() {
+function ArchLabel({ children }: { children: ReactNode }) {
   return (
     <span className="inline-block border-b border-transparent leading-none transition-opacity duration-200 delay-[1200ms] group-hover:opacity-0 group-hover:delay-0">
-      Arch
+      {children}
     </span>
   )
 }
 
-function SocialLabel({ label }: { label: string }) {
-  if (label === 'New Delhi, India') {
+function SocialLabel({ item }: { item: SocialItem }) {
+  if (item.id === 'location') {
     return (
       <span className="min-w-0 truncate cursor-pointer font-mono text-xs text-foreground sm:text-sm">
-        <span className="inline-block border-b border-transparent leading-none hover:border-foreground">New Delhi, India</span>
+        <span className="inline-block border-b border-transparent leading-none hover:border-foreground">{item.label}</span>
       </span>
     )
   }
 
-  if (label === 'I used to use Arch btw') {
+  if (item.id === 'note') {
+    const [beforeHighlight, afterHighlight = ''] = item.label.split(portfolio.profile.note.highlight)
+
     return (
       <span className="relative min-w-0 font-mono text-xs text-foreground sm:text-sm">
-        I used to use{' '}
+        {beforeHighlight}
         <span className="group relative inline-block cursor-pointer align-baseline">
-          <ArchLabel />
+          <ArchLabel>{portfolio.profile.note.highlight}</ArchLabel>
           <img
             src={archLogo}
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute left-1/2 top-1/2 h-[1.6em] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 opacity-0 blur-lg transition-[opacity,filter] duration-300 delay-900 group-hover:opacity-100 group-hover:blur-none group-hover:delay-0"
           />
-        </span>{' '}
-        btw
+        </span>
+        {afterHighlight}
       </span>
     )
   }
 
   return (
     <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
-      {label}
+      {item.label}
     </span>
   )
 }
@@ -440,81 +473,114 @@ function SocialLabel({ label }: { label: string }) {
 function EmailRow({ item, slotsRef, iconVisible }: SocialRowProps) {
   const { phase, typeDelayFor } = useIntro()
   const reveal = phase === 'done'
-  const [copied, setCopied] = useState(false)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'success' | 'error'>('idle')
   const Icon = item.icon
   const href = item.href ?? ''
+  const copied = copyStatus === 'success'
 
-  const handleCopy = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (copied) return
+  useEffect(() => {
+    if (copyStatus !== 'success' && copyStatus !== 'error') return
+    const timer = window.setTimeout(() => setCopyStatus('idle'), 2000)
+    return () => window.clearTimeout(timer)
+  }, [copyStatus])
 
-    navigator.clipboard.writeText('kritiraj.tech@gmail.com')
-    setCopied(true)
+  const handleCopy = async () => {
+    if (copyStatus === 'copying' || copied) return
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
+    setCopyStatus('copying')
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard API is unavailable')
+      await navigator.clipboard.writeText(portfolio.links.email.address)
+      setCopyStatus('success')
+    } catch {
+      setCopyStatus('error')
     }
-    timeoutRef.current = setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <a
-      href={href}
-      target={href.startsWith('http') ? '_blank' : undefined}
-      rel={href.startsWith('http') ? 'noreferrer' : undefined}
-      className="flex items-center gap-3 transition-colors hover:text-muted-foreground"
-    >
+    <div className="flex items-center gap-3">
       <span
         ref={(el) => {
-          slotsRef.current.set('Email', el)
+          slotsRef.current.set(item.id, el)
         }}
         style={{ visibility: iconVisible }}
         className="flex size-6 shrink-0 items-center justify-center rounded-md border border-line bg-muted/40 text-muted-foreground shadow-inner"
       >
         <Icon className="size-4" />
       </span>
-      {!reveal ? (
-        <span className="font-mono text-xs sm:text-sm">&nbsp;</span>
-      ) : (
-        <span className="flex items-center gap-2 min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
-          <TypedText
-            text="kritiraj.tech@gmail.com"
-            delayMs={typeDelayFor('Email')}
-            className="border-b border-transparent transition-colors hover:border-foreground"
-          />
+      <span className="flex min-w-0 items-center gap-2 truncate font-mono text-xs text-foreground sm:text-sm">
+        <a
+          href={href}
+          target={href.startsWith('http') ? '_blank' : undefined}
+          rel={href.startsWith('http') ? 'noreferrer' : undefined}
+          className="min-w-0 truncate transition-colors hover:text-muted-foreground"
+        >
+          {!reveal ? (
+            <SemanticPlaceholder text={portfolio.links.email.address} />
+          ) : (
+            <TypedText
+              text={portfolio.links.email.address}
+              delayMs={typeDelayFor(item.id)}
+              className="border-b border-transparent transition-colors hover:border-foreground"
+            />
+          )}
+        </a>
+        {reveal && (
           <CopyButton
             copied={copied}
+            copying={copyStatus === 'copying'}
             onCopy={handleCopy}
-            popDelayMs={typeDelayFor('Email') + 'kritiraj.tech@gmail.com'.length * TYPE_SPEED_MS + 200}
+            popDelayMs={typeDelayFor(item.id) + portfolio.links.email.address.length * TYPE_SPEED_MS + 200}
           />
+        )}
+        <span className="sr-only" role="status" aria-live="polite">
+          {copyStatus === 'success'
+            ? 'Email address copied to clipboard.'
+            : copyStatus === 'error'
+              ? 'Unable to copy the email address.'
+              : ''}
         </span>
-      )}
-    </a>
+      </span>
+    </div>
   )
 }
 
-function CopyButton({ copied, onCopy, popDelayMs }: { copied: boolean; onCopy: React.MouseEventHandler; popDelayMs: number }) {
-  const [popped, setPopped] = useState(false)
+function CopyButton({
+  copied,
+  copying,
+  onCopy,
+  popDelayMs,
+}: {
+  copied: boolean
+  copying: boolean
+  onCopy: () => Promise<void>
+  popDelayMs: number
+}) {
+  const prefersReducedMotion = useReducedMotion() ?? false
+  const [popped, setPopped] = useState(prefersReducedMotion)
 
   useEffect(() => {
+    if (prefersReducedMotion) return
     const timer = window.setTimeout(() => setPopped(true), popDelayMs)
     return () => window.clearTimeout(timer)
-  }, [popDelayMs])
+  }, [popDelayMs, prefersReducedMotion])
 
   if (!popped) return null
 
   return (
     <motion.button
       type="button"
-      onClick={onCopy}
-      disabled={copied}
-      initial={{ scale: 0, opacity: 0 }}
+      onClick={() => void onCopy()}
+      disabled={copied || copying}
+      initial={prefersReducedMotion ? false : { scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 520, damping: 24 }}
+      transition={
+        prefersReducedMotion
+          ? { duration: 0 }
+          : { type: 'spring', stiffness: 520, damping: 24 }
+      }
       className="flex size-5 shrink-0 items-center justify-center rounded border border-line bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:cursor-default disabled:hover:bg-muted/40 active:scale-90"
-      aria-label={copied ? 'Copied!' : 'Copy email'}
+      aria-label={copied ? 'Email copied' : copying ? 'Copying email' : 'Copy email address'}
     >
       <IconSwap>
         {!copied ? (
@@ -534,7 +600,7 @@ function CopyButton({ copied, onCopy, popDelayMs }: { copied: boolean; onCopy: R
 function SocialRow({ item, slotsRef, iconVisible }: SocialRowProps) {
   const { phase, typeDelayFor } = useIntro()
 
-  if (item.label === 'Email' && item.href) {
+  if (item.id === 'email' && item.href) {
     return <EmailRow item={item} slotsRef={slotsRef} iconVisible={iconVisible} />
   }
 
@@ -545,7 +611,7 @@ function SocialRow({ item, slotsRef, iconVisible }: SocialRowProps) {
     <>
       <span
         ref={(el) => {
-          slotsRef.current.set(item.label, el)
+          slotsRef.current.set(item.id, el)
         }}
         style={{ visibility: iconVisible }}
         className="flex size-6 shrink-0 items-center justify-center rounded-md border border-line bg-muted/40 text-muted-foreground shadow-inner"
@@ -553,9 +619,9 @@ function SocialRow({ item, slotsRef, iconVisible }: SocialRowProps) {
         <Icon className="size-4" />
       </span>
       {!reveal ? (
-        <span className="font-mono text-xs sm:text-sm">&nbsp;</span>
+        <SemanticPlaceholder text={item.label} />
       ) : (
-        <TypedSocialLabel label={item.label} delayMs={typeDelayFor(item.label)} />
+        <TypedSocialLabel item={item} delayMs={typeDelayFor(item.id)} />
       )}
     </>
   )
@@ -576,19 +642,24 @@ function SocialRow({ item, slotsRef, iconVisible }: SocialRowProps) {
   )
 }
 
-function TypedSocialLabel({ label, delayMs }: { label: string; delayMs: number }) {
-  const { typed, done } = useTypedText(label, delayMs)
+function TypedSocialLabel({ item, delayMs }: { item: SocialItem; delayMs: number }) {
+  const { typed, done } = useTypedText(item.label, delayMs)
 
-  if (!done) {
-    return (
-      <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
-        {typed}
-        <span className="ml-0.5 inline-block w-[2px] animate-pulse self-stretch bg-foreground align-middle" />
+  return (
+    <>
+      <span className="sr-only">{item.label}</span>
+      <span aria-hidden="true">
+        {done ? (
+          <SocialLabel item={item} />
+        ) : (
+          <span className="min-w-0 truncate font-mono text-xs text-foreground sm:text-sm">
+            {typed}
+            <span className="ml-0.5 inline-block w-[2px] animate-pulse self-stretch bg-foreground align-middle" />
+          </span>
+        )}
       </span>
-    )
-  }
-
-  return <SocialLabel label={label} />
+    </>
+  )
 }
 
 export { InfoSection }

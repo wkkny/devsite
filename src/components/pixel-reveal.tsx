@@ -7,6 +7,8 @@ const POOL: [string, number][] = [
 ]
 
 const EASING = { duration: 650, x1: 0.2, y1: 0.35, x2: 0.3, y2: 1, bounce: 0.1, bias: 0.65, brightness: 0.9, cycle: 210, variance: 0.4, smooth: 5, cluster: 3, cell: 15 }
+const MAX_DPR = 1.5
+const REDUCED_WORK_QUERY = '(pointer: coarse), (max-width: 768px)'
 
 function cubicBezier(x1: number, y1: number, x2: number, y2: number, t: number): number {
   if (t <= 0) return 0
@@ -22,18 +24,32 @@ function cubicBezier(x1: number, y1: number, x2: number, y2: number, t: number):
   return 3 * (1 - x) * (1 - x) * x * y1 + 3 * (1 - x) * x * x * y2 + x * x * x
 }
 
+function releaseCanvas(canvas: HTMLCanvasElement) {
+  canvas.width = 0
+  canvas.height = 0
+  canvas.hidden = true
+}
+
 export function PixelReveal({ onRevealComplete, skip = false, scope = false, delay = 0, image }: { onRevealComplete?: () => void; skip?: boolean; scope?: boolean; delay?: number; image?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const completeRef = useRef(onRevealComplete)
+  const completedRef = useRef(false)
   completeRef.current = onRevealComplete
 
   useLayoutEffect(() => {
     if (skip) return
     const canvas = canvasRef.current
     if (!canvas) return
+    const complete = () => {
+      if (completedRef.current) return
+      completedRef.current = true
+      completeRef.current?.()
+    }
+    canvas.hidden = false
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduced) {
-      completeRef.current?.()
+      releaseCanvas(canvas)
+      complete()
       return
     }
 
@@ -47,16 +63,23 @@ export function PixelReveal({ onRevealComplete, skip = false, scope = false, del
       : null
     const w = box ? box.width : window.innerWidth
     const h = box ? box.height : window.innerHeight
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = w * dpr
-    canvas.height = h * dpr
+    const reducedWork = window.matchMedia(REDUCED_WORK_QUERY).matches
+    const dpr = Math.min(window.devicePixelRatio || 1, reducedWork ? 1 : MAX_DPR)
+    canvas.width = Math.ceil(w * dpr)
+    canvas.height = Math.ceil(h * dpr)
     canvas.style.width = `${w}px`
     canvas.style.height = `${h}px`
     const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    if (!ctx) {
+      releaseCanvas(canvas)
+      complete()
+      return
+    }
     ctx.scale(dpr, dpr)
 
-    const { duration, x1, y1, x2, y2, bounce, bias, brightness, cycle, variance, smooth, cluster, cell } = EASING
+    const { duration, x1, y1, x2, y2, bounce, bias, brightness, cycle, variance, cluster } = EASING
+    const smooth = reducedWork ? 2 : EASING.smooth
+    const cell = reducedWork ? 20 : EASING.cell
     const cols = Math.ceil(w / cell) + 1
     const rows = Math.ceil(h / cell) + 1
     const count = cols * rows
@@ -109,8 +132,46 @@ export function PixelReveal({ onRevealComplete, skip = false, scope = false, del
     let rafId = 0
     let samples: Uint8ClampedArray | null = null
 
+    const drawFrame = (progress: number, eased: number) => {
+      ctx.clearRect(0, 0, w, h)
+      const half = cell / 2
+      for (let r = 0; r < rows; r++)
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c
+          if (thresholds[i] <= progress) continue
+          const x = c * cell
+          const y = r * cell
+          const [char, alpha] = POOL[Math.floor((eased + phaseA[i]) / cycles[i]) % poolLen]
+          ctx.globalAlpha = 1
+          if (samples) {
+            const si = i * 4
+            ctx.fillStyle = `rgb(${samples[si]},${samples[si + 1]},${samples[si + 2]})`
+            ctx.fillRect(x, y, cell, cell)
+            ctx.fillStyle = 'rgba(0,0,0,0.35)'
+            ctx.fillRect(x + 1, y + 1, half - 1, half - 1)
+            ctx.fillRect(x + half + 1, y + 1, half - 1, half - 1)
+            ctx.fillRect(x + 1, y + half + 1, half - 1, half - 1)
+            ctx.fillRect(x + half + 1, y + half + 1, half - 1, half - 1)
+          } else {
+            ctx.fillStyle = bgColor
+            ctx.fillRect(x, y, cell, cell)
+            ctx.fillStyle = cellBg
+            ctx.fillRect(x + 1, y + 1, half - 1, half - 1)
+            ctx.fillRect(x + half + 1, y + 1, half - 1, half - 1)
+            ctx.fillRect(x + 1, y + half + 1, half - 1, half - 1)
+            ctx.fillRect(x + half + 1, y + half + 1, half - 1, half - 1)
+          }
+          ctx.globalAlpha = alpha * brightness
+          ctx.fillStyle = charColor
+          ctx.fillText(char, x + half, y + half)
+        }
+      ctx.globalAlpha = 1
+    }
+
     const begin = () => {
       if (cancelled) return
+      // Paint the initial cover before the browser's first frame to avoid a flash.
+      drawFrame(0, 0)
       let start0: number | null = null
 
       const tick = (now: number) => {
@@ -127,49 +188,20 @@ export function PixelReveal({ onRevealComplete, skip = false, scope = false, del
           const b = (linear - 0.6) / 0.4
           progress = Math.max(0, eased - 0.15 * bounce * Math.sin(b * Math.PI * 3) * Math.exp(-4 * b))
         }
-        ctx.clearRect(0, 0, w, h)
         if (linear >= 1) {
-          completeRef.current?.()
+          releaseCanvas(canvas)
+          complete()
           return
         }
-        const half = cell / 2
-        for (let r = 0; r < rows; r++)
-          for (let c = 0; c < cols; c++) {
-            const i = r * cols + c
-            if (thresholds[i] <= progress) continue
-            const x = c * cell
-            const y = r * cell
-            const [char, alpha] = POOL[Math.floor((eased + phaseA[i]) / cycles[i]) % poolLen]
-            ctx.globalAlpha = 1
-            if (samples) {
-              const si = i * 4
-              ctx.fillStyle = `rgb(${samples[si]},${samples[si + 1]},${samples[si + 2]})`
-              ctx.fillRect(x, y, cell, cell)
-              ctx.fillStyle = 'rgba(0,0,0,0.35)'
-              ctx.fillRect(x + 1, y + 1, half - 1, half - 1)
-              ctx.fillRect(x + half + 1, y + 1, half - 1, half - 1)
-              ctx.fillRect(x + 1, y + half + 1, half - 1, half - 1)
-              ctx.fillRect(x + half + 1, y + half + 1, half - 1, half - 1)
-            } else {
-              ctx.fillStyle = bgColor
-              ctx.fillRect(x, y, cell, cell)
-              ctx.fillStyle = cellBg
-              ctx.fillRect(x + 1, y + 1, half - 1, half - 1)
-              ctx.fillRect(x + half + 1, y + 1, half - 1, half - 1)
-              ctx.fillRect(x + 1, y + half + 1, half - 1, half - 1)
-              ctx.fillRect(x + half + 1, y + half + 1, half - 1, half - 1)
-            }
-            ctx.globalAlpha = alpha * brightness
-            ctx.fillStyle = charColor
-            ctx.fillText(char, x + half, y + half)
-          }
-        ctx.globalAlpha = 1
+        drawFrame(progress, eased)
         rafId = requestAnimationFrame(tick)
       }
       rafId = requestAnimationFrame(tick)
     }
 
     if (image) {
+      // Image decoding is asynchronous; keep the canvas covered while it loads.
+      drawFrame(0, 0)
       const img = new Image()
       img.src = image
       img.decode()
@@ -179,7 +211,11 @@ export function PixelReveal({ onRevealComplete, skip = false, scope = false, del
           off.width = cols
           off.height = rows
           const octx = off.getContext('2d')
-          if (!octx) return
+          if (!octx) {
+            releaseCanvas(canvas)
+            complete()
+            return
+          }
           const iw = img.naturalWidth
           const ih = img.naturalHeight
           const scale = Math.max(w / iw, h / ih)
@@ -197,6 +233,7 @@ export function PixelReveal({ onRevealComplete, skip = false, scope = false, del
     return () => {
       cancelled = true
       cancelAnimationFrame(rafId)
+      releaseCanvas(canvas)
     }
   }, [skip, scope, delay, image])
 

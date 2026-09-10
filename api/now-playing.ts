@@ -1,132 +1,215 @@
-import process from "node:process"
-
 import type { VercelRequest, VercelResponse } from "@vercel/node"
 
 import {
-  getSpotifyCookies,
-  refreshAccessToken,
-  setSpotifyCookies,
+  isSpotifyTrackUrl,
+  type NowPlayingResponse,
+  type NowPlayingTrack,
+} from "../shared/now-playing.js"
+import {
+  getRetryAfterSeconds,
+  getSpotifyAccessToken,
+  SpotifyConfigurationError,
+  SpotifyRequestError,
+  SpotifyTimeoutError,
 } from "./_spotify.js"
 
 const NOW_PLAYING_URL = "https://api.spotify.com/v1/me/player/currently-playing"
 const RECENTLY_PLAYED_URL =
   "https://api.spotify.com/v1/me/player/recently-played?limit=1"
+const REQUEST_TIMEOUT_MS = 4_000
+const CACHE_CONTROL =
+  "public, max-age=0, s-maxage=10, stale-while-revalidate=20"
+const RECENTLY_PLAYED_MAX_AGE_MS = 24 * 60 * 60 * 1_000
 
-type SpotifyTrack = {
-  name: string
-  artists: { name: string }[]
-  album: {
-    name: string
-    images: { url: string; width: number; height: number }[]
-  }
-  external_urls: {
-    spotify: string
-  }
+let rateLimitedUntil = 0
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
 }
 
-type PlaybackResponse = {
-  is_playing: boolean
-  item?: SpotifyTrack | null
-  played_at?: string
-}
+function mapTrack(value: unknown): NowPlayingTrack | null {
+  if (!isRecord(value) || typeof value.name !== "string") return null
+  if (!Array.isArray(value.artists) || value.artists.length === 0) return null
+  if (!isRecord(value.external_urls)) return null
 
-type RecentlyPlayedResponse = {
-  items?: Array<{
-    track: SpotifyTrack
-    played_at: string
-  }>
-}
+  const spotifyUrl = value.external_urls.spotify
 
-function fetchSpotify(url: string, accessToken: string) {
-  return fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+  if (!isSpotifyTrackUrl(spotifyUrl)) return null
+
+  const artists = value.artists.map((artist) => {
+    if (!isRecord(artist) || typeof artist.name !== "string") return null
+    return artist.name.trim()
   })
+
+  const title = value.name.trim()
+
+  if (!title || artists.some((artist) => !artist)) return null
+
+  return { title, artist: artists.join(", "), spotifyUrl }
 }
 
-async function getLastPlayed(accessToken: string) {
-  const response = await fetchSpotify(RECENTLY_PLAYED_URL, accessToken)
+async function fetchSpotify(url: string, accessToken: string) {
+  try {
+    return await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new SpotifyTimeoutError()
+    }
 
+    throw error
+  }
+}
+
+async function readSpotifyJson(response: Response) {
   if (!response.ok) {
-    return { is_playing: false }
-  }
-
-  const data = (await response.json()) as RecentlyPlayedResponse
-  const lastPlayed = data.items?.[0]
-
-  return {
-    is_playing: false,
-    item: lastPlayed?.track,
-    played_at: lastPlayed?.played_at,
-  } satisfies PlaybackResponse
-}
-
-async function getNowOrLastPlayed(accessToken: string) {
-  const response = await fetchSpotify(NOW_PLAYING_URL, accessToken)
-
-  if (response.status === 204) {
-    return getLastPlayed(accessToken)
-  }
-
-  if (!response.ok) {
-    return response
-  }
-
-  const data = (await response.json()) as PlaybackResponse
-
-  if (!data.item) {
-    return getLastPlayed(accessToken)
-  }
-
-  return data
-}
-
-async function sendPlaybackResponse(
-  result: Response | PlaybackResponse,
-  res: VercelResponse
-) {
-  if (result instanceof Response) {
-    return res.status(result.status).json({ error: "Spotify request failed" })
-  }
-
-  return res.json(result)
-}
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const spotifyCookies = getSpotifyCookies(req.headers.cookie)
-  const refreshToken = spotifyCookies.refreshToken ?? process.env.SPOTIFY_REFRESH_TOKEN
-  let accessToken = spotifyCookies.accessToken
-
-  if (!accessToken && !refreshToken) {
-    return res.status(401).json({ error: "Not authenticated" })
+    throw new SpotifyRequestError(
+      response.status,
+      getRetryAfterSeconds(response)
+    )
   }
 
   try {
-    if (!accessToken && refreshToken) {
-      const token = await refreshAccessToken(refreshToken)
-      accessToken = token.access_token
-      setSpotifyCookies(res, token)
-    }
-
-    const result = await getNowOrLastPlayed(accessToken!)
-
-    if (
-      !(result instanceof Response) ||
-      result.status !== 401 ||
-      !refreshToken
-    ) {
-      return sendPlaybackResponse(result, res)
-    }
-
-    const token = await refreshAccessToken(refreshToken)
-    setSpotifyCookies(res, token)
-
-    return sendPlaybackResponse(
-      await getNowOrLastPlayed(token.access_token),
-      res
-    )
+    return (await response.json()) as unknown
   } catch {
-    return res.status(500).json({ error: "Failed to fetch now playing" })
+    throw new Error("Invalid Spotify response")
+  }
+}
+
+async function getRecentlyPlayed(accessToken: string): Promise<NowPlayingResponse> {
+  const response = await fetchSpotify(RECENTLY_PLAYED_URL, accessToken)
+  const data = await readSpotifyJson(response)
+
+  if (!isRecord(data) || !Array.isArray(data.items)) {
+    throw new Error("Invalid Spotify recently-played response")
+  }
+
+  const item = data.items[0]
+
+  if (item === undefined) {
+    return { status: "idle", track: null }
+  }
+
+  if (!isRecord(item) || typeof item.played_at !== "string") {
+    throw new Error("Invalid Spotify recently-played item")
+  }
+
+  const track = mapTrack(item.track)
+
+  const playedAt = Date.parse(item.played_at)
+
+  if (!track || Number.isNaN(playedAt)) {
+    throw new Error("Invalid Spotify recently-played track")
+  }
+
+  if (Date.now() - playedAt > RECENTLY_PLAYED_MAX_AGE_MS) {
+    return { status: "idle", track: null }
+  }
+
+  return { status: "recent", track }
+}
+
+async function getPlayback(accessToken: string): Promise<NowPlayingResponse> {
+  const response = await fetchSpotify(NOW_PLAYING_URL, accessToken)
+
+  if (response.status === 204) {
+    return getRecentlyPlayed(accessToken)
+  }
+
+  const data = await readSpotifyJson(response)
+
+  if (!isRecord(data) || typeof data.is_playing !== "boolean") {
+    throw new Error("Invalid Spotify now-playing response")
+  }
+
+  const track = mapTrack(data.item)
+
+  if (!data.is_playing || !track) {
+    return getRecentlyPlayed(accessToken)
+  }
+
+  return { status: "playing", track }
+}
+
+async function getPlaybackWithRefresh() {
+  const accessToken = await getSpotifyAccessToken()
+
+  try {
+    return await getPlayback(accessToken)
+  } catch (error) {
+    if (!(error instanceof SpotifyRequestError) || error.status !== 401) {
+      throw error
+    }
+
+    return getPlayback(await getSpotifyAccessToken(true))
+  }
+}
+
+function sendRateLimited(
+  res: VercelResponse,
+  retryAfterSeconds: number
+) {
+  res.setHeader("Cache-Control", "no-store")
+  res.setHeader("Retry-After", String(retryAfterSeconds))
+  return res.status(429).json({ error: "Spotify is temporarily rate limited" })
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET")
+    res.setHeader("Cache-Control", "no-store")
+    return res.status(405).json({ error: "Method not allowed" })
+  }
+
+  if (Object.keys(req.query ?? {}).length > 0) {
+    res.setHeader("Cache-Control", "no-store")
+    return res.status(400).json({ error: "Unexpected query parameters" })
+  }
+
+  const remainingRateLimit = Math.ceil((rateLimitedUntil - Date.now()) / 1_000)
+
+  if (remainingRateLimit > 0) {
+    return sendRateLimited(res, remainingRateLimit)
+  }
+
+  try {
+    const result = await getPlaybackWithRefresh()
+
+    res.setHeader("Cache-Control", CACHE_CONTROL)
+    return res.status(200).json(result)
+  } catch (error) {
+    res.setHeader("Cache-Control", "no-store")
+
+    if (error instanceof SpotifyRequestError && error.status === 429) {
+      const retryAfter = error.retryAfterSeconds ?? 10
+      rateLimitedUntil = Date.now() + retryAfter * 1_000
+      console.error("[spotify] upstream request failed", { status: 429 })
+      return sendRateLimited(res, retryAfter)
+    }
+
+    if (error instanceof SpotifyTimeoutError) {
+      console.error("[spotify] upstream request timed out")
+      return res.status(504).json({ error: "Spotify is temporarily unavailable" })
+    }
+
+    const isConfigurationError = error instanceof SpotifyConfigurationError
+
+    console.error("[spotify] now-playing request failed", {
+      kind:
+        error instanceof SpotifyRequestError
+          ? "upstream"
+          : isConfigurationError
+            ? "configuration"
+            : "unexpected",
+      status: error instanceof SpotifyRequestError ? error.status : undefined,
+    })
+    return res
+      .status(isConfigurationError ? 503 : 502)
+      .json({ error: "Failed to fetch Spotify playback" })
   }
 }

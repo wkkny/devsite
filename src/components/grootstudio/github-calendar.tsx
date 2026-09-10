@@ -1,11 +1,15 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+    parseGitHubContributionsResponse,
+    type GitHubContributionLevel,
+} from "../../../shared/github-contributions"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ContributionLevel = 0 | 1 | 2 | 3 | 4
+export type ContributionLevel = GitHubContributionLevel
 
 export type ContributionData = {
     [date: string]: {
@@ -26,8 +30,6 @@ export type ThemeColors = {
 export type CellShape = "rounded" | "circle"
 
 export type GithubCalendarProps = {
-
-    username?: string // GitHub username
     data?: ContributionData //Optional - Only for manual data
     startDate?: string
     endDate?: string
@@ -188,25 +190,47 @@ function getContributionTotal(data: ContributionData) {
 
 // ─── API fetch ────────────────────────────────────────────────────────────────
 
-type APIResponse = {
-    contributions: { date: string; count: number; level: number }[]
+class ContributionRequestError extends Error {
+    readonly transient: boolean
+
+    constructor(status: number) {
+        super("Could not fetch contributions")
+        this.name = "ContributionRequestError"
+        this.transient = status === 408 || status === 429 || status >= 500
+    }
 }
 
-async function fetchContributions(username: string): Promise<ContributionData> {
-    const res = await fetch(`https://github-contributions-api.jogruber.de/v4/${username}`)
+async function fetchContributions(signal: AbortSignal): Promise<ContributionData> {
+    const res = await fetch("/api/github-contributions", {
+        headers: { Accept: "application/json" },
+        signal,
+    })
     if (!res.ok) {
-        throw new Error(`Could not fetch contributions for "${username}" (${res.status})`)
+        throw new ContributionRequestError(res.status)
     }
-    const json: APIResponse = await res.json()
+    const json: unknown = await res.json()
+    const response = parseGitHubContributionsResponse(json)
+
+    if (!response) {
+        throw new Error("Invalid GitHub contributions response")
+    }
 
     const result: ContributionData = {}
-    for (const entry of json.contributions) {
+    for (const entry of response.contributions) {
         result[entry.date] = {
-            level: Math.min(4, Math.max(0, entry.level)) as ContributionLevel,
+            level: entry.level,
             count: entry.count,
         }
     }
     return result
+}
+
+function shouldRetryContributionRequest(failureCount: number, error: Error) {
+    if (failureCount >= 2 || error.name === "AbortError") return false
+
+    return error instanceof ContributionRequestError
+        ? error.transient
+        : error instanceof TypeError
 }
 
 // ─── Build calendar grid ──────────────────────────────────────────────────────
@@ -358,7 +382,7 @@ function CalendarSkeleton({
                     className="relative overflow-x-auto"
                     style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
                 >
-                    <svg width={svgWidth} height={svgHeight} className="overflow-visible">
+                    <svg width={svgWidth} height={svgHeight} className="overflow-visible" aria-hidden="true">
                         {/* month label placeholders */}
                         {showMonthLabels && ([...labelByWeek.entries()].map(([weekIndex, label]) => (
                             <rect
@@ -407,7 +431,7 @@ function CalendarSkeleton({
                         <div className="flex shrink-0 items-center gap-1.5">
                             <div className="h-3 w-8 rounded bg-muted" />
                             {CONTRIBUTION_LEVELS.map((level) => (
-                                <svg key={level} width={effectiveCellSize} height={effectiveCellSize}>
+                                <svg key={level} width={effectiveCellSize} height={effectiveCellSize} aria-hidden="true">
                                     <rect
                                         width={effectiveCellSize}
                                         height={effectiveCellSize}
@@ -428,7 +452,6 @@ function CalendarSkeleton({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const GithubCalendar = memo(function GithubCalendar({
-    username,
     data: dataProp,
     startDate,
     endDate,
@@ -447,6 +470,8 @@ export const GithubCalendar = memo(function GithubCalendar({
     // Scroll ref — used to auto-scroll to most recent months on compact viewports
     const scrollRef = useRef<HTMLDivElement>(null)
     const [isDark, setIsDark] = useState(false)
+    const graphTitleId = useId()
+    const graphDescriptionId = useId()
 
     useEffect(() => {
         const checkDark = () => {
@@ -468,20 +493,16 @@ export const GithubCalendar = memo(function GithubCalendar({
 
     // ── Fetch state ────────────────────────────────────────────────────────
     const query = useQuery({
-        queryKey: ["github-contributions", username],
-        queryFn: () => fetchContributions(username!),
-        enabled: Boolean(username),
+        queryKey: ["github-contributions"],
+        queryFn: ({ signal }) => fetchContributions(signal),
+        enabled: dataProp === undefined,
         staleTime: 3_600_000,
-        retry: 2,
+        retry: shouldRetryContributionRequest,
     })
 
     const fetchedData = query.data ?? null
-    const loading = Boolean(username) && query.isPending
-    const fetchError = query.error
-        ? query.error instanceof Error
-            ? query.error.message
-            : String(query.error)
-        : null
+    const loading = dataProp === undefined && query.isPending
+    const fetchFailedWithoutData = query.isError && fetchedData === null && dataProp === undefined
 
     // ── Choose data source ─────────────────────────────────────────────────
     const data = dataProp ?? fetchedData ?? EMPTY_CONTRIBUTIONS
@@ -596,13 +617,13 @@ export const GithubCalendar = memo(function GithubCalendar({
         )
     }
 
-    if (fetchError) {
+    if (fetchFailedWithoutData) {
         return (
-            <div className={cn("w-fit mx-auto flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive", className)}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                {fetchError}
+            <div
+                className={cn("w-fit mx-auto px-3 py-2 text-sm text-muted-foreground", className)}
+                role="status"
+            >
+                Contribution activity is temporarily unavailable.
             </div>
         )
     }
@@ -622,7 +643,13 @@ export const GithubCalendar = memo(function GithubCalendar({
                         height={svgHeight}
                         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
                         className="overflow-visible"
+                        role="img"
+                        aria-labelledby={`${graphTitleId} ${graphDescriptionId}`}
                     >
+                        <title id={graphTitleId}>GitHub contribution graph</title>
+                        <desc id={graphDescriptionId}>
+                            {`${contributionTotal.toLocaleString()} ${getContributionSummaryLabel(contributionTotal)}, from ${resolvedStart} through ${resolvedEnd}.`}
+                        </desc>
                         {/* month labels */}
                         {showMonthLabels && (() => {
                             const byWeek = new Map<number, string>()
@@ -648,7 +675,7 @@ export const GithubCalendar = memo(function GithubCalendar({
                             week.map((date, di) => {
                                 const entry = date ? filteredData[date] : undefined
                                 const level: ContributionLevel = entry?.level ?? 0
-                                const cellCenterX = wi * step + cellSize / 2
+                                const cellCenterX = wi * step + effectiveCellSize / 2
                                 const cellTopY = monthLabelHeight + di * step
 
                                 if (!date) {
@@ -730,7 +757,7 @@ export const GithubCalendar = memo(function GithubCalendar({
                         <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                             <span>Less</span>
                             {CONTRIBUTION_LEVELS.map((level) => (
-                                <svg key={level} width={effectiveCellSize} height={effectiveCellSize}>
+                                <svg key={level} width={effectiveCellSize} height={effectiveCellSize} aria-hidden="true">
                                     <rect
                                         width={effectiveCellSize}
                                         height={effectiveCellSize}

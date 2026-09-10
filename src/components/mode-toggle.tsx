@@ -26,6 +26,8 @@ function ModeToggle() {
         void playSound(click8bitSound.dataUri, {
           volume: 0.25,
           playbackRate: nextTheme === 'light' ? 1.25 : 0.85,
+        }).catch(() => {
+          // Theme switching should still work when audio is unavailable.
         })
 
         setAnimationKey((key) => key + 1)

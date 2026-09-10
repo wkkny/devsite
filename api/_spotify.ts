@@ -1,168 +1,157 @@
 import { Buffer } from "node:buffer"
 import process from "node:process"
 
-import type { VercelResponse } from "@vercel/node"
-
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
-const ACCESS_TOKEN_COOKIE = "spotify_access_token"
-const REFRESH_TOKEN_COOKIE = "spotify_refresh_token"
-const ONE_YEAR_IN_SECONDS = 31_536_000
-
-export const SPOTIFY_SCOPES = [
-  "user-read-currently-playing",
-  "user-read-playback-state",
-  "user-read-recently-played",
-].join(" ")
-
-export type SpotifyCookies = {
-  accessToken?: string
-  refreshToken?: string
-}
+const REQUEST_TIMEOUT_MS = 4_000
+const TOKEN_EXPIRY_BUFFER_MS = 30_000
 
 type SpotifyTokenResponse = {
   access_token: string
-  token_type: string
   expires_in: number
-  refresh_token?: string
-  scope?: string
 }
 
-export function getRequiredEnv(name: string) {
-  const value = process.env[name]
+let cachedAccessToken: { value: string; expiresAt: number } | undefined
+let refreshInFlight: Promise<string> | undefined
+
+export class SpotifyRequestError extends Error {
+  readonly status: number
+  readonly retryAfterSeconds: number | null
+
+  constructor(
+    status: number,
+    retryAfterSeconds: number | null = null
+  ) {
+    super("Spotify request failed")
+    this.name = "SpotifyRequestError"
+    this.status = status
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+export class SpotifyConfigurationError extends Error {
+  constructor() {
+    super("Spotify is not configured")
+    this.name = "SpotifyConfigurationError"
+  }
+}
+
+export class SpotifyTimeoutError extends Error {
+  constructor() {
+    super("Spotify request timed out")
+    this.name = "SpotifyTimeoutError"
+  }
+}
+
+function getRequiredEnv(name: string) {
+  const value = process.env[name]?.trim()
 
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`)
+    throw new SpotifyConfigurationError()
   }
 
   return value
 }
 
-export function getSpotifyConfig() {
-  return {
-    clientId: getRequiredEnv("VITE_SPOTIFY_CLIENT_ID"),
-    clientSecret: getRequiredEnv("SPOTIFY_CLIENT_SECRET"),
-    redirectUri: getRequiredEnv("VITE_SPOTIFY_REDIRECT_URI"),
-  }
-}
-
-export function getAuthorizationHeader() {
-  const { clientId, clientSecret } = getSpotifyConfig()
+function getAuthorizationHeader() {
+  const clientId = getRequiredEnv("SPOTIFY_CLIENT_ID")
+  const clientSecret = getRequiredEnv("SPOTIFY_CLIENT_SECRET")
 
   return `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`
 }
 
-export function parseCookies(cookieHeader: string | undefined) {
-  const cookies: Record<string, string> = {}
+export function getRetryAfterSeconds(response: Response) {
+  const header = response.headers.get("retry-after")
+  if (header === null) return null
 
-  if (!cookieHeader) {
-    return cookies
-  }
+  const seconds = Number(header)
 
-  for (const cookie of cookieHeader.split(";")) {
-    const [name, ...value] = cookie.split("=")
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds)
 
-    if (!name) {
-      continue
+  const retryAt = Date.parse(header)
+
+  return Number.isNaN(retryAt)
+    ? null
+    : Math.max(Math.ceil((retryAt - Date.now()) / 1_000), 0)
+}
+
+async function requestAccessToken() {
+  let response: Response
+
+  try {
+    response = await fetch(SPOTIFY_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: getAuthorizationHeader(),
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: getRequiredEnv("SPOTIFY_REFRESH_TOKEN"),
+      }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") {
+      throw new SpotifyTimeoutError()
     }
 
-    cookies[name.trim()] = decodeURIComponent(value.join("=").trim())
+    throw error
   }
 
-  return cookies
-}
-
-export function isPrivateSpotifyAuthMode() {
-  return process.env.VITE_SPOTIFY_AUTH_MODE === "private"
-}
-
-export function getSpotifyCookies(
-  cookieHeader: string | undefined
-): SpotifyCookies {
-  const cookies = parseCookies(cookieHeader)
-
-  return {
-    accessToken: cookies[ACCESS_TOKEN_COOKIE],
-    refreshToken: cookies[REFRESH_TOKEN_COOKIE],
-  }
-}
-
-function serializeCookie(name: string, value: string, maxAge: number) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : ""
-
-  return `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly${secure}; SameSite=Lax`
-}
-
-export function setSpotifyCookies(
-  res: VercelResponse,
-  token: Pick<
-    SpotifyTokenResponse,
-    "access_token" | "expires_in" | "refresh_token"
-  >
-) {
-  const cookies = [
-    serializeCookie(ACCESS_TOKEN_COOKIE, token.access_token, token.expires_in),
-  ]
-
-  if (token.refresh_token) {
-    cookies.push(
-      serializeCookie(
-        REFRESH_TOKEN_COOKIE,
-        token.refresh_token,
-        ONE_YEAR_IN_SECONDS
-      )
+  if (!response.ok) {
+    throw new SpotifyRequestError(
+      response.status,
+      getRetryAfterSeconds(response)
     )
   }
 
-  res.setHeader("Set-Cookie", cookies)
-}
+  const data: unknown = await response.json()
 
-export function clearSpotifyCookies(res: VercelResponse) {
-  res.setHeader("Set-Cookie", [
-    serializeCookie(ACCESS_TOKEN_COOKIE, "", 0),
-    serializeCookie(REFRESH_TOKEN_COOKIE, "", 0),
-  ])
-}
-
-async function requestToken(body: URLSearchParams) {
-  const response = await fetch(SPOTIFY_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: getAuthorizationHeader(),
-    },
-    body,
-  })
-  const data = (await response.json()) as Partial<SpotifyTokenResponse> & {
-    error?: string
-    error_description?: string
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("access_token" in data) ||
+    typeof data.access_token !== "string" ||
+    !("expires_in" in data) ||
+    typeof data.expires_in !== "number" ||
+    data.expires_in <= 0
+  ) {
+    throw new Error("Invalid Spotify token response")
   }
 
-  if (!response.ok || data.error || !data.access_token || !data.expires_in) {
-    throw new Error(
-      data.error_description ?? data.error ?? "Spotify token request failed"
-    )
+  const token = data as SpotifyTokenResponse
+  cachedAccessToken = {
+    value: token.access_token,
+    expiresAt:
+      Date.now() +
+      Math.max(0, token.expires_in * 1_000 - TOKEN_EXPIRY_BUFFER_MS),
   }
 
-  return data as SpotifyTokenResponse
+  return token.access_token
 }
 
-export function exchangeCodeForToken(code: string) {
-  const { redirectUri } = getSpotifyConfig()
+export async function getSpotifyAccessToken(forceRefresh = false) {
+  if (
+    !forceRefresh &&
+    cachedAccessToken &&
+    cachedAccessToken.expiresAt > Date.now()
+  ) {
+    return cachedAccessToken.value
+  }
 
-  return requestToken(
-    new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri,
-    })
-  )
-}
+  if (refreshInFlight) {
+    return refreshInFlight
+  }
 
-export function refreshAccessToken(refreshToken: string) {
-  return requestToken(
-    new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    })
-  )
+  if (forceRefresh) {
+    cachedAccessToken = undefined
+  }
+
+  refreshInFlight = requestAccessToken()
+
+  try {
+    return await refreshInFlight
+  } finally {
+    refreshInFlight = undefined
+  }
 }

@@ -7,19 +7,27 @@ function getSystemTheme(): ResolvedTheme {
 }
 
 function getStoredTheme(): Theme {
-  const stored = localStorage.getItem('theme')
-  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark'
+  try {
+    const stored = localStorage.getItem('theme')
+    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark'
+  } catch {
+    return 'dark'
+  }
+}
+
+function resolveTheme(theme: Theme): ResolvedTheme {
+  return theme === 'system' ? getSystemTheme() : theme
 }
 
 function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getStoredTheme)
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => getSystemTheme())
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme))
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
     const applyTheme = () => {
-      const nextTheme = theme === 'system' ? getSystemTheme() : theme
+      const nextTheme = resolveTheme(theme)
       const root = document.documentElement
 
       root.classList.remove('light', 'dark')
@@ -35,7 +43,11 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme])
 
   const setTheme = (nextTheme: Theme) => {
-    localStorage.setItem('theme', nextTheme)
+    try {
+      localStorage.setItem('theme', nextTheme)
+    } catch {
+      // The selected theme still applies when storage is unavailable.
+    }
     setThemeState(nextTheme)
   }
 

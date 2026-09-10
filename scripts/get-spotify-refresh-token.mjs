@@ -9,21 +9,43 @@ const REDIRECT_URI = `http://127.0.0.1:${PORT}/callback`
 const TOKEN_URL = "https://accounts.spotify.com/api/token"
 const SCOPES = [
   "user-read-currently-playing",
-  "user-read-playback-state",
   "user-read-recently-played",
 ].join(" ")
 
-const clientId = process.env.VITE_SPOTIFY_CLIENT_ID
+const clientId = process.env.SPOTIFY_CLIENT_ID
 const clientSecret = process.env.SPOTIFY_CLIENT_SECRET
 
 if (!clientId || !clientSecret) {
   console.error(
-    "Missing VITE_SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env"
+    "Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET in .env"
   )
   process.exit(1)
 }
 
 const state = randomBytes(16).toString("hex")
+
+function closeServer(exitCode) {
+  if (exitCode !== undefined) process.exitCode = exitCode
+  server.close()
+}
+
+function openBrowser(url) {
+  const [command, args] = process.platform === "darwin"
+    ? ["open", [url]]
+    : process.platform === "win32"
+      ? ["rundll32.exe", ["url.dll,FileProtocolHandler", url]]
+      : ["xdg-open", [url]]
+
+  const child = spawn(command, args, {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+  })
+  child.once("error", () => {
+    console.warn("Could not open a browser automatically; use the URL above.")
+  })
+  child.unref()
+}
 
 function buildAuthorizeUrl() {
   const params = new URLSearchParams({
@@ -79,7 +101,8 @@ const server = createServer(async (req, res) => {
     res.writeHead(400, { "Content-Type": "text/html" })
     res.end("<p>Authorization failed — check the terminal.</p>")
     console.error(`Authorization failed: ${error ?? "state/code mismatch"}`)
-    process.exit(1)
+    closeServer(1)
+    return
   }
 
   try {
@@ -91,17 +114,18 @@ const server = createServer(async (req, res) => {
     console.log("\nAdd this to .env:\n")
     console.log(`SPOTIFY_REFRESH_TOKEN=${token.refresh_token}`)
     console.log("\nThen restart vercel dev.")
-    server.close()
-    process.exit(0)
+    closeServer()
   } catch (err) {
     res.writeHead(500, { "Content-Type": "text/html" })
     res.end("<p>Token exchange failed — check the terminal.</p>")
     console.error(err.message)
-    process.exit(1)
+    closeServer(1)
   }
 })
 
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`Waiting for Spotify authorization on ${REDIRECT_URI}…`)
-  spawn("open", [buildAuthorizeUrl()])
+  const authorizeUrl = buildAuthorizeUrl()
+  console.log(`If the browser does not open, visit:\n${authorizeUrl}\n`)
+  openBrowser(authorizeUrl)
 })

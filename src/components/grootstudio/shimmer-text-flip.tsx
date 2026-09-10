@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Children, useEffect, useState, memo } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { Transition, Variants } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -77,11 +77,12 @@ const ShimmerTextFlip = memo(function ShimmerTextFlip({
   onIndexChange,
 }: ShimmerTextFlipProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const prefersReducedMotion = useReducedMotion() ?? false
 
   const items = Children.toArray(children)
 
   useEffect(() => {
-    if (!play) return
+    if (!play || prefersReducedMotion) return
 
     const timer = setInterval(() => {
       setCurrentIndex((prev) => {
@@ -92,7 +93,7 @@ const ShimmerTextFlip = memo(function ShimmerTextFlip({
     }, interval * 1000)
 
     return () => clearInterval(timer)
-  }, [play, interval, items.length, onIndexChange])
+  }, [play, prefersReducedMotion, interval, items.length, onIndexChange])
 
   return (
     <AnimatePresence mode="wait" initial={false}>
@@ -103,9 +104,9 @@ const ShimmerTextFlip = memo(function ShimmerTextFlip({
           className
         )}
         style={{ "--shimmer-color": glowColor } as React.CSSProperties}
-        initial="initial"
-        animate="animate"
-        exit="exit"
+        initial={prefersReducedMotion ? false : "initial"}
+        animate={prefersReducedMotion ? undefined : "animate"}
+        exit={prefersReducedMotion ? undefined : "exit"}
         transition={transition}
         variants={variants}
       >
