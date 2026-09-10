@@ -56,7 +56,7 @@ function ProfileHero() {
 
         <div
           data-disable-bg-hover
-          className="flex min-h-40 min-w-0 flex-1 flex-col justify-end pt-4"
+          className="flex min-w-0 flex-1 flex-col"
         >
           <p className="truncate px-4 py-1 font-mono text-2xl font-medium tracking-tight whitespace-nowrap sm:text-3xl">
             Kritiraj B

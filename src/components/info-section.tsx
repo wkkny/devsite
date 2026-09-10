@@ -60,12 +60,16 @@ type IntroPhase = 'line' | 'travel' | 'done'
 
 const LINE_AT_S = 0.9
 const TRAVEL_AT_S = 1.9
-const DONE_AT_S = 2.9
+const DONE_AT_S = 3.0
 const TYPE_FIRST_S = 0.2
 const TYPE_ROW_STAGGER_S = 0.15
 const TYPE_SPEED_MS = 22
 const BIG_SIZE = 64
 const SMALL_SIZE = 24
+const BIG_GLYPH = 36
+const SMALL_GLYPH = 16
+const BIG_RADIUS = 12
+const SMALL_RADIUS = 6
 
 const LINE_ICONS: { icon: Icon; key: string }[] = [
   { icon: IconCode, key: 'Full Stack Developer' },
@@ -193,37 +197,63 @@ function IconIntroOverlay({ phase, slotsRef }: IconIntroOverlayProps) {
 
   return (
     <div ref={sectionRef} className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-      {LINE_ICONS.map(({ icon: Icon, key }, i) => {
+      {metrics &&
+        w > 0 &&
+        h > 0 &&
+        LINE_ICONS.map(({ icon: Icon, key }, i) => {
           const { row, col, cols } = layout[i]
           const lineX = (w - (cols - 1) * spacing) / 2 + col * spacing
           const lineY = canFitOneLine ? centerY : centerY + (row - 0.5) * rowSpacing
           const target = phase === 'travel' ? targetFor(key) : null
+          const travelTransition = {
+            duration: 0.62,
+            ease: [0.23, 1, 0.32, 1] as const,
+            delay: i * 0.07,
+            rotate: { times: [0, 0.4, 1], duration: 0.62, delay: i * 0.07, ease: 'easeInOut' as const },
+          }
           return (
             <motion.div
               key={key}
-              className="absolute flex items-center justify-center rounded-xl border border-line bg-muted/40 text-muted-foreground shadow-inner"
-              style={{ width: BIG_SIZE, height: BIG_SIZE, left: lineX, top: lineY }}
-              initial={{ x: -BIG_SIZE / 2, y: -BIG_SIZE / 2, opacity: 0, scale: 0.4 }}
+              className="pointer-events-none absolute flex items-center justify-center border border-line bg-muted/40 text-muted-foreground shadow-inner"
+              style={{ width: BIG_SIZE, height: BIG_SIZE, left: lineX - BIG_SIZE / 2, top: lineY - BIG_SIZE / 2 }}
+              initial={{ left: w / 2 - BIG_SIZE / 2, top: h / 2 - BIG_SIZE / 2, opacity: 0, scale: 0.4 }}
               animate={
-                phase === 'line'
-                  ? { x: -BIG_SIZE / 2, y: -BIG_SIZE / 2, opacity: 1, scale: 1, rotate: 0 }
-                  : target
-                    ? {
-                        x: target.x - lineX - BIG_SIZE / 2,
-                        y: target.y - lineY - BIG_SIZE / 2,
-                        opacity: 1,
-                        scale: SMALL_SIZE / BIG_SIZE,
-                        rotate: [0, (i % 2 === 0 ? -1 : 1) * 8, 0],
-                      }
-                    : { x: -BIG_SIZE / 2, y: -BIG_SIZE / 2, opacity: 1, scale: 1 }
+                target
+                  ? {
+                      left: target.x - SMALL_SIZE / 2,
+                      top: target.y - SMALL_SIZE / 2,
+                      width: SMALL_SIZE,
+                      height: SMALL_SIZE,
+                      borderRadius: SMALL_RADIUS,
+                      opacity: 1,
+                      scale: 1,
+                      rotate: [0, (i % 2 === 0 ? -1 : 1) * 8, 0],
+                    }
+                  : {
+                      left: lineX - BIG_SIZE / 2,
+                      top: lineY - BIG_SIZE / 2,
+                      width: BIG_SIZE,
+                      height: BIG_SIZE,
+                      borderRadius: BIG_RADIUS,
+                      opacity: 1,
+                      scale: 1,
+                      rotate: 0,
+                    }
               }
-            transition={
-              phase === 'line'
-                ? { type: 'spring', stiffness: 480, damping: 26, delay: LINE_AT_S + i * 0.06 }
-                : { duration: 0.62, ease: [0.23, 1, 0.32, 1], delay: i * 0.07, rotate: { times: [0, 0.4, 1], duration: 0.62 } }
-            }
+              transition={target ? travelTransition : { type: 'spring', stiffness: 480, damping: 26, delay: LINE_AT_S + i * 0.06 }}
             >
-              <Icon className="size-9" />
+              <motion.span
+                className="flex"
+                style={{ width: BIG_GLYPH, height: BIG_GLYPH }}
+                animate={
+                  target
+                    ? { width: SMALL_GLYPH, height: SMALL_GLYPH }
+                    : { width: BIG_GLYPH, height: BIG_GLYPH }
+                }
+                transition={target ? travelTransition : { duration: 0 }}
+              >
+                <Icon className="size-full" />
+              </motion.span>
             </motion.div>
           )
         })}
