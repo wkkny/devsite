@@ -35,10 +35,10 @@ function BottomNav() {
               <a
                 key={item.label}
                 href={item.href}
-                className="flex flex-col items-center gap-0.5 rounded-[22px] px-3.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-95"
+                aria-label={item.label}
+                className="flex items-center justify-center rounded-full p-2.5 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-95"
               >
                 <Icon className="size-5" aria-hidden="true" />
-                <span className="text-[10px] font-medium">{item.label}</span>
               </a>
             )
           })}
