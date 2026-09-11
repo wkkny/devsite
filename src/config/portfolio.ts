@@ -94,21 +94,23 @@ export const portfolio = {
       name: 'placeholder-one',
       description: 'A placeholder project title.',
       destinations: {
-        repository: githubBaseUrl,
+        website: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
       stack: ['React', 'TypeScript', 'Vite'],
     },
     {
       name: 'placeholder-two',
       description: 'A placeholder project title.',
-      destinations: {},
+      destinations: {
+        website: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      },
       stack: ['Python', 'FastAPI'],
     },
     {
       name: 'placeholder-three',
       description: 'A placeholder project title.',
       destinations: {
-        repository: githubBaseUrl,
+        website: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
       stack: ['Go', 'PostgreSQL'],
     },
