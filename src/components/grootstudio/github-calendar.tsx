@@ -408,7 +408,13 @@ export const GithubCalendar = memo(function GithubCalendar({
             }
             return max
         })()
-        return { total, activeDays, maxStreak }
+        const now = new Date()
+        const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+        const monthTotal = entries.reduce(
+            (sum, [d, v]) => (d.startsWith(monthPrefix) ? sum + (v.count ?? (v.level > 0 ? 1 : 0)) : sum),
+            0
+        )
+        return { total, monthTotal, activeDays, maxStreak }
     }, [data])
 
     // ── Dimensions ────────────────────────────────────────────────────────
@@ -574,10 +580,14 @@ export const GithubCalendar = memo(function GithubCalendar({
                             {username && (
                                 <span className="font-semibold text-foreground">@{username}</span>
                             )}
-                            <span>contributed</span>
-                            <span className="font-semibold text-foreground">{stats.total.toLocaleString()}</span>
-                            <span>this year on</span>
-                            <a href={`https://github.com/${username}`} className="underline font-medium text-foreground">GitHub</a>
+                            {/* desktop: yearly total */}
+                            <span className="hidden sm:inline">contributed</span>
+                            <span className="hidden font-semibold text-foreground sm:inline">{stats.total.toLocaleString()}</span>
+                            <span className="hidden sm:inline">this year on</span>
+                            <a href={`https://github.com/${username}`} className="hidden underline font-medium text-foreground sm:inline">GitHub</a>
+                            {/* mobile: monthly total */}
+                            <span className="font-semibold text-foreground sm:hidden">{stats.monthTotal.toLocaleString()}</span>
+                            <span className="sm:hidden">contributions this month</span>
                         </div>
                     )}
                 </div>
