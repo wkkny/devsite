@@ -89,30 +89,5 @@ export const portfolio = {
       href: 'https://x.com/wkknyy',
     },
   },
-  projects: [
-    {
-      name: 'placeholder-one',
-      description: 'A placeholder project title.',
-      destinations: {
-        website: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      },
-      stack: ['React', 'TypeScript', 'Vite'],
-    },
-    {
-      name: 'placeholder-two',
-      description: 'A placeholder project title.',
-      destinations: {
-        website: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      },
-      stack: ['Python', 'FastAPI'],
-    },
-    {
-      name: 'placeholder-three',
-      description: 'A placeholder project title.',
-      destinations: {
-        website: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      },
-      stack: ['Go', 'PostgreSQL'],
-    },
-  ],
+  projects: [] as readonly PortfolioProject[],
 } satisfies PortfolioConfig
