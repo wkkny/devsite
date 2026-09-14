@@ -70,6 +70,47 @@ const BIG_GLYPH = 36
 const SMALL_GLYPH = 16
 const BIG_RADIUS = 12
 const SMALL_RADIUS = 6
+const INFO_INTRO_STORAGE_KEY = 'portfolio:info-intro:v1'
+const INFO_INTRO_STORAGE_TTL_MS = 60_000
+
+function scheduleInfoIntroExpiry(value: string, delayMs: number) {
+  return window.setTimeout(() => {
+    try {
+      if (window.localStorage.getItem(INFO_INTRO_STORAGE_KEY) === value) {
+        window.localStorage.removeItem(INFO_INTRO_STORAGE_KEY)
+      }
+    } catch {
+      // Storage may be unavailable in private browsing.
+    }
+  }, delayMs)
+}
+
+function hasCompletedInfoIntro() {
+  try {
+    const stored = window.localStorage.getItem(INFO_INTRO_STORAGE_KEY)
+    if (!stored) return false
+
+    const completedAt = Number(stored)
+    const remainingMs = INFO_INTRO_STORAGE_TTL_MS - (Date.now() - completedAt)
+    if (!Number.isFinite(completedAt) || remainingMs <= 0) {
+      window.localStorage.removeItem(INFO_INTRO_STORAGE_KEY)
+      return false
+    }
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+function saveCompletedInfoIntro() {
+  try {
+    const completedAt = String(Date.now())
+    window.localStorage.setItem(INFO_INTRO_STORAGE_KEY, completedAt)
+  } catch {
+    // The animation can still complete when storage is unavailable.
+  }
+}
 
 const LINE_ICONS: { icon: Icon; key: string }[] = [
   { icon: IconCode, key: portfolio.profile.occupation },
@@ -300,20 +341,51 @@ type InfoSectionProps = {
 function InfoSection({ className }: InfoSectionProps) {
   const reduced = useReducedMotion() ?? false
   const slotsRef = useRef<Map<string, HTMLElement | null>>(new Map())
-  const [phase, setPhase] = useState<IntroPhase>(reduced ? 'done' : 'line')
+  const [hasCompletedIntro, setHasCompletedIntro] = useState(hasCompletedInfoIntro)
+  const [phase, setPhase] = useState<IntroPhase>(() =>
+    reduced || hasCompletedIntro ? 'done' : 'line',
+  )
   const iconVisible: 'visible' | 'hidden' = reduced || phase === 'done' ? 'visible' : 'hidden'
 
   useEffect(() => {
-    if (reduced) {
+    if (!hasCompletedIntro) return
+
+    let timer: number | undefined
+    try {
+      const stored = window.localStorage.getItem(INFO_INTRO_STORAGE_KEY)
+      const completedAt = Number(stored)
+      const remainingMs = INFO_INTRO_STORAGE_TTL_MS - (Date.now() - completedAt)
+
+      if (!stored || !Number.isFinite(completedAt) || remainingMs <= 0) {
+        window.localStorage.removeItem(INFO_INTRO_STORAGE_KEY)
+        return
+      }
+
+      timer = scheduleInfoIntroExpiry(stored, remainingMs)
+    } catch {
+      // Storage may be unavailable in private browsing.
+    }
+
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [hasCompletedIntro])
+
+  useEffect(() => {
+    if (reduced || hasCompletedIntro) {
       setPhase('done')
       return
     }
     const timers = [
       window.setTimeout(() => setPhase('travel'), TRAVEL_AT_S * 1000),
-      window.setTimeout(() => setPhase('done'), DONE_AT_S * 1000),
+      window.setTimeout(() => {
+        saveCompletedInfoIntro()
+        setHasCompletedIntro(true)
+        setPhase('done')
+      }, DONE_AT_S * 1000),
     ]
     return () => timers.forEach(t => window.clearTimeout(t))
-  }, [reduced])
+  }, [hasCompletedIntro, reduced])
 
   const value = useMemo<IntroContextValue>(
     () => ({

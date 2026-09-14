@@ -174,6 +174,14 @@ async function fetchContributions(signal: AbortSignal): Promise<ContributionData
     if (!res.ok) {
         throw new Error("Contribution activity is temporarily unavailable.")
     }
+
+    const contentType = res.headers.get("content-type") ?? ""
+    if (!contentType.includes("application/json")) {
+        throw new Error(
+            "GitHub contributions are unavailable in the Vite dev server. Run `pnpm dev:spotify` locally."
+        )
+    }
+
     const json: unknown = await res.json()
     const response = parseGitHubContributionsResponse(json)
 
@@ -256,13 +264,15 @@ function CalendarSkeleton({ cellSize = 12, cellGap = 3, className }: { cellSize?
     const weeks = 53
     const days = 7
     return (
-        <div className={cn("w-fit mx-auto space-y-3 animate-pulse", className)}>
-            <div className="flex gap-6">
-                <div className="h-4 w-32 rounded bg-muted" />
-                <div className="h-4 w-20 rounded bg-muted" />
-                <div className="h-4 w-24 rounded bg-muted" />
-            </div>
-            <div className="overflow-x-auto">
+        <div
+            role="status"
+            aria-live="polite"
+            className={cn("w-fit mx-auto space-y-3", className)}
+        >
+            <p className="font-mono text-xs text-muted-foreground sm:text-sm">
+                Loading GitHub contributions...
+            </p>
+            <div className="overflow-x-auto animate-pulse" aria-hidden="true">
                 <svg
                     width={weeks * step - cellGap}
                     height={16 + days * step - cellGap}
@@ -388,7 +398,9 @@ export const GithubCalendar = memo(function GithubCalendar({
 
     // ── Stats ──────────────────────────────────────────────────────────────
     const stats = useMemo(() => {
-        const entries = Object.entries(data)
+        const entries = Object.entries(data).filter(
+            ([date]) => date >= resolvedStart && date <= resolvedEnd
+        )
         const total = entries.reduce((sum, [, v]) => sum + (v.count ?? (v.level > 0 ? 1 : 0)), 0)
         const activeDays = entries.filter(([, v]) => v.level > 0).length
         const maxStreak = (() => {
@@ -415,7 +427,7 @@ export const GithubCalendar = memo(function GithubCalendar({
             0
         )
         return { total, monthTotal, activeDays, maxStreak }
-    }, [data])
+    }, [data, resolvedStart, resolvedEnd])
 
     // ── Dimensions ────────────────────────────────────────────────────────
     const step = cellSize + cellGap
@@ -458,7 +470,7 @@ export const GithubCalendar = memo(function GithubCalendar({
                     >
                         <title id={graphTitleId}>GitHub contribution graph</title>
                         <desc id={graphDescriptionId}>
-                            {`${stats.total.toLocaleString()} contributions on GitHub over the last 12 months.`}
+                            {`${stats.total.toLocaleString()} contributions on GitHub from ${resolvedStart} through ${resolvedEnd}.`}
                         </desc>
                         {/* month labels */}
                         {showMonthLabels && (() => {
@@ -583,7 +595,7 @@ export const GithubCalendar = memo(function GithubCalendar({
                             {/* desktop: yearly total */}
                             <span className="hidden sm:inline">contributed</span>
                             <span className="hidden font-semibold text-foreground sm:inline">{stats.total.toLocaleString()}</span>
-                            <span className="hidden sm:inline">this year on</span>
+                            <span className="hidden sm:inline">in this period on</span>
                             <a href={`https://github.com/${username}`} className="hidden underline font-medium text-foreground sm:inline">GitHub</a>
                             {/* mobile: monthly total */}
                             <span className="font-semibold text-foreground sm:hidden">{stats.monthTotal.toLocaleString()}</span>

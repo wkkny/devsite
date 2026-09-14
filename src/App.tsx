@@ -9,23 +9,9 @@ import { PixelReveal } from '@/components/pixel-reveal'
 import ProjectsSection from '@/components/projects-section'
 import { portfolio } from '@/config/portfolio'
 
-// Rolling 12-month window: first day of last month through one year later
-function toISODate(date: Date): string {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-')
-}
-
-const calendarStart = new Date()
-calendarStart.setDate(1)
-calendarStart.setMonth(calendarStart.getMonth() - 1)
-const calendarEnd = new Date(calendarStart)
-calendarEnd.setFullYear(calendarEnd.getFullYear() + 1)
-calendarEnd.setDate(0)
-const calendarStartDate = toISODate(calendarStart)
-const calendarEndDate = toISODate(calendarEnd)
+// Show contributions from August 2026 through July 2027.
+const calendarStartDate = '2026-08-01'
+const calendarEndDate = '2027-07-31'
 
 function App() {
   return (

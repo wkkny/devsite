@@ -53,17 +53,33 @@ function ProjectRow({ project }: { project: PortfolioProject }) {
   )
 }
 
+function WorkInProgressBanner() {
+  return (
+    <aside
+      aria-label="Project status"
+      className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 font-mono text-xs text-amber-700 dark:text-amber-300 sm:text-sm"
+    >
+      <span className="size-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+      <span className="font-semibold">Work in progress</span>
+      <span className="text-muted-foreground">Project details are still being updated.</span>
+    </aside>
+  )
+}
+
 export default function ProjectsSection({ className }: { className?: string }) {
   return (
     <section className={className} aria-label="Projects">
       <h2 className="px-2 pb-2 font-mono text-xs text-muted-foreground sm:px-3 sm:text-sm">
         $ ls ~/projects
       </h2>
-      <ul className="border-y border-line">
-        {portfolio.projects.map((project) => (
-          <ProjectRow key={project.name} project={project} />
-        ))}
-      </ul>
+      <WorkInProgressBanner />
+      {portfolio.projects.length > 0 ? (
+        <ul className="border-y border-line">
+          {portfolio.projects.map((project) => (
+            <ProjectRow key={project.name} project={project} />
+          ))}
+        </ul>
+      ) : null}
     </section>
   )
 }
