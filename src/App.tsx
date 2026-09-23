@@ -178,22 +178,19 @@ function App() {
                 transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.42, ease: EASE_OUT, delay: 0.7 }}
               />
               <motion.div
-                className="absolute right-0 top-32 flex w-full items-center justify-end gap-2"
                 initial={contentInitial}
                 animate={contentAnimate}
                 transition={contentTransition}
               >
-                <ViewerCounter />
-                <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} side="bottom">
-                  <ThemeToggle />
-                </Tooltip>
-              </motion.div>
-              <motion.div
-                initial={contentInitial}
-                animate={contentAnimate}
-                transition={contentTransition}
-              >
-                <h1 id="profile-name" className="text-3xl font-medium tracking-tight sm:text-4xl">Kritiraj (Kenny)</h1>
+                <div className="relative flex min-w-0 items-center justify-between gap-2">
+                  <h1 id="profile-name" className="min-w-0 text-3xl font-medium tracking-tight sm:text-4xl">Kritiraj (Kenny)</h1>
+                  <div className="flex shrink-0 items-center gap-2 sm:absolute sm:-top-[7.5rem] sm:right-0">
+                    <ViewerCounter />
+                    <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} side="bottom">
+                      <ThemeToggle />
+                    </Tooltip>
+                  </div>
+                </div>
                 <p className="mt-1 text-sm text-muted-foreground">Aspiring Design Engineer</p>
                 <p className="mt-4 max-w-lg text-sm leading-6">
                   I design and build simple web interfaces that feel satisfying to use. I care about the details in how they look and respond, as well as usability, speed, and accessibility. I'm looking for a design engineering internship.
