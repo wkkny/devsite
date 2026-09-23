@@ -2,7 +2,7 @@ import { useMemo, useState, useSyncExternalStore } from 'react'
 import { flushSync } from 'react-dom'
 import { Dithering } from '@paper-design/shaders-react'
 import { motion, useReducedMotion } from 'motion/react'
-import { FiArrowUpRight, FiGithub, FiGrid, FiList, FiMail } from 'react-icons/fi'
+import { FiArrowUpRight, FiGithub, FiGrid, FiList, FiMail, FiMapPin } from 'react-icons/fi'
 import { FaXTwitter } from 'react-icons/fa6'
 
 import profilePicture from '@/assets/profile-picture.png'
@@ -267,7 +267,6 @@ function App() {
                 ) : null}
               </div>
             </div>
-            <ProjectStatus />
             <div className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col divide-y divide-border'}>
               {projects.map((project) => (
                 <Card
@@ -321,10 +320,15 @@ function App() {
                 </Card>
               ))}
             </div>
+            <ProjectStatus />
           </motion.section>
         </main>
-        <footer className="border-t border-border py-6 text-sm text-muted-foreground">
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border py-6 text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} Kritiraj (Kenny)</p>
+          <p className="inline-flex items-center gap-1.5">
+            <FiMapPin aria-hidden="true" />
+            New Delhi
+          </p>
         </footer>
       </div>
     </div>
