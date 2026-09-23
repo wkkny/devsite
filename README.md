@@ -27,6 +27,9 @@ Oxlint is configured in `.oxlintrc.json`, with `@shadcn/lint` registered as a pl
 | `bun run build` | Type-check the app and create a production build |
 | `bun run preview` | Preview the production build |
 | `bun run lint` | Run Oxlint |
+| `bun run test` | Run Spotify endpoint tests and the browser smoke test |
+| `bun run test:unit` | Run Spotify endpoint tests |
+| `bun run test:e2e` | Run the homepage smoke test in Chromium |
 | `bun run spotify:token` | Authorize Spotify and print a refresh token |
 
 ## Spotify status
