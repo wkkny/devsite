@@ -16,7 +16,6 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "baseUrl": ".",
     "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./src/*"]
@@ -28,5 +27,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "shared"]
+  "include": ["src"]
 }
