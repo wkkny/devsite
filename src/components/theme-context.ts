@@ -1,25 +1,19 @@
 import { createContext, useContext } from 'react'
 
-type Theme = 'light' | 'dark' | 'system'
-type ResolvedTheme = Exclude<Theme, 'system'>
+type Theme = 'light' | 'dark'
 
-type ThemeProviderContextValue = {
+type ThemeContextValue = {
   theme: Theme
-  setTheme: (theme: Theme) => void
-  resolvedTheme: ResolvedTheme
+  toggleTheme: () => void
 }
 
-const ThemeProviderContext = createContext<ThemeProviderContextValue | null>(null)
+const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 function useTheme() {
-  const context = useContext(ThemeProviderContext)
-
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-
+  const context = useContext(ThemeContext)
+  if (!context) throw new Error('useTheme must be used within ThemeProvider')
   return context
 }
 
-export { ThemeProviderContext, useTheme }
-export type { ResolvedTheme, Theme }
+export { ThemeContext, useTheme }
+export type { Theme }

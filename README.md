@@ -1,78 +1,41 @@
-# Kritiraj's Portfolio
+# Kritiraj B’s Portfolio
 
-Personal site built with Vite, React, and Tailwind. Two serverless functions live in `api/`: the Spotify now-playing pill and a GitHub contributions proxy for the calendar, so the site needs Vercel (or any host that runs those functions) to show them.
+A personal portfolio built with React, TypeScript, Vite, Tailwind CSS v4, and shadcn/ui. It uses the Nova preset, Base UI primitives, Geist Variable, CSS-variable theme tokens, and the `@/` import aliases.
 
-## Local development
-
-```sh
-pnpm install
-cp .env.example .env
-```
-
-The UI uses mock playback by default in local development. To exercise the real
-serverless endpoint, fill in the Spotify values in `.env`:
-
-1. Create an app at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard).
-2. Add `http://127.0.0.1:8765/callback` as a redirect URI for the local token script.
-3. Copy the client ID and secret into `.env`.
-4. Run `pnpm spot:token`, log in as the portfolio owner, and paste the printed
-   refresh token into `.env` as `SPOTIFY_REFRESH_TOKEN`. Spotify refresh tokens
-   are valid for six months, so repeat this step and replace the token before it
-   expires.
-5. Set `VITE_SPOTIFY_USE_MOCK=false` in `.env`.
-
-Then run:
+## Development
 
 ```sh
-pnpm dev:spotify
+bun install
+bun run dev
 ```
 
-This starts Vercel's dev server so the `api/` functions work. Plain `pnpm dev`
-runs the UI with mock Spotify data. The mock never runs in production.
+## Design system
 
-## Site content
+- `components.json` stores the shadcn/ui setup.
+- `src/index.css` defines the theme tokens and global styles.
+- `src/components/ui/` contains the installed shadcn/ui components.
+- Add more components with `bunx --bun shadcn@latest add <component>`.
 
-Name, roles, email, timezone, GitHub username, and project entries all live in
-`src/config/portfolio.ts`. Edit that file to change what the site shows — no
-component changes needed.
-
-## API endpoints
-
-| Endpoint | What it does |
-| --- | --- |
-| `GET /api/now-playing` | Owner's current/recent Spotify playback, CDN-cached ~10s |
-| `GET /api/github-contributions` | Owner's GitHub contribution graph, CDN-cached ~1h |
-| `POST /api/clear-spotify-cookies` | One-time cleanup of legacy Spotify cookies |
-
-## Deploy to Vercel
-
-1. Push this repo to GitHub, then import it at [vercel.com/new](https://vercel.com/new). Vercel detects Vite, sets the build command to `pnpm build`, and serves `dist/`. No changes needed there.
-2. In Vercel, Settings → Environment Variables, add:
-
-   | Variable | Value |
-   | --- | --- |
-   | `SPOTIFY_CLIENT_ID` | your Spotify client ID |
-   | `SPOTIFY_CLIENT_SECRET` | your Spotify client secret |
-   | `SPOTIFY_REFRESH_TOKEN` | the token from `pnpm spot:token` (replace every six months) |
-
-   These are server-only credentials; do not give them a `VITE_` prefix. Visitors
-   never authenticate with Spotify and no Spotify token is stored in cookies.
-3. Deploy. Every push to `main` deploys automatically after that.
-
-## CI
-
-GitHub Actions (`.github/workflows/ci.yml`) runs `pnpm lint`, `pnpm test`, and
-`pnpm build` on every push and pull request. The build type-checks both the
-frontend (`src/`) and the serverless functions (`api/`) in strict mode.
+Oxlint is configured in `.oxlintrc.json`, with `@shadcn/lint` registered as a plugin. Existing Oxlint rules are preserved; no shadcn-specific rules are enabled yet.
 
 ## Scripts
 
 | Command | What it does |
 | --- | --- |
-| `pnpm dev` | Vite dev server, no API functions |
-| `pnpm dev:spotify` | `vercel dev`, UI plus `api/` functions on port 3000 |
-| `pnpm spot:token` | Refresh-token helper on port 8765 |
-| `pnpm build` | Typecheck and production build |
-| `pnpm lint` | oxlint |
-| `pnpm test` | Run the Vitest suite once |
-| `pnpm test:watch` | Run Vitest in watch mode |
+| `bun run dev` | Start the local Vite server |
+| `bun run dev:spotify` | Start Vercel's local server for the live Spotify endpoint |
+| `bun run build` | Type-check the app and create a production build |
+| `bun run preview` | Preview the production build |
+| `bun run lint` | Run Oxlint |
+| `bun run test` | Run Spotify endpoint tests and the browser smoke test |
+| `bun run test:unit` | Run Spotify endpoint tests |
+| `bun run test:e2e` | Run the homepage smoke test in Chromium |
+| `bun run spotify:token` | Authorize Spotify and print a refresh token |
+
+## Spotify status
+
+The hero shows the current song, or the most recent song if it played within the last 24 hours. The song title links to Spotify. If playback is unavailable, the line is hidden.
+
+Plain `bun run dev` shows a sample song. To use your own playback locally, copy `.env.example` to `.env`, add `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`, register `http://127.0.0.1:8765/callback` as a redirect URI in your Spotify app, and run `bun run spotify:token`. Add the printed `SPOTIFY_REFRESH_TOKEN` to `.env`, set `VITE_SPOTIFY_USE_MOCK=false`, then run `bun run dev:spotify`.
+
+Set the same three `SPOTIFY_` variables in Vercel for production. Keep them server-side; they must never use the `VITE_` prefix.
