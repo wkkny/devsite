@@ -4,6 +4,7 @@
 import {
   cloneElement,
   isValidElement,
+  type FocusEvent,
   type PointerEvent,
   type ReactElement,
   type ReactNode,
@@ -19,7 +20,6 @@ import { createPortal } from "react-dom";
 import { TooltipSurface } from "@/components/motion/tooltip-surface";
 import { useDismiss } from "@/lib/hooks/use-dismiss";
 import { useHoverGesture } from "@/lib/hooks/use-hover-gesture";
-import { useTapGesture } from "@/lib/hooks/use-tap-gesture";
 import { cn } from "@/lib/utils";
 
 type Side = "top" | "right" | "bottom" | "left";
@@ -155,27 +155,12 @@ export function Tooltip({
     setOpen(false);
   }, [open, setOpen]);
 
-  // A finger never hovers, and Safari does not focus a button on tap either, so
-  // the label is only reachable if the tap itself opens the tooltip. A click
-  // carries no pointerType, so the pointerdown that preceded it is what says
-  // whether this was a tap; keyboard activation arrives with no pointerdown at
-  // all, and focus has already shown the label there.
-  const tap = useTapGesture<boolean>();
+  // Touch pointers do not hover, so taps never open the visible label. Keep it
+  // available to keyboard users when focus-visible is active.
+  const showOnKeyboardFocus = useCallback((event: FocusEvent<HTMLSpanElement>) => {
+    if (event.target instanceof Element && event.target.matches(":focus-visible")) show();
+  }, [show]);
 
-  const toggleOnTap = useCallback(() => {
-    const gesture = tap.take();
-    if (!gesture || gesture.pointerType === "mouse") return;
-    if (gesture.state) {
-      hide();
-      return;
-    }
-    if (timer.current) clearTimeout(timer.current);
-    place();
-    setOpen(true);
-  }, [hide, place, tap, setOpen]);
-
-  // ...and closed again by the next tap that lands somewhere else. The label
-  // covers nothing interactive, so that tap passes through to what it hit.
   useDismiss(open, hide, anchorRef);
 
   // Keep the tooltip pinned to the trigger while it's open and the page scrolls
@@ -236,25 +221,15 @@ export function Tooltip({
           ref={wrapperRef}
           role="presentation"
           className={cn("relative inline-flex align-middle", wrapperClassName)}
-          // Pointer events, not the mouse pair: a tap fires compatibility
-          // mouseenter/mouseleave that carry no pointerType, which raced the tap
-          // path into opening and closing the same label.
+          // Pointer events ensure touch taps do not masquerade as hover.
           onPointerEnter={(event: PointerEvent) => {
             if (hover.enter(event)) show();
           }}
           onPointerLeave={(event: PointerEvent) => {
             if (hover.leave(event)) hide();
           }}
-          onFocus={show}
+          onFocus={showOnKeyboardFocus}
           onBlur={hide}
-          onPointerDown={(event: PointerEvent) => tap.start(event, open)}
-          // A gesture the platform took away sends no click, and a key press
-          // starts an activation that never had a pointer behind it. Either way
-          // the record has to go, or the next click reads a finger that has long
-          // since lifted.
-          onPointerCancel={tap.drop}
-          onKeyDown={tap.drop}
-          onClick={toggleOnTap}
         >
           {trigger}
         </span>
