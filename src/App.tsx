@@ -210,7 +210,7 @@ function App() {
                   </Tooltip>
                   <EmailSocialLink />
                 </nav>
-                <div className="mt-5 w-fit max-w-xs">
+                <div className="mt-5 min-h-6 w-fit max-w-xs">
                   <SpotifyStatus />
                 </div>
               </motion.div>
