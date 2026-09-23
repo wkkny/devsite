@@ -217,7 +217,7 @@ export function PixelReveal({ onCovered, onRevealComplete, colors }: { onCovered
         inset: 0,
         height: '100dvh',
         opacity: 0,
-        pointerEvents: 'auto', zIndex: 999,
+        pointerEvents: 'none', zIndex: 999,
         transform: 'translateZ(0)', backfaceVisibility: 'hidden',
       }}
     />

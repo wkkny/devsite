@@ -178,7 +178,7 @@ function App() {
                 transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.42, ease: EASE_OUT, delay: 0.7 }}
               />
               <motion.div
-                className="absolute right-0 top-48 flex w-full items-center justify-end gap-2 sm:top-32"
+                className="absolute right-0 top-32 flex w-full items-center justify-end gap-2"
                 initial={contentInitial}
                 animate={contentAnimate}
                 transition={contentTransition}

@@ -4,6 +4,8 @@ import { flushSync } from 'react-dom'
 import { ThemeContext, type Theme } from '@/components/theme-context'
 import { PixelReveal, type RevealColors } from '@/components/pixel-reveal'
 
+const SKIP_THEME_REVEAL_QUERY = '(prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 768px)'
+
 function getInitialTheme(): Theme {
   try {
     const storedTheme = window.localStorage.getItem('theme')
@@ -39,7 +41,7 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   const toggleTheme = () => {
     if (transitioning.current) return
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (window.matchMedia(SKIP_THEME_REVEAL_QUERY).matches) {
       applyTheme(nextTheme)
       return
     }

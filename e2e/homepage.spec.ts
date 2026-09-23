@@ -15,6 +15,20 @@ test('homepage loads and its main controls work', async ({ page }) => {
       body: JSON.stringify({ value: 42 }),
     }),
   )
+  await page.route('**/api/now-playing', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'playing',
+        track: {
+          title: 'Bohemian Rhapsody',
+          artist: 'Queen',
+          spotifyUrl: 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
+        },
+      }),
+    }),
+  )
 
   await page.goto('/')
 
