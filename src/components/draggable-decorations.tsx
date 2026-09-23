@@ -18,6 +18,7 @@ import {
   SiTailwindcss,
   SiTanstack,
   SiTypescript,
+  SiVercel,
 } from 'react-icons/si'
 
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,7 @@ const storageKey = 'kritiraj-draggable-layout-v1'
 const storageLifetime = 7 * 24 * 60 * 60 * 1000
 const addableItems = [
   { label: 'Next.js', icon: SiNextdotjs },
+  { label: 'Vercel', icon: SiVercel },
   { label: 'React', icon: SiReact },
   { label: 'Python', icon: SiPython },
   { label: 'FastAPI', icon: SiFastapi },
