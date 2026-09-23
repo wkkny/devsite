@@ -1,60 +1,77 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 
-import { ThemeProviderContext, type ResolvedTheme, type Theme } from '@/components/theme-context'
+import { ThemeContext, type Theme } from '@/components/theme-context'
+import { PixelReveal, type RevealColors } from '@/components/pixel-reveal'
 
-function getSystemTheme(): ResolvedTheme {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
-function getStoredTheme(): Theme {
+function getInitialTheme(): Theme {
   try {
-    const stored = localStorage.getItem('theme')
-    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark'
+    const storedTheme = window.localStorage.getItem('theme')
+    if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   } catch {
-    return 'dark'
+    return 'light'
   }
-}
-
-function resolveTheme(theme: Theme): ResolvedTheme {
-  return theme === 'system' ? getSystemTheme() : theme
 }
 
 function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(getStoredTheme)
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme))
+  const [theme, setTheme] = useState<Theme>(getInitialTheme)
+  const [reveal, setReveal] = useState<{ id: number; nextTheme: Theme; colors: RevealColors } | null>(null)
+  const nextRevealId = useRef(0)
+  const transitioning = useRef(false)
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-    const applyTheme = () => {
-      const nextTheme = resolveTheme(theme)
-      const root = document.documentElement
-
-      root.classList.remove('light', 'dark')
-      root.classList.add(nextTheme)
-      root.style.colorScheme = nextTheme
-      setResolvedTheme(nextTheme)
-    }
-
-    applyTheme()
-    mediaQuery.addEventListener('change', applyTheme)
-
-    return () => mediaQuery.removeEventListener('change', applyTheme)
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.documentElement.style.colorScheme = theme
   }, [theme])
 
-  const setTheme = (nextTheme: Theme) => {
+  const applyTheme = (nextTheme: Theme) => {
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark')
+    document.documentElement.style.colorScheme = nextTheme
     try {
-      localStorage.setItem('theme', nextTheme)
+      window.localStorage.setItem('theme', nextTheme)
     } catch {
-      // The selected theme still applies when storage is unavailable.
+      // The visual toggle still works when storage is unavailable.
     }
-    setThemeState(nextTheme)
+    flushSync(() => setTheme(nextTheme))
+  }
+
+  const toggleTheme = () => {
+    if (transitioning.current) return
+    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      applyTheme(nextTheme)
+      return
+    }
+
+    const styles = getComputedStyle(document.documentElement)
+    transitioning.current = true
+    setReveal({
+      id: ++nextRevealId.current,
+      nextTheme,
+      colors: {
+        background: styles.getPropertyValue('--background').trim(),
+        foreground: styles.getPropertyValue('--foreground').trim(),
+        blue: styles.getPropertyValue('--portfolio-blue').trim(),
+      },
+    })
   }
 
   return (
-    <ThemeProviderContext value={{ theme, setTheme, resolvedTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
-    </ThemeProviderContext>
+      {reveal && (
+        <PixelReveal
+          key={reveal.id}
+          colors={reveal.colors}
+          onCovered={() => applyTheme(reveal.nextTheme)}
+          onRevealComplete={() => {
+            transitioning.current = false
+            setReveal((current) => current?.id === reveal.id ? null : current)
+          }}
+        />
+      )}
+    </ThemeContext.Provider>
   )
 }
 

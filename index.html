@@ -2,23 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kritiraj B</title>
+    <meta name="theme-color" content="#f8f9f7" />
+    <meta name="description" content="Kritiraj B is a full-stack developer and UI/UX designer based in New Delhi." />
+    <title>Kritiraj B — Developer &amp; Designer</title>
     <script>
-      ;(function () {
+      (() => {
         try {
-          var stored = localStorage.getItem('theme')
-          var media = window.matchMedia('(prefers-color-scheme: dark)')
-          var dark =
-            stored === 'dark' ||
-            (stored === 'system' ? media.matches : stored !== 'light')
-          var root = document.documentElement
-          root.classList.toggle('dark', dark)
-          root.style.colorScheme = dark ? 'dark' : 'light'
-        } catch (e) {}
+          const stored = localStorage.getItem('theme')
+          const dark = stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch {}
       })()
     </script>
+
   </head>
   <body>
     <div id="root"></div>

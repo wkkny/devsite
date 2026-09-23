@@ -1,67 +1,342 @@
-import { AsciiText } from '@/components/ascii-text'
-import { BottomNav } from '@/components/bottom-nav'
-import { Connections } from '@/components/connections'
-import { GithubCalendar } from '@/components/grootstudio/github-calendar'
-import { ModeToggle } from '@/components/mode-toggle'
-import { ProfileHero } from '@/components/profile-hero'
-import { InfoSection } from '@/components/info-section'
-import { PixelReveal } from '@/components/pixel-reveal'
-import ProjectsSection from '@/components/projects-section'
-import { portfolio } from '@/config/portfolio'
+import { useMemo, useState, useSyncExternalStore } from 'react'
+import { flushSync } from 'react-dom'
+import { Dithering } from '@paper-design/shaders-react'
+import { motion, useReducedMotion } from 'motion/react'
+import { FiArrowUpRight, FiChevronDown, FiGithub, FiGrid, FiList, FiMail } from 'react-icons/fi'
+import { FaXTwitter } from 'react-icons/fa6'
 
-// Show contributions from August 2026 through July 2027.
-const calendarStartDate = '2026-08-01'
-const calendarEndDate = '2027-07-31'
+import profilePicture from '@/assets/profile-picture.png'
+import { DraggableDecorations } from '@/components/draggable-decorations'
+import { GitHubActivity } from '@/components/github-activity'
+import { SpotifyStatus } from '@/components/spotify-status'
+import { Tooltip } from '@/components/motion/tooltip'
+import { useTheme } from '@/components/theme-context'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { ViewerCounter } from '@/components/viewer-counter'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { EASE_OUT } from '@/lib/ease'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+
+const projects = [
+  {
+    name: 'WorkBench',
+    mark: 'WB',
+    description:
+      'A local-first AI workbench for confidential industrial documents. The repo has a Windows desktop UI and an Ollama adapter. Its inspection workflow is still in progress.',
+    stack: ['Electron', 'React', 'TypeScript', 'FastAPI', 'Ollama'],
+    href: 'https://github.com/BrandNewDevs/WorkBench',
+  },
+  {
+    name: 'DigiLicense',
+    mark: 'DL',
+    description:
+      'A frontend prototype for a clearer driving-licence service in India. It covers service discovery and application tracking, but does not submit to a government system.',
+    stack: ['React', 'TanStack Start', 'TypeScript', 'Tailwind CSS'],
+    href: 'https://github.com/BrandNewDevs/DigiLicense',
+  },
+]
+
+const bannerTransition = { type: 'spring', visualDuration: 1.2, bounce: 0 } as const
+const desktopProjectsQuery = '(min-width: 768px)'
+
+function subscribeToDesktopProjects(onChange: () => void) {
+  const mediaQuery = window.matchMedia(desktopProjectsQuery)
+  mediaQuery.addEventListener('change', onChange)
+  return () => mediaQuery.removeEventListener('change', onChange)
+}
+
+function isDesktopProjectsWidth() {
+  return window.matchMedia(desktopProjectsQuery).matches
+}
 
 function App() {
+  const { theme } = useTheme()
+  const reducedMotion = useReducedMotion()
+  const shaderColors = useMemo(() => {
+    const styles = getComputedStyle(document.documentElement)
+    return {
+      back: styles.getPropertyValue('--background').trim(),
+      front: styles.getPropertyValue('--portfolio-blue').trim(),
+    }
+  }, [theme])
+  const contentInitial = reducedMotion ? { opacity: 0 } : { opacity: 0, transform: 'translate3d(0, 8px, 0)' }
+  const contentAnimate = reducedMotion ? { opacity: 1 } : { opacity: 1, transform: 'translate3d(0, 0, 0)' }
+  const contentTransition = reducedMotion
+    ? { duration: 0.2, ease: EASE_OUT }
+    : { duration: 0.36, ease: EASE_OUT, delay: 1.12 }
+  const desktopProjects = useSyncExternalStore(subscribeToDesktopProjects, isDesktopProjectsWidth, () => false)
+  const [projectView, setProjectView] = useState<'grid' | 'list'>('grid')
+  const visibleProjectView = desktopProjects ? projectView : 'grid'
+
+  function changeProjectView(nextView: string) {
+    if (nextView !== 'grid' && nextView !== 'list') return
+    if (nextView === projectView) return
+
+    if (typeof document.startViewTransition !== 'function') {
+      setProjectView(nextView)
+      return
+    }
+
+    document.startViewTransition(() => {
+      flushSync(() => setProjectView(nextView))
+    })
+  }
+
   return (
-    <main id="top" className="min-h-svh overflow-x-clip bg-background px-2 pb-32 text-foreground md:pb-8">
-      <PixelReveal />
-      <header className="sticky top-0 z-50 hidden bg-background/90 backdrop-blur-sm md:block">
-        <nav
-          className="mx-auto flex h-14 max-w-3xl items-center justify-between"
-        >
-          <a href="/" className="block text-foreground" aria-label={portfolio.profile.homeLabel}>
-            <AsciiText
-              text={portfolio.profile.monogram}
-              variant="pixel"
-              size="md"
-              animation="tetris"
-              animationDirection="ttb"
-              animationKey="load"
-            />
-          </a>
+    <div id="top" className="relative min-h-svh overflow-x-clip bg-background text-foreground">
+      <DraggableDecorations />
+      <div className="mx-auto w-full max-w-3xl px-6 sm:px-8">
+        <main className="flex flex-col gap-14 pb-12 sm:gap-16 sm:pb-16">
+          <section
+            id="profile"
+            aria-labelledby="profile-name"
+          >
+            <div
+              className="relative left-1/2 h-72 w-screen -translate-x-1/2 overflow-hidden bg-background text-foreground sm:h-96"
+            >
+              <motion.div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                initial={reducedMotion ? { opacity: 0 } : { clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }}
+                animate={reducedMotion ? { opacity: 1 } : { clipPath: 'polygon(0 0, 116% 0, 100% 100%, 0 100%)' }}
+                transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : bannerTransition}
+              >
+                <Dithering
+                  className="absolute inset-0"
+                  width="100%"
+                  height="100%"
+                  colorBack={shaderColors.back}
+                  colorFront={shaderColors.front}
+                  shape="simplex"
+                  type="4x4"
+                  size={4}
+                  speed={reducedMotion ? 0 : 0.3}
+                  scale={0.4}
+                  rotation={70}
+                  offsetX={-0.4}
+                />
+                {!reducedMotion && (
+                  <motion.span
+                    className="banner-shimmer"
+                    initial={{ transform: 'translate3d(0%, 0, 0) skewX(-16deg)' }}
+                    animate={{ transform: 'translate3d(116%, 0, 0) skewX(-16deg)' }}
+                    transition={bannerTransition}
+                  />
+                )}
+              </motion.div>
+              <div className="relative mx-auto flex h-full w-full max-w-3xl items-start justify-end px-6 pt-4 sm:px-8 sm:pt-6">
+                <motion.div
+                  role="group"
+                  aria-label="Profile actions"
+                  className="flex shrink-0 items-center justify-end gap-1 overflow-hidden rounded-lg bg-background/85 p-1 ring-1 ring-foreground/15 backdrop-blur-sm"
+                  style={{ transformOrigin: 'right center' }}
+                  initial={reducedMotion ? { opacity: 0 } : { width: 40, borderRadius: 999, opacity: 0, transform: 'scale(0.82)' }}
+                  animate={reducedMotion ? { opacity: 1 } : { width: 'auto', borderRadius: 8, opacity: 1, transform: 'scale(1)' }}
+                  transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : {
+                    opacity: { duration: 0.2, ease: EASE_OUT, delay: 0.28 },
+                    transform: { type: 'spring', visualDuration: 0.34, bounce: 0.2, delay: 0.28 },
+                    width: { type: 'spring', visualDuration: 0.58, bounce: 0, delay: 0.58 },
+                    borderRadius: { duration: 0.58, ease: EASE_OUT, delay: 0.58 },
+                  }}
+                >
+                  <motion.div
+                    className="shrink-0"
+                    initial={reducedMotion ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={reducedMotion ? { duration: 0 } : { duration: 0.24, ease: EASE_OUT, delay: 1.08 }}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={<Button variant="ghost" size="sm" />}
+                      >
+                        Socials <FiChevronDown aria-hidden="true" data-icon="inline-end" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-40">
+                        <DropdownMenuGroup>
+                          <DropdownMenuLabel>Social links</DropdownMenuLabel>
+                          <DropdownMenuItem render={<a href="https://github.com/wkkny" target="_blank" rel="noreferrer" />}>
+                            <FiGithub aria-hidden="true" data-icon="inline-start" />
+                            wkkny
+                          </DropdownMenuItem>
+                          <DropdownMenuItem render={<a href="https://x.com/wkknyy" target="_blank" rel="noreferrer" />}>
+                            <FaXTwitter aria-hidden="true" data-icon="inline-start" />
+                            @wkknyy
+                          </DropdownMenuItem>
+                          <DropdownMenuItem render={<a href="mailto:kritiraj.tech@gmail.com" />}>
+                            <FiMail aria-hidden="true" data-icon="inline-start" />
+                            Email
+                          </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </motion.div>
+                  <motion.div
+                    className="shrink-0"
+                    initial={reducedMotion ? false : { opacity: 0, transform: 'scale(0.7)' }}
+                    animate={{ opacity: 1, transform: 'scale(1)' }}
+                    transition={reducedMotion ? { duration: 0 } : { type: 'spring', visualDuration: 0.34, bounce: 0.2, delay: 0.28 }}
+                  >
+                    <ThemeToggle />
+                  </motion.div>
+                </motion.div>
+              </div>
+            </div>
+            <div className="relative z-20 -mt-24 flex flex-col gap-5 sm:-mt-32 sm:gap-6">
+              <motion.img
+                src={profilePicture}
+                alt="Kritiraj's profile picture"
+                className="size-44 rounded-lg border-8 border-background bg-background object-contain sm:size-56"
+                fetchPriority="high"
+                initial={reducedMotion ? { opacity: 0 } : { opacity: 0, transform: 'translate3d(0, 12px, 0)' }}
+                animate={reducedMotion ? { opacity: 1 } : { opacity: 1, transform: 'translate3d(0, 0, 0)' }}
+                transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.42, ease: EASE_OUT, delay: 0.7 }}
+              />
+              <motion.div
+                className="flex min-w-0 items-center justify-between gap-3 sm:absolute sm:right-0 sm:top-32 sm:w-[calc(100%-14rem)] sm:justify-end"
+                initial={contentInitial}
+                animate={contentAnimate}
+                transition={contentTransition}
+              >
+                <SpotifyStatus />
+                <ViewerCounter />
+              </motion.div>
+              <motion.div
+                initial={contentInitial}
+                animate={contentAnimate}
+                transition={contentTransition}
+              >
+                <h1 id="profile-name" className="text-3xl font-medium tracking-tight sm:text-4xl">Kritiraj (Kenny)</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Aspiring Design Engineer</p>
+                <p className="mt-4 max-w-lg text-sm leading-6">
+                  I design and build simple web interfaces that feel satisfying to use. I care about the details in how they look and respond, as well as usability, speed, and accessibility. I'm looking for a design engineering internship.
+                </p>
+              </motion.div>
+            </div>
+          </section>
 
-          <ModeToggle />
-        </nav>
-      </header>
+          <section id="github-activity" aria-label="GitHub contributions" className="-mt-6 sm:-mt-8">
+            <a
+              className="animated-arrow-link mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground"
+              href="https://github.com/wkkny"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span className="animated-arrow-link-label relative">wkkny</span>
+              <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3.5" />
+            </a>
+            <GitHubActivity />
+          </section>
 
-      <div className="mx-auto flex max-w-3xl flex-col gap-8">
-        <ProfileHero />
-        <div id="info" className="hidden scroll-mt-20 md:block">
-          <InfoSection />
-        </div>
-        <div className="-mt-6 md:hidden">
-          <Connections />
-        </div>
-        <section id="github" className="scroll-mt-20">
-          <GithubCalendar
-            username={portfolio.links.github.username}
-            startDate={calendarStartDate}
-            endDate={calendarEndDate}
-            cellSize={11}
-            cellGap={3}
-            cellShape="circle"
-            theme="minimal"
-            className="border-0"
-          />
-        </section>
-        <section id="projects" className="scroll-mt-20">
-          <ProjectsSection />
-        </section>
+          <motion.section
+            id="projects"
+            aria-labelledby="projects-heading"
+            initial={reducedMotion ? false : { opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={reducedMotion ? { duration: 0 } : { duration: 0.4, ease: EASE_OUT }}
+          >
+            <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+              <h2 id="projects-heading" className="text-2xl font-medium tracking-tight sm:text-3xl">Projects</h2>
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  className="animated-arrow-link inline-flex items-center gap-1 text-sm text-muted-foreground"
+                  href="https://github.com/wkkny?tab=repositories"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="animated-arrow-link-label relative">All repositories</span>
+                  <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3.5" />
+                </a>
+                {desktopProjects ? (
+                  <ToggleGroup
+                    aria-label="Project view"
+                    value={[projectView]}
+                    onValueChange={(values) => changeProjectView(values[0])}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Tooltip content="Grid view">
+                      <ToggleGroupItem value="grid" aria-label="Grid view">
+                        <FiGrid aria-hidden="true" />
+                      </ToggleGroupItem>
+                    </Tooltip>
+                    <Tooltip content="List view">
+                      <ToggleGroupItem value="list" aria-label="List view">
+                        <FiList aria-hidden="true" />
+                      </ToggleGroupItem>
+                    </Tooltip>
+                  </ToggleGroup>
+                ) : null}
+              </div>
+            </div>
+            <div className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col divide-y divide-border'}>
+              {projects.map((project) => (
+                <Card
+                  key={project.name}
+                  className={visibleProjectView === 'grid' ? 'h-full' : 'flex-row items-stretch rounded-none bg-transparent py-4 ring-0'}
+                  style={{ viewTransitionName: `project-${project.name.toLowerCase()}` }}
+                >
+                  {visibleProjectView === 'list' && (
+                    <div className="flex w-32 shrink-0 items-center p-3 sm:w-40">
+                      <Avatar className="size-24 rounded-lg after:rounded-lg sm:size-32">
+                        <AvatarFallback className="rounded-lg bg-muted text-xl font-medium text-muted-foreground">
+                          {project.mark}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                  )}
+                  <div className={visibleProjectView === 'list' ? 'min-w-0 flex-1' : undefined}>
+                    <CardHeader className="gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          {visibleProjectView === 'grid' && (
+                            <Avatar size="lg" className="rounded-lg after:rounded-lg">
+                              <AvatarFallback className="rounded-lg bg-muted text-xs font-medium text-muted-foreground">
+                                {project.mark}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          <CardTitle>{project.name}</CardTitle>
+                        </div>
+                        <a
+                          className="inline-flex shrink-0 items-center gap-2 text-sm font-medium transition-colors hover:text-muted-foreground"
+                          href={project.href}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          GitHub <FiArrowUpRight aria-hidden="true" />
+                        </a>
+                      </div>
+                      <p className={`${visibleProjectView === 'grid' ? 'min-h-20 ' : ''}leading-6 text-muted-foreground`}>
+                        {project.description}
+                      </p>
+                    </CardHeader>
+                    <CardContent className={visibleProjectView === 'grid' ? 'flex flex-1 flex-col' : 'space-y-4'}>
+                      <ul aria-label={`${project.name} technologies`} className="flex flex-wrap gap-x-3 gap-y-1">
+                        {project.stack.map((item) => (
+                          <li key={item} className="text-xs text-muted-foreground/70">{item}</li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </motion.section>
+        </main>
+
       </div>
-      <BottomNav />
-    </main>
+    </div>
   )
 }
 
