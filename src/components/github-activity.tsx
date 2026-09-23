@@ -6,9 +6,9 @@ import {
   HeatCalendarLegend,
   HeatCalendarTooltip,
 } from '@/components/charts/heat-calendar'
+import { portfolioOwner } from '@/data'
 import { parseContributions, type ContributionDay } from '../../shared/github-activity'
 
-const GITHUB_USERNAME = 'wkkny'
 const WEEKS = 53
 
 function dateForCell(start: Date, week: number, day: number) {
@@ -41,7 +41,7 @@ function GitHubActivity() {
     async function loadContributions() {
       try {
         const response = await fetch(
-          `https://github-contributions-api.jogruber.de/v4/${GITHUB_USERNAME}?y=last`,
+          `https://github-contributions-api.jogruber.de/v4/${portfolioOwner.githubUsername}?y=last`,
           { signal: controller.signal },
         )
         if (!response.ok) throw new Error('Unable to fetch GitHub contributions')

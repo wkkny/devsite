@@ -84,8 +84,8 @@ On a static host without Vercel functions, the frontend can still build and depl
 
 ## External services
 
-- The GitHub calendar requests public contribution data for `wkkny` from [github-contributions-api.jogruber.de](https://github-contributions-api.jogruber.de/). Change the username in `src/components/github-activity.tsx` when you fork the site.
-- The visitor count uses CounterAPI. Its endpoint is configured in `src/components/viewer-counter.tsx` and currently belongs to the author's portfolio.
+- The GitHub calendar requests public contribution data for the configured username from [github-contributions-api.jogruber.de](https://github-contributions-api.jogruber.de/). Change the username in `src/data.ts` when you fork the site.
+- The visitor count uses CounterAPI. Its endpoint is configured in `src/data.ts` and currently belongs to the author's portfolio.
 - The Spotify function requests playback data from Spotify's Web API. It keeps credentials on the server and returns only the track title, artist, link, and playback status to the browser.
 
 These widgets depend on their services being reachable. The portfolio page remains usable if a service is unavailable.
@@ -94,15 +94,15 @@ These widgets depend on their services being reachable. The portfolio page remai
 
 | File | What to edit |
 | --- | --- |
-| `src/App.tsx` | Name, introduction, social links, project descriptions, project links, and displayed project stacks. |
-| `src/assets/profile-picture.png` | Profile image and favicon source. |
+| `src/data.ts` | Owner name, role, bio, contact details, social links, GitHub account, visitor counter URL, and project content. |
+| `src/App.tsx` | Page layout and section order. |
+| `src/assets/profile-picture.png` | Profile image and favicon asset. |
 | `index.html` | Browser title, page description, favicon, and initial theme script. |
-| `src/components/github-activity.tsx` | GitHub username used for the contribution calendar. |
-| `src/components/viewer-counter.tsx` | CounterAPI endpoint used for visitor counts. |
+| `src/components/portfolio/` | Profile, social links, project cards, projects section, and footer markup. |
 | `src/components/draggable-decorations.tsx` | Default decorations and logos visitors can add. |
 | `src/index.css` | Theme colors, global styles, font setup, and animation styles. |
 
-The visitor counter currently points to the author's CounterAPI counter. Change that URL before using the counter on another portfolio.
+The visitor counter URL in `src/data.ts` currently points to the author's CounterAPI counter. Change it before using the counter on another portfolio.
 
 ## Project structure
 
@@ -111,8 +111,10 @@ api/                   Vercel function for Spotify playback
 e2e/                   Playwright browser tests
 scripts/               Spotify authorization helper
 shared/                Types and data parsing shared by the app and API
-src/App.tsx            Portfolio page and project content
+src/App.tsx            Page layout and section composition
+src/data.ts            Portfolio owner, social, counter, and project data
 src/components/        Page components, charts, theme, motion, and UI components
+src/components/portfolio/  Profile, projects, and footer sections
 src/lib/               Shared utilities and interaction hooks
 tests/                 Vitest unit tests
 ```
