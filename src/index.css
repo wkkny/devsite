@@ -286,7 +286,6 @@
   html {
     @apply font-sans;
     background-color: var(--background);
-    overscroll-behavior-y: none;
   }
 
   body {
