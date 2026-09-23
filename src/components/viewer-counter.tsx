@@ -4,15 +4,14 @@ import { FiEye } from 'react-icons/fi'
 import { Tooltip } from '@/components/motion/tooltip'
 import { EASED_LINEAR_CSS } from '@/lib/ease'
 import { cn } from '@/lib/utils'
-
-const counterUrl = 'https://counterapi.com/api/wkkny-devsite/view/home'
+import { portfolioOwner } from '@/data'
 
 export function ViewerCounter() {
   const [viewers, setViewers] = useState<number | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
-    const url = new URL(counterUrl)
+    const url = new URL(portfolioOwner.visitorCounterUrl)
     url.searchParams.set('unique', 'true')
 
     if (
