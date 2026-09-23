@@ -56,7 +56,7 @@ function EmailSocialLink() {
 
   return (
     <span className="email-social-link inline-flex items-center">
-      <Tooltip content={copyStatus === 'copied' ? 'Copied to clipboard' : copyStatus === 'error' ? 'Could not copy email' : 'Click to copy email'} side="bottom">
+      <Tooltip content={copyStatus === 'copied' ? 'Copied to clipboard' : copyStatus === 'error' ? 'Could not copy email' : 'Click to copy email'} side="top">
         <button
           aria-label={copyStatus === 'copied' ? 'Email copied to clipboard' : copyStatus === 'error' ? 'Could not copy email' : 'Copy email address'}
           className="email-trigger inline-flex items-center gap-1.5 leading-none text-muted-foreground hover:text-foreground focus-visible:text-foreground"
@@ -195,14 +195,18 @@ function App() {
                   I design and build simple web interfaces that feel satisfying to use. I care about the details in how they look and respond, as well as usability, speed, and accessibility. I'm looking for a design engineering internship.
                 </p>
                 <nav aria-label="Social links" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                  <a className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="https://x.com/wkknyy" target="_blank" rel="noreferrer">
-                    <FaXTwitter aria-hidden="true" />
-                    X/Twitter
-                  </a>
-                  <a className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="https://github.com/wkkny" target="_blank" rel="noreferrer">
-                    <FiGithub aria-hidden="true" />
-                    GitHub
-                  </a>
+                  <Tooltip content="Follow on X">
+                    <a aria-label="Follow on X" className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 font-medium transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="https://x.com/wkknyy" target="_blank" rel="noreferrer">
+                      Follow on
+                      <FaXTwitter aria-hidden="true" />
+                    </a>
+                  </Tooltip>
+                  <Tooltip content="Visit GitHub profile">
+                    <a className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 font-medium transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="https://github.com/wkkny" target="_blank" rel="noreferrer">
+                      GitHub
+                      <FiGithub aria-hidden="true" />
+                    </a>
+                  </Tooltip>
                   <EmailSocialLink />
                 </nav>
                 <div className="mt-5 w-fit max-w-xs">

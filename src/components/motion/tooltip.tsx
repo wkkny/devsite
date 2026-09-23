@@ -1,7 +1,6 @@
 "use client";
 // beui.dev/components/motion/tooltip
 
-import { AnimatePresence } from "motion/react";
 import {
   cloneElement,
   isValidElement,
@@ -206,9 +205,23 @@ export function Tooltip({
   // ThemeToggle does — then runs the tooltip's instead of its own. Composing
   // with `props.onClick` cannot save it either, because a component element's
   // props hold nothing the component does internally.
-  const trigger = isValidElement(children)
-    ? cloneElement(children as ReactElement<Record<string, unknown>>, {
-        "aria-describedby": id,
+  const child = isValidElement(children)
+    ? children as ReactElement<Record<string, unknown>>
+    : null;
+  const existingDescription = child?.props["aria-describedby"];
+  const existingIds = typeof existingDescription === "string"
+    ? existingDescription.trim().split(/\s+/).filter(Boolean)
+    : [];
+  const tooltipText = typeof content === "string" ? content.trim() : null;
+  const label = child?.props["aria-label"];
+  const repeatsAccessibleName = typeof label === "string" && tooltipText !== null &&
+    label.toLowerCase().includes(tooltipText.toLowerCase());
+  const descriptionIds = repeatsAccessibleName
+    ? existingIds
+    : [...new Set([...existingIds, id])];
+  const trigger = child
+    ? cloneElement(child, {
+        "aria-describedby": descriptionIds.length > 0 ? descriptionIds.join(" ") : undefined,
       })
     : null;
 
@@ -218,6 +231,7 @@ export function Tooltip({
         // biome-ignore lint/a11y/noStaticElementInteractions: This wrapper observes bubbling trigger events without replacing the control's handlers.
         <span
           ref={wrapperRef}
+          role="presentation"
           className={cn("relative inline-flex align-middle", wrapperClassName)}
           // Pointer events, not the mouse pair: a tap fires compatibility
           // mouseenter/mouseleave that carry no pointerType, which raced the tap
@@ -244,28 +258,27 @@ export function Tooltip({
       ) : null}
       {typeof document !== "undefined"
         ? createPortal(
-            <AnimatePresence>
-              {open && coords ? (
-                <span
-                  className="pointer-events-none fixed z-[9999]"
-                  style={{
-                    top: coords.top,
-                    left: coords.left,
-                    transform: anchorTransform[side],
-                  }}
-                >
-                  <TooltipSurface
-                    ref={surfaceRef}
-                    id={id}
-                    side={side}
-                    style={{ transformOrigin: transformOrigin[side], maxWidth: "calc(100vw - 16px)", whiteSpace: "normal" }}
-                    className={className}
-                  >
-                    {content}
-                  </TooltipSurface>
-                </span>
-              ) : null}
-            </AnimatePresence>,
+            <span
+              className="pointer-events-none fixed z-[9999]"
+              style={{
+                top: coords?.top ?? 0,
+                left: coords?.left ?? 0,
+                transform: anchorTransform[side],
+              }}
+            >
+              <TooltipSurface
+                ref={surfaceRef}
+                id={id}
+                side={side}
+                initial={false}
+                animate={open && coords ? "animate" : "exit"}
+                aria-hidden={repeatsAccessibleName ? true : undefined}
+                style={{ transformOrigin: transformOrigin[side], maxWidth: "calc(100vw - 16px)", whiteSpace: "normal" }}
+                className={className}
+              >
+                {content}
+              </TooltipSurface>
+            </span>,
             document.body,
           )
         : null}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PiSpotifyLogo } from 'react-icons/pi'
 
+import { Tooltip } from '@/components/motion/tooltip'
 import {
   isNowPlayingResponse,
   type NowPlayingResponse,
@@ -63,20 +64,22 @@ export function SpotifyStatus() {
             {playback.status === 'playing' ? 'Now playing on Spotify: ' : 'Recently played on Spotify: '}
           </span>
         )}
-        <a
-          className="group flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
-          href={playback.track.spotifyUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <PiSpotifyLogo aria-hidden="true" className="size-6 shrink-0" />
-          <span className="min-w-0 truncate">
-            <span className="font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current">
-              {playback.track.title}
-            </span>{' '}
-            by {playback.track.artist}
-          </span>
-        </a>
+        <Tooltip content="Open in Spotify" side="top">
+          <a
+            className="group flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
+            href={playback.track.spotifyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <PiSpotifyLogo aria-hidden="true" className="size-6 shrink-0" />
+            <span className="min-w-0 truncate">
+              <span className="font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current">
+                {playback.track.title}
+              </span>{' '}
+              by {playback.track.artist}
+            </span>
+          </a>
+        </Tooltip>
       </p>
     </>
   )
