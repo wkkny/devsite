@@ -56,26 +56,29 @@ export function SpotifyStatus() {
   if (!playback?.track || playback.status === 'idle') return null
 
   return (
-    <p className="min-w-0 text-sm leading-6 text-muted-foreground">
-      {!useMock && (
-        <span className="sr-only">
-          {playback.status === 'playing' ? 'Now playing on Spotify: ' : 'Recently played on Spotify: '}
-        </span>
-      )}
-      <a
-        className="group flex min-w-0 max-w-full items-center gap-2 text-muted-foreground"
-        href={playback.track.spotifyUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <PiSpotifyLogo aria-hidden="true" className="size-6 shrink-0" />
-        <span className="min-w-0 truncate">
-          <span className="font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current">
-            {playback.track.title}
-          </span>{' '}
-          by {playback.track.artist}
-        </span>
-      </a>
-    </p>
+    <>
+      <p className="min-w-0 text-sm leading-6 text-muted-foreground">
+        {!useMock && (
+          <span className="sr-only">
+            {playback.status === 'playing' ? 'Now playing on Spotify: ' : 'Recently played on Spotify: '}
+          </span>
+        )}
+        <a
+          className="group flex min-w-0 max-w-full items-center gap-2 text-muted-foreground"
+          href={playback.track.spotifyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <PiSpotifyLogo aria-hidden="true" className="size-6 shrink-0" />
+          <span className="min-w-0 truncate">
+            <span className="font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current">
+              {playback.track.title}
+            </span>{' '}
+            by {playback.track.artist}
+          </span>
+        </a>
+      </p>
+      <span aria-hidden="true" className="h-5 w-px shrink-0 bg-border" />
+    </>
   )
 }
