@@ -84,8 +84,8 @@ On a static host without Vercel functions, the frontend can still build and depl
 
 ## External services
 
-- The GitHub calendar requests public contribution data for `wkkny` from [github-contributions-api.jogruber.de](https://github-contributions-api.jogruber.de/). Change the username in `src/components/github-activity.tsx` when you fork the site.
-- The visitor count uses CounterAPI. Its endpoint is configured in `src/components/viewer-counter.tsx` and currently belongs to the author's portfolio.
+- The GitHub calendar requests public contribution data for the configured username from [github-contributions-api.jogruber.de](https://github-contributions-api.jogruber.de/). Change the username in `src/data.ts` when you fork the site.
+- The visitor count uses CounterAPI. Its endpoint is configured in `src/data.ts` and currently belongs to the author's portfolio.
 - The Spotify function requests playback data from Spotify's Web API. It keeps credentials on the server and returns only the track title, artist, link, and playback status to the browser.
 
 These widgets depend on their services being reachable. The portfolio page remains usable if a service is unavailable.
