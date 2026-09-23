@@ -78,7 +78,6 @@ export function SpotifyStatus() {
           </span>
         </a>
       </p>
-      <span aria-hidden="true" className="h-5 w-px shrink-0 bg-border" />
     </>
   )
 }

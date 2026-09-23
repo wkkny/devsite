@@ -202,12 +202,11 @@ function App() {
                 transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.42, ease: EASE_OUT, delay: 0.7 }}
               />
               <motion.div
-                className="flex min-w-0 items-center justify-between gap-3 sm:absolute sm:right-0 sm:top-32 sm:w-[calc(100%-14rem)] sm:justify-end"
+                className="absolute right-0 top-48 flex w-full justify-end sm:top-32"
                 initial={contentInitial}
                 animate={contentAnimate}
                 transition={contentTransition}
               >
-                <SpotifyStatus />
                 <ViewerCounter />
               </motion.div>
               <motion.div
@@ -220,6 +219,9 @@ function App() {
                 <p className="mt-4 max-w-lg text-sm leading-6">
                   I design and build simple web interfaces that feel satisfying to use. I care about the details in how they look and respond, as well as usability, speed, and accessibility. I'm looking for a design engineering internship.
                 </p>
+                <div className="mt-5 max-w-sm">
+                  <SpotifyStatus />
+                </div>
               </motion.div>
             </div>
           </section>
@@ -334,7 +336,22 @@ function App() {
             </div>
           </motion.section>
         </main>
-
+        <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border py-6 text-sm text-muted-foreground">
+          <p>© {new Date().getFullYear()} Kritiraj (Kenny)</p>
+          <nav aria-label="Social links" className="flex items-center gap-4">
+            <a className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="mailto:kritiraj.tech@gmail.com">
+              <FiMail aria-hidden="true" />
+              Email
+            </a>
+            <a aria-label="X" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="https://x.com/wkknyy" target="_blank" rel="noreferrer">
+              <FaXTwitter aria-hidden="true" />
+            </a>
+            <a className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="https://github.com/wkkny" target="_blank" rel="noreferrer">
+              <FiGithub aria-hidden="true" />
+              GitHub
+            </a>
+          </nav>
+        </footer>
       </div>
     </div>
   )
