@@ -8,6 +8,7 @@ import { FaXTwitter } from 'react-icons/fa6'
 import profilePicture from '@/assets/profile-picture.png'
 import { DraggableDecorations } from '@/components/draggable-decorations'
 import { GitHubActivity } from '@/components/github-activity'
+import { ProjectStatus } from '@/components/project-status'
 import { SpotifyStatus } from '@/components/spotify-status'
 import { Tooltip } from '@/components/motion/tooltip'
 import { useTheme } from '@/components/theme-context'
@@ -266,6 +267,7 @@ function App() {
                 ) : null}
               </div>
             </div>
+            <ProjectStatus />
             <div className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col divide-y divide-border'}>
               {projects.map((project) => (
                 <Card
