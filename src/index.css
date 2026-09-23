@@ -36,6 +36,27 @@
   display: none;
 }
 
+.theme-dot-cursor {
+  position: fixed;
+  z-index: 100000;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--foreground);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  html.has-theme-dot-cursor,
+  html.has-theme-dot-cursor * {
+    cursor: none !important;
+  }
+}
+
 .email-trigger {
   position: relative;
   padding: 0;

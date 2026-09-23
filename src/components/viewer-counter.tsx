@@ -55,20 +55,20 @@ export function ViewerCounter() {
     <Tooltip
       content="Visitors"
       side="bottom"
+      gap={2}
       wrapperClassName={viewers === null ? 'pointer-events-none' : undefined}
     >
-      <span
+      <output
         className={cn(
           'inline-flex h-10 shrink-0 items-center gap-2 text-sm font-medium text-muted-foreground motion-safe:transition-opacity motion-safe:duration-200',
           viewers === null ? 'opacity-0' : 'opacity-100',
         )}
         style={{ transitionTimingFunction: EASED_LINEAR_CSS }}
-        role="status"
         aria-label={viewers === null ? 'Visitor count loading' : `${viewers.toLocaleString()} visitors`}
       >
         <FiEye aria-hidden="true" className="size-4" />
         <span className="tabular-nums">{viewers === null ? '—' : viewers.toLocaleString()}</span>
-      </span>
+      </output>
     </Tooltip>
   )
 }

@@ -14,6 +14,7 @@ import { Tooltip } from '@/components/motion/tooltip'
 import { useTheme } from '@/components/theme-context'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ViewerCounter } from '@/components/viewer-counter'
+import { ThemeDotCursor } from '@/components/theme-dot-cursor'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -122,6 +123,7 @@ function App() {
 
   return (
     <div id="top" className="relative min-h-svh overflow-x-clip bg-background text-foreground">
+      <ThemeDotCursor />
       <DraggableDecorations />
       <div className="mx-auto w-full max-w-3xl px-6 sm:px-8">
         <main className="flex flex-col gap-14 pb-12 sm:gap-16 sm:pb-16">

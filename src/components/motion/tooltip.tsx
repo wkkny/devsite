@@ -35,6 +35,8 @@ export interface TooltipProps {
   onOpenChange?: (open: boolean) => void;
   id?: string;
   side?: Side;
+  /** Distance from the trigger in px. Default 8. */
+  gap?: number;
   /** Delay before showing (ms). Default 120. */
   delay?: number;
   className?: string;
@@ -69,6 +71,7 @@ export function Tooltip({
   content,
   children,
   side = "top",
+  gap = GAP,
   delay = 120,
   className,
   wrapperClassName,
@@ -106,20 +109,20 @@ export function Tooltip({
     const cx = r.left + r.width * (anchorPoint?.x ?? 0.5);
     const cy = r.top + r.height * (anchorPoint?.y ?? 0.5);
     const point: Record<Side, { top: number; left: number }> = {
-      top: { top: (anchorPoint ? cy : r.top) - GAP, left: cx },
-      bottom: { top: (anchorPoint ? cy : r.bottom) + GAP, left: cx },
-      left: { top: cy, left: (anchorPoint ? cx : r.left) - GAP },
-      right: { top: cy, left: (anchorPoint ? cx : r.right) + GAP },
+      top: { top: (anchorPoint ? cy : r.top) - gap, left: cx },
+      bottom: { top: (anchorPoint ? cy : r.bottom) + gap, left: cx },
+      left: { top: cy, left: (anchorPoint ? cx : r.left) - gap },
+      right: { top: cy, left: (anchorPoint ? cx : r.right) + gap },
     };
     const next = point[side];
     const width = surfaceRef.current?.offsetWidth ?? 0;
     const height = surfaceRef.current?.offsetHeight ?? 0;
     const dx = side === "left" ? width : side === "right" ? 0 : width / 2;
     const dy = side === "top" ? height : side === "bottom" ? 0 : height / 2;
-    next.left = Math.max(GAP + dx, Math.min(next.left, window.innerWidth - GAP - width + dx));
-    next.top = Math.max(GAP + dy, Math.min(next.top, window.innerHeight - GAP - height + dy));
+    next.left = Math.max(gap + dx, Math.min(next.left, window.innerWidth - gap - width + dx));
+    next.top = Math.max(gap + dy, Math.min(next.top, window.innerHeight - gap - height + dy));
     setCoords(previous => previous?.top === next.top && previous.left === next.left ? previous : next);
-  }, [side, anchorRef, anchorPoint]);
+  }, [side, anchorRef, anchorPoint, gap]);
 
   const positioned = coords !== null;
   useLayoutEffect(() => {
