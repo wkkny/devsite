@@ -6,19 +6,10 @@ import {
   HeatCalendarLegend,
   HeatCalendarTooltip,
 } from '@/components/charts/heat-calendar'
+import { parseContributions, type ContributionDay } from '../../shared/github-activity'
 
 const GITHUB_USERNAME = 'wkkny'
 const WEEKS = 53
-
-type ContributionDay = {
-  date: string
-  count: number
-  level: number
-}
-
-type ContributionResponse = {
-  contributions: ContributionDay[]
-}
 
 function dateForCell(start: Date, week: number, day: number) {
   const date = new Date(start)
@@ -55,8 +46,8 @@ function GitHubActivity() {
         )
         if (!response.ok) throw new Error('Unable to fetch GitHub contributions')
 
-        const data = (await response.json()) as ContributionResponse
-        setContributions(data.contributions)
+        const data: unknown = await response.json()
+        setContributions(parseContributions(data))
       } catch {
         if (!controller.signal.aborted) setHasError(true)
       }
