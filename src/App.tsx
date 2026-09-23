@@ -2,7 +2,7 @@ import { useMemo, useState, useSyncExternalStore } from 'react'
 import { flushSync } from 'react-dom'
 import { Dithering } from '@paper-design/shaders-react'
 import { motion, useReducedMotion } from 'motion/react'
-import { FiArrowUpRight, FiChevronDown, FiGithub, FiGrid, FiList, FiMail } from 'react-icons/fi'
+import { FiArrowUpRight, FiGithub, FiGrid, FiList, FiMail } from 'react-icons/fi'
 import { FaXTwitter } from 'react-icons/fa6'
 
 import profilePicture from '@/assets/profile-picture.png'
@@ -13,19 +13,10 @@ import { Tooltip } from '@/components/motion/tooltip'
 import { useTheme } from '@/components/theme-context'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ViewerCounter } from '@/components/viewer-counter'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { EASE_OUT } from '@/lib/ease'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 
 const projects = [
   {
@@ -45,6 +36,42 @@ const projects = [
     href: 'https://github.com/BrandNewDevs/DigiLicense',
   },
 ]
+
+const contactEmail = 'kritiraj.tech@gmail.com'
+
+function EmailSocialLink() {
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
+
+  async function copyEmail() {
+    try {
+      await navigator.clipboard.writeText(contactEmail)
+      setCopyStatus('copied')
+      window.setTimeout(() => setCopyStatus('idle'), 1500)
+    } catch {
+      setCopyStatus('error')
+      window.setTimeout(() => setCopyStatus('idle'), 1500)
+    }
+  }
+
+  return (
+    <span className="email-social-link inline-flex items-center">
+      <Tooltip content={copyStatus === 'copied' ? 'Copied to clipboard' : copyStatus === 'error' ? 'Could not copy email' : 'Click to copy email'} side="bottom">
+        <button
+          aria-label={copyStatus === 'copied' ? 'Email copied to clipboard' : copyStatus === 'error' ? 'Could not copy email' : 'Copy email address'}
+          className="email-trigger inline-flex items-center gap-1.5 leading-none text-muted-foreground hover:text-foreground focus-visible:text-foreground"
+          onClick={copyEmail}
+          type="button"
+        >
+          <FiMail aria-hidden="true" className="size-4 shrink-0" />
+          {contactEmail}
+        </button>
+      </Tooltip>
+      <span aria-live="polite" className="sr-only">
+        {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address.' : ''}
+      </span>
+    </span>
+  )
+}
 
 const bannerTransition = { type: 'spring', visualDuration: 1.2, bounce: 0 } as const
 const desktopProjectsQuery = '(min-width: 768px)'
@@ -134,62 +161,6 @@ function App() {
                   />
                 )}
               </motion.div>
-              <div className="relative mx-auto flex h-full w-full max-w-3xl items-start justify-end px-6 pt-4 sm:px-8 sm:pt-6">
-                <motion.div
-                  role="group"
-                  aria-label="Profile actions"
-                  className="flex shrink-0 items-center justify-end gap-1 overflow-hidden rounded-lg bg-background/85 p-1 ring-1 ring-foreground/15 backdrop-blur-sm"
-                  style={{ transformOrigin: 'right center' }}
-                  initial={reducedMotion ? { opacity: 0 } : { width: 40, borderRadius: 999, opacity: 0, transform: 'scale(0.82)' }}
-                  animate={reducedMotion ? { opacity: 1 } : { width: 'auto', borderRadius: 8, opacity: 1, transform: 'scale(1)' }}
-                  transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : {
-                    opacity: { duration: 0.2, ease: EASE_OUT, delay: 0.28 },
-                    transform: { type: 'spring', visualDuration: 0.34, bounce: 0.2, delay: 0.28 },
-                    width: { type: 'spring', visualDuration: 0.58, bounce: 0, delay: 0.58 },
-                    borderRadius: { duration: 0.58, ease: EASE_OUT, delay: 0.58 },
-                  }}
-                >
-                  <motion.div
-                    className="shrink-0"
-                    initial={reducedMotion ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={reducedMotion ? { duration: 0 } : { duration: 0.24, ease: EASE_OUT, delay: 1.08 }}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={<Button variant="ghost" size="sm" />}
-                      >
-                        Socials <FiChevronDown aria-hidden="true" data-icon="inline-end" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="min-w-40">
-                        <DropdownMenuGroup>
-                          <DropdownMenuLabel>Social links</DropdownMenuLabel>
-                          <DropdownMenuItem render={<a href="https://github.com/wkkny" target="_blank" rel="noreferrer" />}>
-                            <FiGithub aria-hidden="true" data-icon="inline-start" />
-                            wkkny
-                          </DropdownMenuItem>
-                          <DropdownMenuItem render={<a href="https://x.com/wkknyy" target="_blank" rel="noreferrer" />}>
-                            <FaXTwitter aria-hidden="true" data-icon="inline-start" />
-                            @wkknyy
-                          </DropdownMenuItem>
-                          <DropdownMenuItem render={<a href="mailto:kritiraj.tech@gmail.com" />}>
-                            <FiMail aria-hidden="true" data-icon="inline-start" />
-                            Email
-                          </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </motion.div>
-                  <motion.div
-                    className="shrink-0"
-                    initial={reducedMotion ? false : { opacity: 0, transform: 'scale(0.7)' }}
-                    animate={{ opacity: 1, transform: 'scale(1)' }}
-                    transition={reducedMotion ? { duration: 0 } : { type: 'spring', visualDuration: 0.34, bounce: 0.2, delay: 0.28 }}
-                  >
-                    <ThemeToggle />
-                  </motion.div>
-                </motion.div>
-              </div>
             </div>
             <div className="relative z-20 -mt-24 flex flex-col gap-5 sm:-mt-32 sm:gap-6">
               <motion.img
@@ -202,12 +173,15 @@ function App() {
                 transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.42, ease: EASE_OUT, delay: 0.7 }}
               />
               <motion.div
-                className="absolute right-0 top-48 flex w-full justify-end sm:top-32"
+                className="absolute right-0 top-48 flex w-full items-center justify-end gap-2 sm:top-32"
                 initial={contentInitial}
                 animate={contentAnimate}
                 transition={contentTransition}
               >
                 <ViewerCounter />
+                <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} side="bottom">
+                  <ThemeToggle />
+                </Tooltip>
               </motion.div>
               <motion.div
                 initial={contentInitial}
@@ -219,7 +193,18 @@ function App() {
                 <p className="mt-4 max-w-lg text-sm leading-6">
                   I design and build simple web interfaces that feel satisfying to use. I care about the details in how they look and respond, as well as usability, speed, and accessibility. I'm looking for a design engineering internship.
                 </p>
-                <div className="mt-5 max-w-sm">
+                <nav aria-label="Social links" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                  <a className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="https://x.com/wkknyy" target="_blank" rel="noreferrer">
+                    <FaXTwitter aria-hidden="true" />
+                    X/Twitter
+                  </a>
+                  <a className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="https://github.com/wkkny" target="_blank" rel="noreferrer">
+                    <FiGithub aria-hidden="true" />
+                    GitHub
+                  </a>
+                  <EmailSocialLink />
+                </nav>
+                <div className="mt-5 w-fit max-w-xs">
                   <SpotifyStatus />
                 </div>
               </motion.div>
@@ -336,21 +321,8 @@ function App() {
             </div>
           </motion.section>
         </main>
-        <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-border py-6 text-sm text-muted-foreground">
+        <footer className="border-t border-border py-6 text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} Kritiraj (Kenny)</p>
-          <nav aria-label="Social links" className="flex items-center gap-4">
-            <a className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="mailto:kritiraj.tech@gmail.com">
-              <FiMail aria-hidden="true" />
-              Email
-            </a>
-            <a aria-label="X" className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="https://x.com/wkknyy" target="_blank" rel="noreferrer">
-              <FaXTwitter aria-hidden="true" />
-            </a>
-            <a className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground focus-visible:text-foreground" href="https://github.com/wkkny" target="_blank" rel="noreferrer">
-              <FiGithub aria-hidden="true" />
-              GitHub
-            </a>
-          </nav>
         </footer>
       </div>
     </div>

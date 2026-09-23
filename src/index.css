@@ -20,6 +20,15 @@
   display: none;
 }
 
+.email-trigger {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
 .animated-arrow-link {
   transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }

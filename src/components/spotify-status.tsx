@@ -57,14 +57,14 @@ export function SpotifyStatus() {
 
   return (
     <>
-      <p className="min-w-0 text-sm leading-6 text-muted-foreground">
+      <p className="w-fit min-w-0 max-w-full text-sm leading-6 text-muted-foreground">
         {!useMock && (
           <span className="sr-only">
             {playback.status === 'playing' ? 'Now playing on Spotify: ' : 'Recently played on Spotify: '}
           </span>
         )}
         <a
-          className="group flex min-w-0 max-w-full items-center gap-2 text-muted-foreground"
+          className="group flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
           href={playback.track.spotifyUrl}
           target="_blank"
           rel="noopener noreferrer"
