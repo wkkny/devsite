@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
-import { motion, useDragControls, useMotionValue } from 'motion/react'
+import { motion, useDragControls, useMotionValue, useReducedMotion } from 'motion/react'
 import { AiOutlineOpenAI } from 'react-icons/ai'
 import { FaLinux } from 'react-icons/fa'
 import { FiPlus, FiX } from 'react-icons/fi'
@@ -21,6 +21,7 @@ import {
 } from 'react-icons/si'
 
 import { Button } from '@/components/ui/button'
+import { EASE_OUT } from '@/lib/ease'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -138,15 +139,17 @@ type DraggableItemProps = {
   top: string
   align: 'left' | 'right'
   left?: number
+  entryDelay?: number
   onPositionChange?: (position: Position) => void
   onRemove?: () => void
   children: ReactNode
 }
 
-function DraggableItem({ label, boundsRef, helpId, top, align, left, onPositionChange, onRemove, children }: DraggableItemProps) {
+function DraggableItem({ label, boundsRef, helpId, top, align, left, entryDelay = 0, onPositionChange, onRemove, children }: DraggableItemProps) {
   const itemRef = useRef<HTMLDivElement>(null)
   const [fixedTop, setFixedTop] = useState(top)
   const [fixedLeft] = useState(left)
+  const reduceMotion = useReducedMotion()
   const dragControls = useDragControls()
   const x = useMotionValue(0)
   const y = useMotionValue(0)
@@ -244,40 +247,56 @@ function DraggableItem({ label, boundsRef, helpId, top, align, left, onPositionC
         if (position) onPositionChange?.(position)
       }}
     >
-      <button
-        type="button"
-        aria-label={label}
-        aria-describedby={helpId}
-        className={cn(
-          'flex cursor-grab items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-ring',
-          onRemove ? 'absolute bottom-0 left-0 size-14' : 'size-full',
-        )}
-        onPointerDown={(event) => dragControls.start(event)}
-        onKeyDown={moveWithKeyboard}
+      <motion.div
+        className="relative size-full"
+        initial={reduceMotion
+          ? { opacity: 0 }
+          : { opacity: 0, transform: 'translate3d(0, 5px, 0) scale(0.95)' }}
+        animate={reduceMotion
+          ? { opacity: 1 }
+          : { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }}
+        transition={{
+          duration: reduceMotion ? 0.14 : 0.22,
+          ease: EASE_OUT,
+          delay: reduceMotion ? 0 : entryDelay / 1000,
+        }}
       >
-        {children}
-      </button>
-      {onRemove ? (
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="icon-xs"
-          aria-label={`Remove ${label}`}
-          className="pointer-events-none absolute right-0 top-0 rounded-full opacity-0 shadow-sm group-hover/draggable:pointer-events-auto group-hover/draggable:opacity-100 group-focus-within/draggable:pointer-events-auto group-focus-within/draggable:opacity-100"
-          onClick={onRemove}
+          aria-label={label}
+          aria-describedby={helpId}
+          className={cn(
+            'flex cursor-grab items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-ring',
+            onRemove ? 'absolute bottom-0 left-0 size-14' : 'size-full',
+          )}
+          onPointerDown={(event) => dragControls.start(event)}
+          onKeyDown={moveWithKeyboard}
         >
-          <FiX aria-hidden="true" />
-        </Button>
-      ) : null}
+          {children}
+        </button>
+        {onRemove ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-xs"
+            aria-label={`Remove ${label}`}
+            className="pointer-events-none absolute right-0 top-0 rounded-full opacity-0 shadow-sm group-hover/draggable:pointer-events-auto group-hover/draggable:opacity-100 group-focus-within/draggable:pointer-events-auto group-focus-within/draggable:opacity-100"
+            onClick={onRemove}
+          >
+            <FiX aria-hidden="true" />
+          </Button>
+        ) : null}
+      </motion.div>
     </motion.div>
   )
 }
 
-export function DraggableDecorations() {
+export function DraggableDecorations({ entryReady }: { entryReady: boolean }) {
   const bounds = useRef<HTMLDivElement>(null)
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const [layout, setLayout] = useState(loadLayout)
   const nextItemId = useRef(layout.addedItems.reduce((next, item) => Math.max(next, item.id + 1), 0))
+  const [newItemId, setNewItemId] = useState<number | null>(null)
   const [resetEpoch, setResetEpoch] = useState(0)
   const [showDecorations, setShowDecorations] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(desktopDragQuery).matches,
@@ -319,6 +338,7 @@ export function DraggableDecorations() {
     if (!area) return
 
     const index = nextItemId.current++
+    setNewItemId(index)
     const areaRect = area.getBoundingClientRect()
     const itemSize = 72
     const column = index % 4
@@ -383,7 +403,7 @@ export function DraggableDecorations() {
           Drag with a pointer, or use the arrow keys to move a focused icon. Press Home to reset it. Press Delete or Backspace to remove it.
         </p>
         <div ref={bounds} className="absolute inset-4">
-          {starterItems.filter((item) => layout.visibleStarterIds.includes(item.id)).map((item) => {
+          {entryReady && starterItems.filter((item) => layout.visibleStarterIds.includes(item.id)).map((item, index) => {
             const position = layout.starterPositions[item.id]
             return (
               <DraggableItem
@@ -394,6 +414,7 @@ export function DraggableDecorations() {
                 top={position ? `${position.top}px` : item.top}
                 align={item.align}
                 left={position?.left}
+                entryDelay={index * 50}
                 onPositionChange={(nextPosition) => saveStarterPosition(item.id, nextPosition)}
                 onRemove={() => removeStarterItem(item.id)}
               >
@@ -401,7 +422,7 @@ export function DraggableDecorations() {
               </DraggableItem>
             )
           })}
-          {layout.addedItems.map((item) => {
+          {entryReady && layout.addedItems.map((item, index) => {
             const choice = addableItems.find((option) => option.label === item.choiceLabel)
             if (!choice) return null
             const Icon = choice.icon
@@ -414,6 +435,7 @@ export function DraggableDecorations() {
                 top={`${item.position.top}px`}
                 align="left"
                 left={item.position.left}
+                entryDelay={item.id === newItemId ? 0 : Math.min(index, 3) * 50}
                 onPositionChange={(position) => saveAddedPosition(item.id, position)}
                 onRemove={() => removeItem(item.id)}
               >

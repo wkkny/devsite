@@ -105,6 +105,7 @@ function App() {
     : { duration: 0.36, ease: EASE_OUT, delay: 1.12 }
   const desktopProjects = useSyncExternalStore(subscribeToDesktopProjects, isDesktopProjectsWidth, () => false)
   const [projectView, setProjectView] = useState<'grid' | 'list'>('grid')
+  const [bannerAnimationComplete, setBannerAnimationComplete] = useState(false)
   const visibleProjectView = desktopProjects ? projectView : 'grid'
 
   function changeProjectView(nextView: string) {
@@ -124,7 +125,7 @@ function App() {
   return (
     <div id="top" className="relative min-h-svh overflow-x-clip bg-background text-foreground">
       <ThemeDotCursor />
-      <DraggableDecorations />
+      <DraggableDecorations entryReady={bannerAnimationComplete} />
       <div className="mx-auto w-full max-w-3xl px-6 sm:px-8">
         <main className="flex flex-col gap-14 pb-12 sm:gap-16 sm:pb-16">
           <section
@@ -137,6 +138,7 @@ function App() {
               <motion.div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0"
+                onAnimationComplete={() => setBannerAnimationComplete(true)}
                 initial={reducedMotion ? { opacity: 0 } : { clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }}
                 animate={reducedMotion ? { opacity: 1 } : { clipPath: 'polygon(0 0, 116% 0, 100% 100%, 0 100%)' }}
                 transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : bannerTransition}
