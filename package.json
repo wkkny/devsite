@@ -2,6 +2,7 @@
   "name": "kritiraj-portfolio",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "packageManager": "bun@1.4.2",
   "type": "module",
   "scripts": {
