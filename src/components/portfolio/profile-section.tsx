@@ -94,7 +94,7 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
           <p className="mt-1 text-sm text-muted-foreground">{portfolioOwner.role}</p>
           <p className="mt-4 max-w-lg text-sm leading-6">{portfolioOwner.bio}</p>
           <SocialLinks />
-          <div className="mt-5 min-h-6 w-fit max-w-xs">
+          <div className="mt-5 min-h-6 w-fit max-w-xs sm:max-w-none">
             <SpotifyStatus />
           </div>
         </motion.div>
