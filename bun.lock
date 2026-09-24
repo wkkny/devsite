@@ -11,6 +11,7 @@
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cn": "^0.4.0",
+        "liquid-gooey": "^0.2.2",
         "lucide-react": "^1.47.0",
         "motion": "^13.4.1",
         "react": "^19.3.0",
@@ -980,6 +981,8 @@
     "lightningcss-win32-x64-msvc": ["lightningcss-win32-x64-msvc@1.33.0", "", { "os": "win32", "cpu": "x64" }, "sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA=="],
 
     "lines-and-columns": ["lines-and-columns@1.2.4", "", {}, "sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg=="],
+
+    "liquid-gooey": ["liquid-gooey@0.2.2", "", { "peerDependencies": { "react": ">=18", "react-dom": ">=18" } }, "sha512-UnnNSYdZoNHXowmHKo2pOF6suI1+pLMKf7qBMj1wT6wG3u0gqXP7qiLVMpCjJM2ETkr/GqF8n4fcuIgWb1fHQQ=="],
 
     "locate-path": ["locate-path@3.0.0", "", { "dependencies": { "p-locate": "^3.0.0", "path-exists": "^3.0.0" } }, "sha512-7AO748wWnIhNqAuaty2ZWHkQHRSNfPVIsPIfwEOWO22AmaoVrWavlOcMR5nzTLNYvp36X220/maaRsrec1G65A=="],
 
