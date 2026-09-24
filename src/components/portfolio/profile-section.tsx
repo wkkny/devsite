@@ -1,4 +1,5 @@
 import { Dithering } from '@paper-design/shaders-react'
+import { MapPin } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 
 import { SpotifyStatus } from '@/components/spotify-status'
@@ -91,7 +92,13 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
               </Tooltip>
             </div>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{portfolioOwner.role}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <p>{portfolioOwner.role}</p>
+            <p className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <MapPin aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
+              {portfolioOwner.location}
+            </p>
+          </div>
           <p className="mt-4 max-w-lg text-sm leading-6">{portfolioOwner.bio}</p>
           <SocialLinks />
           <div className="mt-5 min-h-6 w-fit max-w-xs sm:max-w-none">

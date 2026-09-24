@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { MapPin } from 'lucide-react'
 import { FiGithub, FiMail } from 'react-icons/fi'
 import { FaXTwitter } from 'react-icons/fa6'
 
@@ -57,7 +56,7 @@ export function SocialLinks() {
           </Tooltip>
         )
       })}
-      <span className="email-social-link inline-flex max-w-full flex-wrap items-center gap-x-4 gap-y-2">
+      <span className="inline-flex items-center">
         <Tooltip content={emailTooltip} side="top">
           <button
             aria-label={emailLabel}
@@ -71,10 +70,6 @@ export function SocialLinks() {
         </Tooltip>
         <span aria-live="polite" className="sr-only">
           {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address.' : ''}
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-          <MapPin aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
-          {portfolioOwner.location}
         </span>
       </span>
     </nav>
