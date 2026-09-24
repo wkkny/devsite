@@ -23,7 +23,6 @@ export function SocialLinks() {
       window.setTimeout(() => setCopyStatus('idle'), 1500)
     } catch {
       setCopyStatus('error')
-      window.setTimeout(() => setCopyStatus('idle'), 1500)
     }
   }
 
@@ -36,7 +35,7 @@ export function SocialLinks() {
   const emailLabel = copyStatus === 'copied'
     ? 'Email copied to clipboard'
     : copyStatus === 'error'
-      ? 'Could not copy email'
+      ? 'Retry copying email address'
       : 'Copy email address'
   const copyMotionInitial = reducedMotion
     ? { opacity: 0 }
@@ -112,8 +111,16 @@ export function SocialLinks() {
           <span className="hidden sm:inline">{portfolioOwner.email}</span>
         </button>
       </Tooltip>
+      {copyStatus === 'error' && (
+        <a
+          className="max-w-full break-all text-foreground underline underline-offset-4 sm:hidden"
+          href={`mailto:${portfolioOwner.email}`}
+        >
+          {portfolioOwner.email}
+        </a>
+      )}
       <span aria-live="polite" className="sr-only">
-        {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address.' : ''}
+        {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address. Use the email link to open your mail app.' : ''}
       </span>
     </nav>
   )
