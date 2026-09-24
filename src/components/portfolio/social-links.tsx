@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { FiGithub, FiMail } from 'react-icons/fi'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FaXTwitter } from 'react-icons/fa6'
+import { FiCheck, FiGithub, FiMail } from 'react-icons/fi'
 
 import { Tooltip } from '@/components/motion/tooltip'
 import { portfolioOwner, socialLinks } from '@/data'
+import { EASE_OUT, SPRING_SWAP } from '@/lib/ease'
 
 const socialIcons = {
   x: FaXTwitter,
@@ -12,6 +14,7 @@ const socialIcons = {
 
 export function SocialLinks() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
+  const reducedMotion = useReducedMotion()
 
   async function copyEmail() {
     try {
@@ -35,9 +38,19 @@ export function SocialLinks() {
     : copyStatus === 'error'
       ? 'Could not copy email'
       : 'Copy email address'
+  const copyMotionInitial = reducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, transform: 'translate3d(0, 2px, 0) scale(0.95)' }
+  const copyMotionAnimate = reducedMotion
+    ? { opacity: 1 }
+    : { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+  const copyMotionExit = reducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, transform: 'translate3d(0, -2px, 0) scale(0.95)' }
+  const copyMotionTransition = reducedMotion ? { duration: 0.12, ease: EASE_OUT } : SPRING_SWAP
 
   return (
-    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground">
+    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground sm:gap-x-4">
       {socialLinks.map((link) => {
         const Icon = socialIcons[link.platform]
 
@@ -63,8 +76,39 @@ export function SocialLinks() {
           onClick={copyEmail}
           type="button"
         >
-          <FiMail aria-hidden="true" className="size-4 shrink-0" />
-          <span className="sm:hidden">Email</span>
+          <span aria-hidden="true" className="relative size-4 shrink-0 sm:hidden">
+            <AnimatePresence initial={false} mode="wait">
+              <motion.span
+                key={copyStatus === 'copied' ? 'copied-icon' : 'email-icon'}
+                animate={copyMotionAnimate}
+                className="absolute inset-0 flex items-center justify-center"
+                exit={copyMotionExit}
+                initial={copyMotionInitial}
+                transition={copyMotionTransition}
+              >
+                {copyStatus === 'copied' ? (
+                  <FiCheck className="size-4 text-green-600 dark:text-green-400" />
+                ) : (
+                  <FiMail className="size-4" />
+                )}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+          <FiMail aria-hidden="true" className="hidden size-4 shrink-0 sm:inline-block" />
+          <span className="inline-grid min-w-[2.875rem] place-items-center sm:hidden">
+            <AnimatePresence initial={false} mode="wait">
+              <motion.span
+                key={copyStatus === 'copied' ? 'copied-label' : 'email-label'}
+                animate={copyMotionAnimate}
+                className="col-start-1 row-start-1 whitespace-nowrap"
+                exit={copyMotionExit}
+                initial={copyMotionInitial}
+                transition={copyMotionTransition}
+              >
+                {copyStatus === 'copied' ? 'Copied' : 'Email'}
+              </motion.span>
+            </AnimatePresence>
+          </span>
           <span className="hidden sm:inline">{portfolioOwner.email}</span>
         </button>
       </Tooltip>
