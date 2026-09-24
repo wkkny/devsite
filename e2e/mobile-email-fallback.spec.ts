@@ -37,6 +37,7 @@ test('mobile email remains available after a failed retry', async ({ page }) => 
   )
 
   await page.goto('/')
+  await page.clock.install()
 
   const copyButton = page.getByRole('button', { name: 'Copy email address' })
   await expect(copyButton).toBeVisible()
@@ -53,6 +54,6 @@ test('mobile email remains available after a failed retry', async ({ page }) => 
   await copiedButton.click()
 
   await expect(emailFallback).toHaveAttribute('href', 'mailto:kritiraj.tech@gmail.com')
-  await page.waitForTimeout(1600)
+  await page.clock.runFor(1600)
   await expect(emailFallback).toBeVisible()
 })
