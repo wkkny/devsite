@@ -112,7 +112,7 @@ describe('GET /api/now-playing', () => {
     })
   })
 
-  it('returns idle when the most recent track is older than 24 hours', async () => {
+  it('returns the most recent track even when it was played more than 24 hours ago', async () => {
     const playedAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
     mockSpotifyFetch(
       jsonResponse({ is_playing: false, item: currentTrack }),
@@ -122,7 +122,14 @@ describe('GET /api/now-playing', () => {
     const response = await invoke()
 
     expect(response.statusCode).toBe(200)
-    expect(response.body).toEqual({ status: 'idle', track: null })
+    expect(response.body).toEqual({
+      status: 'recent',
+      track: {
+        title: 'Runaway',
+        artist: 'Kanye West, Pusha T',
+        spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds',
+      },
+    })
   })
 
   it('rejects unsupported methods and unexpected query parameters without contacting Spotify', async () => {
