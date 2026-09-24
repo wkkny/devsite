@@ -61,7 +61,7 @@ export function SpotifyStatus() {
       <p className="w-fit min-w-0 max-w-full text-sm leading-6 text-muted-foreground">
         {!useMock && (
           <span className="sr-only">
-            {playback.status === 'playing' ? 'Now playing on Spotify: ' : 'Recently played on Spotify: '}
+            {playback.status === 'playing' ? 'Now playing on Spotify: ' : 'Last played on Spotify: '}
           </span>
         )}
         <Tooltip content="Open in Spotify" side="top" wrapperClassName="w-full min-w-0">

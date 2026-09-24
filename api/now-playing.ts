@@ -19,7 +19,6 @@ const RECENTLY_PLAYED_URL =
 const REQUEST_TIMEOUT_MS = 4_000
 const CACHE_CONTROL =
   "public, max-age=0, s-maxage=10, stale-while-revalidate=20"
-const RECENTLY_PLAYED_MAX_AGE_MS = 24 * 60 * 60 * 1_000
 
 let rateLimitedUntil = 0
 
@@ -101,14 +100,8 @@ async function getRecentlyPlayed(accessToken: string): Promise<NowPlayingRespons
 
   const track = mapTrack(item.track)
 
-  const playedAt = Date.parse(item.played_at)
-
-  if (!track || Number.isNaN(playedAt)) {
+  if (!track || Number.isNaN(Date.parse(item.played_at))) {
     throw new Error("Invalid Spotify recently-played track")
-  }
-
-  if (Date.now() - playedAt > RECENTLY_PLAYED_MAX_AGE_MS) {
-    return { status: "idle", track: null }
   }
 
   return { status: "recent", track }

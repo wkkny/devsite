@@ -9,7 +9,7 @@ This repository contains the source code and content for Kritiraj (Kenny)'s port
 - Draggable technology decorations on desktop. Visitors can add, move, and remove logos. Their layout is saved in local storage for seven days.
 - Project cards with grid and list views on desktop.
 - GitHub contribution activity loaded from a public API.
-- Optional Spotify status for the current track or a track played within the last 24 hours.
+- Optional Spotify status for the current track or the most recently played track.
 - A visitor count backed by CounterAPI. Local development reads the count without incrementing it.
 
 ## Tech stack
@@ -61,7 +61,7 @@ Spotify playback is optional. Without credentials, the live status is hidden. Th
 5. Add that refresh token to `.env`, then set `VITE_SPOTIFY_USE_MOCK=false`.
 6. Run `bun run dev:spotify` to use the `/api/now-playing` endpoint locally.
 
-The page checks Spotify every 30 seconds. When there is no active playback, the endpoint checks the most recent track and shows it only if it was played in the last 24 hours.
+The page checks Spotify every 30 seconds. When there is no active playback, the endpoint shows the most recently played track, regardless of when it was played.
 
 ### Environment variables
 
