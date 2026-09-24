@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ComponentType, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { motion, useDragControls, useMotionValue, useReducedMotion } from 'motion/react'
 import { AiOutlineOpenAI } from 'react-icons/ai'
 import { FaLinux } from 'react-icons/fa'
@@ -22,6 +22,7 @@ import {
 } from 'react-icons/si'
 
 import { Button } from '@/components/ui/button'
+import type { DraggingBall as DraggingBallComponent, DraggingBallControls } from '@/components/dragging-ball'
 import { EASE_OUT } from '@/lib/ease'
 import { cn } from '@/lib/utils'
 import {
@@ -36,6 +37,26 @@ import {
 const desktopDragQuery = '(min-width: 768px) and (hover: hover) and (pointer: fine)'
 const storageKey = 'kritiraj-draggable-layout-v1'
 const storageLifetime = 7 * 24 * 60 * 60 * 1000
+
+type DraggingBallProps = NonNullable<ComponentProps<typeof DraggingBallComponent>>
+
+/* The goo is an optional visual layer; the child still owns its keyboard
+   and pointer behavior if the lazy chunk cannot be loaded. */
+function DraggingBallFallback({ children }: DraggingBallProps) {
+  return <>{children}</>
+}
+
+async function loadDraggingBall(): Promise<{ default: ComponentType<DraggingBallProps> }> {
+  try {
+    const module = await import('@/components/dragging-ball')
+    return { default: module.DraggingBall }
+  } catch {
+    return { default: DraggingBallFallback }
+  }
+}
+
+const DraggingBall = lazy<ComponentType<DraggingBallProps>>(loadDraggingBall)
+
 const addableItems = [
   { label: 'Next.js', icon: SiNextdotjs },
   { label: 'Vercel', icon: SiVercel },
@@ -155,6 +176,7 @@ function DraggableItem({ label, boundsRef, helpId, top, align, left, entryDelay 
   const dragControls = useDragControls()
   const x = useMotionValue(0)
   const y = useMotionValue(0)
+  const ballControls = useRef<DraggingBallControls | null>(null)
 
   useLayoutEffect(() => {
     const item = itemRef.current
@@ -225,6 +247,24 @@ function DraggableItem({ label, boundsRef, helpId, top, align, left, entryDelay 
     if (position) onPositionChange?.(position)
   }
 
+  const itemButton = (
+    <button
+      type="button"
+      aria-label={label}
+      aria-describedby={helpId}
+      className="flex size-full cursor-grab items-center justify-center rounded-full text-foreground outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-ring"
+      onPointerDown={(event) => {
+        ballControls.current?.grab()
+        dragControls.start(event)
+      }}
+      onPointerUp={() => ballControls.current?.drop()}
+      onPointerCancel={() => ballControls.current?.drop()}
+      onKeyDown={moveWithKeyboard}
+    >
+      {children}
+    </button>
+  )
+
   return (
     <motion.div
       ref={itemRef}
@@ -244,7 +284,11 @@ function DraggableItem({ label, boundsRef, helpId, top, align, left, entryDelay 
       dragConstraints={boundsRef}
       dragElastic={0}
       dragMomentum={false}
+      onDragStart={() => ballControls.current?.grab()}
+      onPointerUp={() => ballControls.current?.drop()}
+      onPointerCancel={() => ballControls.current?.drop()}
       onDragEnd={() => {
+        ballControls.current?.drop()
         const position = keepInBounds()
         if (position) onPositionChange?.(position)
       }}
@@ -263,19 +307,13 @@ function DraggableItem({ label, boundsRef, helpId, top, align, left, entryDelay 
           delay: reduceMotion ? 0 : entryDelay / 1000,
         }}
       >
-        <button
-          type="button"
-          aria-label={label}
-          aria-describedby={helpId}
-          className={cn(
-            'flex cursor-grab items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-sm outline-none active:cursor-grabbing focus-visible:ring-2 focus-visible:ring-ring',
-            onRemove ? 'absolute bottom-0 left-0 size-14' : 'size-full',
-          )}
-          onPointerDown={(event) => dragControls.start(event)}
-          onKeyDown={moveWithKeyboard}
-        >
-          {children}
-        </button>
+        <div className={cn('relative size-full', onRemove && 'absolute bottom-0 left-0 size-14')}>
+          <Suspense fallback={itemButton}>
+            <DraggingBall well={{ w: 56, h: 56 }} size={56} drag={false} externalGestures reducedMotion={Boolean(reduceMotion)} controlsRef={ballControls}>
+              {itemButton}
+            </DraggingBall>
+          </Suspense>
+        </div>
         {onRemove ? (
           <Button
             type="button"
