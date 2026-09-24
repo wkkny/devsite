@@ -43,6 +43,7 @@ export function ThemeDotCursor() {
       if (event.pointerType === 'touch') return
       const target = event.target
       const isLink = target instanceof Element && target.closest('a[href], [role="link"]')
+      dot.classList.toggle('theme-dot-cursor--link', Boolean(isLink))
       targetX = event.clientX
       targetY = event.clientY
       if (!hasPosition) {
@@ -53,7 +54,7 @@ export function ThemeDotCursor() {
       } else if (frameId === null) {
         frameId = requestAnimationFrame(followPointer)
       }
-      dot.style.opacity = isLink ? '0' : '1'
+      dot.style.opacity = '1'
     }
     const hideDot = () => {
       if (frameId !== null) cancelAnimationFrame(frameId)
