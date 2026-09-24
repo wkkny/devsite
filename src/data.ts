@@ -2,7 +2,7 @@ import profilePicture from '@/assets/profile-picture.png'
 
 export const portfolioOwner = {
   displayName: 'Kritiraj (Kenny)',
-  role: 'Aspiring Design Engineer',
+  role: 'Design Engineer',
   bio: "I design and build simple web interfaces that feel satisfying to use. I care about the details in how they look and respond, as well as usability, speed, and accessibility. I'm looking for a design engineering internship.",
   email: 'kritiraj.tech@gmail.com',
   location: 'New Delhi',

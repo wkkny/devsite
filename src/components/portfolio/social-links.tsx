@@ -37,7 +37,7 @@ export function SocialLinks() {
       : 'Copy email address'
 
   return (
-    <nav aria-label="Social links" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
       {socialLinks.map((link) => {
         const Icon = socialIcons[link.platform]
 
@@ -56,7 +56,7 @@ export function SocialLinks() {
           </Tooltip>
         )
       })}
-      <span className="email-social-link inline-flex items-center">
+      <span className="inline-flex items-center">
         <Tooltip content={emailTooltip} side="top">
           <button
             aria-label={emailLabel}

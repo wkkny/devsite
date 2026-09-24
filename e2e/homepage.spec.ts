@@ -33,7 +33,7 @@ test('homepage loads and its main controls work', async ({ page }) => {
   await page.goto('/')
 
   await expect(page.getByRole('heading', { name: 'Kritiraj (Kenny)' })).toBeVisible()
-  await expect(page.getByText('Aspiring Design Engineer')).toBeVisible()
+  await expect(page.getByText('Design Engineer', { exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Bohemian Rhapsody by Queen' })).toHaveAttribute(
     'href',
     'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
