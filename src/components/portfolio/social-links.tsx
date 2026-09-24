@@ -57,7 +57,7 @@ export function SocialLinks() {
           </Tooltip>
         )
       })}
-      <span className="email-social-link inline-flex items-center">
+      <span className="email-social-link inline-flex items-center gap-x-4">
         <Tooltip content={emailTooltip} side="top">
           <button
             aria-label={emailLabel}
@@ -72,10 +72,10 @@ export function SocialLinks() {
         <span aria-live="polite" className="sr-only">
           {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address.' : ''}
         </span>
-      </span>
-      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-        <MapPin aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
-        {portfolioOwner.location}
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <MapPin aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
+          {portfolioOwner.location}
+        </span>
       </span>
     </nav>
   )
