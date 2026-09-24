@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MapPin } from 'lucide-react'
 import { FiGithub, FiMail } from 'react-icons/fi'
 import { FaXTwitter } from 'react-icons/fa6'
 
@@ -37,7 +38,7 @@ export function SocialLinks() {
       : 'Copy email address'
 
   return (
-    <nav aria-label="Social links" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
       {socialLinks.map((link) => {
         const Icon = socialIcons[link.platform]
 
@@ -71,6 +72,10 @@ export function SocialLinks() {
         <span aria-live="polite" className="sr-only">
           {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address.' : ''}
         </span>
+      </span>
+      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+        <MapPin aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
+        {portfolioOwner.location}
       </span>
     </nav>
   )
