@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import { FiGithub, FiMail } from 'react-icons/fi'
+import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FaXTwitter } from 'react-icons/fa6'
+import { FiCheck, FiGithub, FiMail } from 'react-icons/fi'
 
 import { Tooltip } from '@/components/motion/tooltip'
 import { portfolioOwner, socialLinks } from '@/data'
+import { EASE_OUT, SPRING_SWAP } from '@/lib/ease'
 
 const socialIcons = {
   x: FaXTwitter,
@@ -12,15 +14,32 @@ const socialIcons = {
 
 export function SocialLinks() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
+  const copyStatusTimeout = useRef<number | null>(null)
+  const reducedMotion = useReducedMotion()
+
+  function clearCopyStatusTimeout() {
+    if (copyStatusTimeout.current === null) return
+    window.clearTimeout(copyStatusTimeout.current)
+    copyStatusTimeout.current = null
+  }
+
+  useEffect(() => () => {
+    if (copyStatusTimeout.current !== null) window.clearTimeout(copyStatusTimeout.current)
+  }, [])
 
   async function copyEmail() {
+    clearCopyStatusTimeout()
+
     try {
       await navigator.clipboard.writeText(portfolioOwner.email)
       setCopyStatus('copied')
-      window.setTimeout(() => setCopyStatus('idle'), 1500)
+      copyStatusTimeout.current = window.setTimeout(() => {
+        copyStatusTimeout.current = null
+        setCopyStatus('idle')
+      }, 1500)
     } catch {
+      clearCopyStatusTimeout()
       setCopyStatus('error')
-      window.setTimeout(() => setCopyStatus('idle'), 1500)
     }
   }
 
@@ -33,11 +52,21 @@ export function SocialLinks() {
   const emailLabel = copyStatus === 'copied'
     ? 'Email copied to clipboard'
     : copyStatus === 'error'
-      ? 'Could not copy email'
+      ? 'Retry copying email address'
       : 'Copy email address'
+  const copyMotionInitial = reducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, transform: 'translate3d(0, 2px, 0) scale(0.95)' }
+  const copyMotionAnimate = reducedMotion
+    ? { opacity: 1 }
+    : { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+  const copyMotionExit = reducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, transform: 'translate3d(0, -2px, 0) scale(0.95)' }
+  const copyMotionTransition = reducedMotion ? { duration: 0.12, ease: EASE_OUT } : SPRING_SWAP
 
   return (
-    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground sm:gap-x-4">
       {socialLinks.map((link) => {
         const Icon = socialIcons[link.platform]
 
@@ -56,21 +85,59 @@ export function SocialLinks() {
           </Tooltip>
         )
       })}
-      <span className="inline-flex items-center">
-        <Tooltip content={emailTooltip} side="top">
-          <button
-            aria-label={emailLabel}
-            className="email-trigger inline-flex items-center gap-1.5 leading-none text-muted-foreground hover:text-foreground focus-visible:text-foreground"
-            onClick={copyEmail}
-            type="button"
-          >
-            <FiMail aria-hidden="true" className="size-4 shrink-0" />
-            {portfolioOwner.email}
-          </button>
-        </Tooltip>
-        <span aria-live="polite" className="sr-only">
-          {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address.' : ''}
-        </span>
+      <Tooltip content={emailTooltip} side="top">
+        <button
+          aria-label={emailLabel}
+          className="email-trigger inline-flex items-center gap-1.5 leading-none text-muted-foreground hover:text-foreground focus-visible:text-foreground max-sm:h-8 max-sm:rounded-lg max-sm:border max-sm:border-border max-sm:bg-background max-sm:px-2.5 max-sm:font-medium max-sm:transition-colors max-sm:hover:bg-muted max-sm:hover:text-foreground max-sm:focus-visible:outline-none max-sm:focus-visible:ring-2 max-sm:focus-visible:ring-ring"
+          onClick={copyEmail}
+          type="button"
+        >
+          <span aria-hidden="true" className="relative size-4 shrink-0 sm:hidden">
+            <AnimatePresence initial={false} mode="wait">
+              <motion.span
+                key={copyStatus === 'copied' ? 'copied-icon' : 'email-icon'}
+                animate={copyMotionAnimate}
+                className="absolute inset-0 flex items-center justify-center"
+                exit={copyMotionExit}
+                initial={copyMotionInitial}
+                transition={copyMotionTransition}
+              >
+                {copyStatus === 'copied' ? (
+                  <FiCheck className="size-4 text-green-600 dark:text-green-400" />
+                ) : (
+                  <FiMail className="size-4" />
+                )}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+          <FiMail aria-hidden="true" className="hidden size-4 shrink-0 sm:inline-block" />
+          <span className="inline-grid min-w-[2.875rem] place-items-center sm:hidden">
+            <AnimatePresence initial={false} mode="wait">
+              <motion.span
+                key={copyStatus === 'copied' ? 'copied-label' : 'email-label'}
+                animate={copyMotionAnimate}
+                className="col-start-1 row-start-1 whitespace-nowrap"
+                exit={copyMotionExit}
+                initial={copyMotionInitial}
+                transition={copyMotionTransition}
+              >
+                {copyStatus === 'copied' ? 'Copied' : 'Email'}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+          <span className="hidden sm:inline">{portfolioOwner.email}</span>
+        </button>
+      </Tooltip>
+      {copyStatus === 'error' && (
+        <a
+          className="max-w-full break-all text-foreground underline underline-offset-4 sm:hidden"
+          href={`mailto:${portfolioOwner.email}`}
+        >
+          {portfolioOwner.email}
+        </a>
+      )}
+      <span aria-live="polite" className="sr-only">
+        {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address. Use the email link to open your mail app.' : ''}
       </span>
     </nav>
   )
