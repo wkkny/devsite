@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ComponentType, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { motion, useDragControls, useMotionValue, useReducedMotion } from 'motion/react'
 import { AiOutlineOpenAI } from 'react-icons/ai'
 import { FaLinux } from 'react-icons/fa'
@@ -22,7 +22,7 @@ import {
 } from 'react-icons/si'
 
 import { Button } from '@/components/ui/button'
-import type { DraggingBallControls } from '@/components/dragging-ball'
+import type { DraggingBall as DraggingBallComponent, DraggingBallControls } from '@/components/dragging-ball'
 import { EASE_OUT } from '@/lib/ease'
 import { cn } from '@/lib/utils'
 import {
@@ -35,9 +35,28 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 const desktopDragQuery = '(min-width: 768px) and (hover: hover) and (pointer: fine)'
-const DraggingBall = lazy(() => import('@/components/dragging-ball').then((module) => ({ default: module.DraggingBall })))
 const storageKey = 'kritiraj-draggable-layout-v1'
 const storageLifetime = 7 * 24 * 60 * 60 * 1000
+
+type DraggingBallProps = NonNullable<ComponentProps<typeof DraggingBallComponent>>
+
+/* The goo is an optional visual layer; the child still owns its keyboard
+   and pointer behavior if the lazy chunk cannot be loaded. */
+function DraggingBallFallback({ children }: DraggingBallProps) {
+  return <>{children}</>
+}
+
+async function loadDraggingBall(): Promise<{ default: ComponentType<DraggingBallProps> }> {
+  try {
+    const module = await import('@/components/dragging-ball')
+    return { default: module.DraggingBall }
+  } catch {
+    return { default: DraggingBallFallback }
+  }
+}
+
+const DraggingBall = lazy<ComponentType<DraggingBallProps>>(loadDraggingBall)
+
 const addableItems = [
   { label: 'Next.js', icon: SiNextdotjs },
   { label: 'Vercel', icon: SiVercel },

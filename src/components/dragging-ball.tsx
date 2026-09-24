@@ -333,9 +333,11 @@ export function DraggingBall({
              dead ease, and springiness is what decides how
              quickly the circle comes back. */
           move={{
-            springiness: give / 100,
-            stretch: stretch / 100,
-            wobble: 0.35,
+            /* Reduced motion keeps the painted body with the pointer
+               and removes both velocity stretch and overshoot. */
+            springiness: reducedMotion ? 1 : give / 100,
+            stretch: reducedMotion ? 0 : stretch / 100,
+            wobble: reducedMotion ? 0 : 0.35,
             trail: 0,
           }}
         >
