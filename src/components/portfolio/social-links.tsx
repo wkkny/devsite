@@ -37,7 +37,7 @@ export function SocialLinks() {
       : 'Copy email address'
 
   return (
-    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground">
       {socialLinks.map((link) => {
         const Icon = socialIcons[link.platform]
 
@@ -56,21 +56,20 @@ export function SocialLinks() {
           </Tooltip>
         )
       })}
-      <span className="inline-flex items-center">
-        <Tooltip content={emailTooltip} side="top">
-          <button
-            aria-label={emailLabel}
-            className="email-trigger inline-flex items-center gap-1.5 leading-none text-muted-foreground hover:text-foreground focus-visible:text-foreground"
-            onClick={copyEmail}
-            type="button"
-          >
-            <FiMail aria-hidden="true" className="size-4 shrink-0" />
-            {portfolioOwner.email}
-          </button>
-        </Tooltip>
-        <span aria-live="polite" className="sr-only">
-          {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address.' : ''}
-        </span>
+      <Tooltip content={emailTooltip} side="top">
+        <button
+          aria-label={emailLabel}
+          className="email-trigger inline-flex items-center gap-1.5 leading-none text-muted-foreground hover:text-foreground focus-visible:text-foreground max-sm:h-8 max-sm:rounded-lg max-sm:border max-sm:border-border max-sm:bg-background max-sm:px-2.5 max-sm:font-medium max-sm:transition-colors max-sm:hover:bg-muted max-sm:hover:text-foreground max-sm:focus-visible:outline-none max-sm:focus-visible:ring-2 max-sm:focus-visible:ring-ring"
+          onClick={copyEmail}
+          type="button"
+        >
+          <FiMail aria-hidden="true" className="size-4 shrink-0" />
+          <span className="sm:hidden">Email</span>
+          <span className="hidden sm:inline">{portfolioOwner.email}</span>
+        </button>
+      </Tooltip>
+      <span aria-live="polite" className="sr-only">
+        {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address.' : ''}
       </span>
     </nav>
   )

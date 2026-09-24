@@ -80,10 +80,6 @@ a[href],
 
 .email-trigger {
   position: relative;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font: inherit;
   text-align: left;
 }
 
