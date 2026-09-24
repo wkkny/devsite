@@ -72,6 +72,7 @@ test('decorations support keyboard and pointer movement without liquid deformati
 
   const decoration = page.getByRole('button', { name: 'TypeScript logo', exact: true })
   await expect(decoration).toBeVisible()
+  await expect(page.locator('.drg-ball')).toHaveCount(4)
   await decoration.scrollIntoViewIfNeeded()
   await expect.poll(() => decoration.evaluate((element) => element.getBoundingClientRect().width)).toBeGreaterThan(0)
   const beforeKeyboard = await getClientRect(decoration)
