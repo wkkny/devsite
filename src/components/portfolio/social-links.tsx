@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FaXTwitter } from 'react-icons/fa6'
 import { FiCheck, FiGithub, FiMail } from 'react-icons/fi'
@@ -14,14 +14,31 @@ const socialIcons = {
 
 export function SocialLinks() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
+  const copyStatusTimeout = useRef<number | null>(null)
   const reducedMotion = useReducedMotion()
 
+  function clearCopyStatusTimeout() {
+    if (copyStatusTimeout.current === null) return
+    window.clearTimeout(copyStatusTimeout.current)
+    copyStatusTimeout.current = null
+  }
+
+  useEffect(() => () => {
+    if (copyStatusTimeout.current !== null) window.clearTimeout(copyStatusTimeout.current)
+  }, [])
+
   async function copyEmail() {
+    clearCopyStatusTimeout()
+
     try {
       await navigator.clipboard.writeText(portfolioOwner.email)
       setCopyStatus('copied')
-      window.setTimeout(() => setCopyStatus('idle'), 1500)
+      copyStatusTimeout.current = window.setTimeout(() => {
+        copyStatusTimeout.current = null
+        setCopyStatus('idle')
+      }, 1500)
     } catch {
+      clearCopyStatusTimeout()
       setCopyStatus('error')
     }
   }

@@ -1,13 +1,15 @@
 import { expect, test } from '@playwright/test'
 
-test('mobile email remains available when copying fails', async ({ page }) => {
+test('mobile email remains available after a failed retry', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.addInitScript(() => {
+    let writeCount = 0
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: {
         writeText: async () => {
-          throw new DOMException('Clipboard access denied', 'NotAllowedError')
+          writeCount += 1
+          if (writeCount !== 2) throw new DOMException('Clipboard access denied', 'NotAllowedError')
         },
       },
     })
@@ -41,6 +43,15 @@ test('mobile email remains available when copying fails', async ({ page }) => {
   await copyButton.click()
 
   const emailFallback = page.getByRole('link', { name: 'kritiraj.tech@gmail.com' })
+  await expect(emailFallback).toHaveAttribute('href', 'mailto:kritiraj.tech@gmail.com')
+
+  const retryButton = page.getByRole('button', { name: 'Retry copying email address' })
+  await retryButton.click()
+
+  const copiedButton = page.getByRole('button', { name: 'Email copied to clipboard' })
+  await expect(copiedButton).toBeVisible()
+  await copiedButton.click()
+
   await expect(emailFallback).toHaveAttribute('href', 'mailto:kritiraj.tech@gmail.com')
   await page.waitForTimeout(1600)
   await expect(emailFallback).toBeVisible()
