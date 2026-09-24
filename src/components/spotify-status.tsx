@@ -73,10 +73,12 @@ export function SpotifyStatus() {
           >
             <PiSpotifyLogo aria-hidden="true" className="size-6 shrink-0" />
             <span className="flex min-w-0 flex-1 items-baseline gap-1">
-              <span className="min-w-0 truncate font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current">
+              <span className="min-w-0 flex-1 truncate font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current">
                 {playback.track.title}
               </span>
-              <span className="shrink-0 whitespace-nowrap">by {playback.track.artist}</span>
+              <span className="min-w-0 max-w-[40%] shrink overflow-hidden text-ellipsis whitespace-nowrap">
+                by {playback.track.artist}
+              </span>
             </span>
           </a>
         </Tooltip>
