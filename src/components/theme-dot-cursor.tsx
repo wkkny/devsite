@@ -39,11 +39,20 @@ export function ThemeDotCursor() {
       }
     }
 
+    const updateLinkCue = (target: EventTarget | null) => {
+      const element = target instanceof Element ? target : null
+      const isLink = element !== null && element.closest('a[href], [role="link"]') !== null
+      dot.classList.toggle('theme-dot-cursor--link', isLink)
+    }
+
+    const updateLinkCueAtPointer = () => {
+      if (!hasPosition) return
+      updateLinkCue(document.elementFromPoint(targetX, targetY))
+    }
+
     const moveDot = (event: PointerEvent) => {
       if (event.pointerType === 'touch') return
-      const target = event.target
-      const isLink = target instanceof Element && target.closest('a[href], [role="link"]')
-      dot.classList.toggle('theme-dot-cursor--link', Boolean(isLink))
+      updateLinkCue(event.target)
       targetX = event.clientX
       targetY = event.clientY
       if (!hasPosition) {
@@ -69,12 +78,16 @@ export function ThemeDotCursor() {
         root.classList.add('has-theme-dot-cursor')
         window.addEventListener('pointermove', moveDot)
         window.addEventListener('blur', hideDot)
+        document.addEventListener('scroll', updateLinkCueAtPointer, true)
+        window.addEventListener('resize', updateLinkCueAtPointer)
         document.addEventListener('pointerleave', hideDot)
       } else if (!mediaQuery.matches && enabled) {
         enabled = false
         root.classList.remove('has-theme-dot-cursor')
         window.removeEventListener('pointermove', moveDot)
         window.removeEventListener('blur', hideDot)
+        document.removeEventListener('scroll', updateLinkCueAtPointer, true)
+        window.removeEventListener('resize', updateLinkCueAtPointer)
         document.removeEventListener('pointerleave', hideDot)
         hideDot()
       }
@@ -87,6 +100,8 @@ export function ThemeDotCursor() {
       mediaQuery.removeEventListener('change', updateSupport)
       window.removeEventListener('pointermove', moveDot)
       window.removeEventListener('blur', hideDot)
+      document.removeEventListener('scroll', updateLinkCueAtPointer, true)
+      window.removeEventListener('resize', updateLinkCueAtPointer)
       document.removeEventListener('pointerleave', hideDot)
       root.classList.remove('has-theme-dot-cursor')
       if (frameId !== null) cancelAnimationFrame(frameId)
