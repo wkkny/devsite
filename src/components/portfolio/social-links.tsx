@@ -57,7 +57,7 @@ export function SocialLinks() {
           </Tooltip>
         )
       })}
-      <span className="email-social-link inline-flex items-center gap-x-4">
+      <span className="email-social-link inline-flex max-w-full flex-wrap items-center gap-x-4 gap-y-2">
         <Tooltip content={emailTooltip} side="top">
           <button
             aria-label={emailLabel}
