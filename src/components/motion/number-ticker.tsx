@@ -13,6 +13,8 @@ export interface NumberTickerProps {
   duration?: number;
   /** Stagger between digits. */
   stagger?: number;
+  /** Complete extra 0–9 passes before each digit settles. */
+  rolls?: number;
   /** Render only after the element enters the viewport. */
   startOnView?: boolean;
   prefix?: string;
@@ -35,6 +37,7 @@ export function NumberTicker({
   pad,
   duration = 0.9,
   stagger = 0.04,
+  rolls = 0,
   startOnView = true,
   prefix,
   suffix,
@@ -61,6 +64,7 @@ export function NumberTicker({
         : rounded.toString();
     return pad ? formatted.padStart(pad, "0") : formatted;
   }, [value, pad, format, locale]);
+  const extraRolls = Math.max(0, Math.floor(rolls));
   const glyphs = useMemo(() => {
     const chars = text.split("");
     // Key by place value (position from the right): a changing digit keeps its
@@ -85,7 +89,7 @@ export function NumberTicker({
   return (
     <span
       ref={containerRef}
-      className={cn("inline-flex items-center tabular-nums", className)}
+      className={cn("inline-flex h-[1.1em] items-center leading-none tabular-nums", className)}
     >
       <span className="sr-only">{readableText}</span>
       <span aria-hidden="true" className="inline-flex items-center">
@@ -94,7 +98,7 @@ export function NumberTicker({
           const isDigit = /\d/.test(char);
           if (!isDigit) {
             return (
-              <span key={id} className="inline-block">
+              <span key={id} className="inline-flex h-[1.1em] items-center leading-none">
                 {char}
               </span>
             );
@@ -104,6 +108,7 @@ export function NumberTicker({
             <Digit
               key={id}
               digit={armed ? digit : 0}
+              rolls={armed ? extraRolls : 0}
               delay={entered ? 0 : i * stagger}
               duration={duration}
               blur={blur}
@@ -119,12 +124,14 @@ export function NumberTicker({
 
 function Digit({
   digit,
+  rolls,
   delay,
   duration,
   blur,
   className,
 }: {
   digit: number;
+  rolls: number;
   delay: number;
   duration: number;
   blur: boolean;
@@ -132,6 +139,7 @@ function Digit({
 }) {
   const reduce = useReducedMotion();
   const columnRef = useRef<HTMLSpanElement>(null);
+  const rollingDigits = Array.from({ length: (rolls + 1) * DIGITS.length }, (_, i) => DIGITS[i % DIGITS.length]);
 
   useEffect(() => {
     if (reduce || !blur || !columnRef.current || !Number.isFinite(digit)) {
@@ -163,7 +171,7 @@ function Digit({
       <motion.span
         ref={columnRef}
         initial={{ y: 0 }}
-        animate={{ y: `-${digit * DIGIT_HEIGHT_EM}em` }}
+        animate={{ y: `-${(digit + rolls * DIGITS.length) * DIGIT_HEIGHT_EM}em` }}
         transition={
           reduce
             ? { duration: 0 }
@@ -171,9 +179,9 @@ function Digit({
         }
         className="absolute inset-x-0 top-0 flex flex-col items-center will-change-[transform,filter]"
       >
-        {DIGITS.map((n) => (
+        {rollingDigits.map((n, i) => (
           <span
-            key={n}
+            key={i}
             className="flex h-[1.1em] items-center justify-center leading-none"
           >
             {n}

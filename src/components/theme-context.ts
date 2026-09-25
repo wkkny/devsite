@@ -4,7 +4,8 @@ type Theme = 'light' | 'dark'
 
 type ThemeContextValue = {
   theme: Theme
-  toggleTheme: () => void
+  isTransitioning: boolean
+  toggleTheme: () => boolean
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
