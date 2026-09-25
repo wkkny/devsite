@@ -215,16 +215,11 @@ describe('GET /api/now-playing', () => {
     expect(fetchMock.mock.calls.length).toBe(callsAfterSecond)
   })
 
-  it('serializes concurrent requests so an older response never overwrites a newer track', async () => {
-    const olderTrack = {
-      name: 'Older Track',
-      artists: [{ name: 'Older Artist' }],
+  it('coalesces concurrent requests into a single upstream fetch', async () => {
+    const currentTrack = {
+      name: 'Runaway',
+      artists: [{ name: 'Kanye West' }, { name: ' Pusha T ' }],
       external_urls: { spotify: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds' },
-    }
-    const newerTrack = {
-      name: 'Newer Track',
-      artists: [{ name: 'Newer Artist' }],
-      external_urls: { spotify: 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv' },
     }
 
     const resolveCurrentlyPlaying: Array<(response: Response) => void> = []
@@ -260,36 +255,37 @@ describe('GET /api/now-playing', () => {
     const first = runHandler()
     await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(1))
 
-    // The second request queues behind the first and must not reach Spotify
-    // while the first one is still pending.
+    // The second request joins the in-flight fetch instead of starting its
+    // own upstream call.
     const second = runHandler()
     await new Promise((resolve) => setTimeout(resolve, 10))
     expect(resolveCurrentlyPlaying).toHaveLength(1)
 
-    resolveCurrentlyPlaying[0](jsonResponse({ is_playing: true, item: olderTrack }))
-    await first
+    resolveCurrentlyPlaying[0](jsonResponse({ is_playing: true, item: currentTrack }))
+    const [firstResponse, secondResponse] = await Promise.all([first, second])
 
-    // With the first request finished, the second fetch starts.
-    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(2))
-    resolveCurrentlyPlaying[1](jsonResponse({ is_playing: true, item: newerTrack }))
-    await second
+    const expectedBody = {
+      status: 'playing',
+      track: {
+        title: 'Runaway',
+        artist: 'Kanye West, Pusha T',
+        spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds',
+      },
+    }
+    expect(firstResponse.statusCode).toBe(200)
+    expect(firstResponse.body).toEqual(expectedBody)
+    expect(secondResponse.statusCode).toBe(200)
+    expect(secondResponse.body).toEqual(expectedBody)
 
-    // A later request with no playback history reveals which track was
-    // kept as the last played one.
+    // The coalesced result is cached: a later idle request serves the same
+    // track without a new Spotify track appearing in history.
     const third = runHandler()
-    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(3))
-    resolveCurrentlyPlaying[2](new Response(null, { status: 204 }))
+    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(2))
+    resolveCurrentlyPlaying[1](new Response(null, { status: 204 }))
     const response = await third
 
     expect(response.statusCode).toBe(200)
-    expect(response.body).toEqual({
-      status: 'recent',
-      track: {
-        title: 'Newer Track',
-        artist: 'Newer Artist',
-        spotifyUrl: 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
-      },
-    })
+    expect(response.body).toEqual({ status: 'recent', track: expectedBody.track })
   })
 
   it('skips podcast episodes and unmappable items to serve the most recent playable track', async () => {

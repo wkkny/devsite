@@ -24,12 +24,11 @@ let rateLimitedUntil = 0
 // The most recent track fetched from Spotify, kept so the page keeps showing
 // the last played song when Spotify goes idle, times out, or rate limits us.
 let lastKnownTrack: NowPlayingTrack | null = null
-// Serializes playback fetches: request start order does not establish which
-// result is newest (a token refresh can delay when a request reaches
-// Spotify), and out-of-order completions could cache an older track over a
-// newer one. A queue guarantees each result is fetched after — and so is at
-// least as new as — the previously cached track.
-let playbackFetchQueue: Promise<unknown> = Promise.resolve()
+// Coalesces concurrent playback fetches: at most one upstream call runs at a
+// time, so results can never complete out of order or cache a stale track,
+// and concurrent requests share the single in-flight result instead of
+// queuing their own fetches behind slow upstream calls.
+let playbackInFlight: Promise<NowPlayingResponse> | undefined
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
@@ -148,13 +147,35 @@ async function getPlaybackWithRefresh() {
   }
 }
 
-function getPlaybackInOrder() {
-  const result = playbackFetchQueue.then(() => getPlaybackWithRefresh())
+function remainingRateLimitSeconds() {
+  const remaining = Math.ceil((rateLimitedUntil - Date.now()) / 1_000)
+  return remaining > 0 ? remaining : 0
+}
 
-  // Keep the queue usable whether or not this fetch succeeds.
-  playbackFetchQueue = result.catch(() => undefined)
+function getPlaybackCoalesced() {
+  // A concurrent request may be sharing this in-flight fetch; joiners get
+  // the same result without issuing their own upstream call.
+  if (playbackInFlight) return playbackInFlight
 
-  return result
+  const remaining = remainingRateLimitSeconds()
+
+  if (remaining > 0) {
+    // A concurrent request hit a Spotify 429 after this one passed the
+    // rate-limit check at the top of the handler. Do not reach Spotify
+    // again while the window is active; the handler's 429 path serves the
+    // cached last played track and Retry-After.
+    return Promise.reject(new SpotifyRequestError(429, remaining))
+  }
+
+  const run = getPlaybackWithRefresh()
+
+  // Clear the slot once settled so the next request starts a fresh fetch,
+  // while every concurrent joiner shares this single result.
+  playbackInFlight = run.finally(() => {
+    playbackInFlight = undefined
+  })
+
+  return playbackInFlight
 }
 
 function sendRateLimited(
@@ -186,7 +207,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "Unexpected query parameters" })
   }
 
-  const remainingRateLimit = Math.ceil((rateLimitedUntil - Date.now()) / 1_000)
+  const remainingRateLimit = remainingRateLimitSeconds()
 
   if (remainingRateLimit > 0) {
     if (lastKnownTrack) return sendLastKnownTrack(res, remainingRateLimit)
@@ -194,7 +215,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    let result = await getPlaybackInOrder()
+    let result = await getPlaybackCoalesced()
 
     if (result.track) {
       lastKnownTrack = result.track
