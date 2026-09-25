@@ -25,7 +25,10 @@ async function stubThirdPartyApis(page: Page) {
 
 test('spotify status keeps showing the last played track when playback stops or requests fail', async ({ page }) => {
   test.setTimeout(120_000)
-  await page.clock.install()
+  // Pause the clock (not just install it): a running fake clock advances with
+  // real time, so slow steps would fire extra interval polls and shift every
+  // request count. Paused, only clock.runFor drives time.
+  await page.clock.pauseAt(0)
   await stubThirdPartyApis(page)
 
   type Mode = 'playing' | 'failing' | 'idle' | 'rate-limited' | 'rate-limited-cached'
