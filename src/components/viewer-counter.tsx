@@ -74,14 +74,12 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
         }
       >
         <FiEye aria-hidden="true" className="size-4" />
-        {loadFailed && viewers === null ? (
+        {viewers === null || !startAnimation ? (
           <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">—</span>
-        ) : !startAnimation || viewers === null ? (
-          <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">0</span>
         ) : (
           <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">
             <NumberTicker
-              value={viewers ?? 0}
+              value={viewers}
               locale
               startOnView={false}
               rolls={1}
