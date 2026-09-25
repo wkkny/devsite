@@ -1,12 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const bohemianRhapsody = {
-  status: 'playing',
-  track: {
-    title: 'Bohemian Rhapsody',
-    artist: 'Queen',
-    spotifyUrl: 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
-  },
+const bohemianRhapsodyTrack = {
+  title: 'Bohemian Rhapsody',
+  artist: 'Queen',
+  spotifyUrl: 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
 }
 
 async function stubThirdPartyApis(page: Page) {
@@ -26,17 +23,13 @@ async function stubThirdPartyApis(page: Page) {
   )
 }
 
-async function advancePoll(page: Page) {
-  const responsePromise = page.waitForResponse('**/api/now-playing')
-  await page.clock.runFor(30_000)
-  await responsePromise
-}
-
 test('spotify status keeps showing the last played track when playback stops or requests fail', async ({ page }) => {
+  test.setTimeout(120_000)
   await page.clock.install()
   await stubThirdPartyApis(page)
 
-  let mode: 'playing' | 'idle' | 'rate-limited' = 'playing'
+  type Mode = 'playing' | 'failing' | 'idle' | 'rate-limited' | 'rate-limited-cached'
+  let mode: Mode = 'playing'
   let requestCount = 0
   await page.route('**/api/now-playing', (route) => {
     requestCount += 1
@@ -44,7 +37,14 @@ test('spotify status keeps showing the last played track when playback stops or 
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(bohemianRhapsody),
+        body: JSON.stringify({ status: 'playing', track: bohemianRhapsodyTrack }),
+      })
+    }
+    if (mode === 'failing') {
+      return route.fulfill({
+        status: 502,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Failed to fetch Spotify playback' }),
       })
     }
     if (mode === 'idle') {
@@ -54,11 +54,21 @@ test('spotify status keeps showing the last played track when playback stops or 
         body: JSON.stringify({ status: 'idle', track: null }),
       })
     }
+    if (mode === 'rate-limited') {
+      return route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        headers: { 'Retry-After': '60' },
+        body: JSON.stringify({ error: 'Spotify is temporarily rate limited' }),
+      })
+    }
+    // The API serves the cached last played track during a rate-limit window
+    // with Retry-After, even though the response itself is a 200.
     return route.fulfill({
-      status: 429,
+      status: 200,
       contentType: 'application/json',
       headers: { 'Retry-After': '60' },
-      body: JSON.stringify({ error: 'Spotify is temporarily rate limited' }),
+      body: JSON.stringify({ status: 'recent', track: bohemianRhapsodyTrack }),
     })
   })
 
@@ -66,25 +76,55 @@ test('spotify status keeps showing the last played track when playback stops or 
 
   const trackLink = page.getByRole('link', { name: 'Bohemian Rhapsody by Queen' })
   await expect(trackLink).toBeVisible()
+  await expect(page.getByText('Now playing on Spotify:', { exact: false })).toHaveCount(1)
+
+  // A failed poll keeps the last played track and stops announcing it as
+  // currently playing.
+  mode = 'failing'
+  let previousCount = requestCount
+  await page.clock.runFor(30_000)
+  await expect.poll(() => requestCount).toBe(previousCount + 1)
+  await expect(trackLink).toBeVisible()
+  await expect(page.getByText('Now playing on Spotify:', { exact: false })).toHaveCount(0)
+  await expect(page.getByText('Last played on Spotify:', { exact: false })).toHaveCount(1)
 
   // Playback history runs out: the widget keeps showing the last played track.
   mode = 'idle'
-  await advancePoll(page)
-  await expect(trackLink).toBeVisible()
-
-  // Rate limited: the widget keeps showing the last played track.
-  mode = 'rate-limited'
-  await advancePoll(page)
-  await expect(trackLink).toBeVisible()
-
-  // The client honors Retry-After and skips the next poll.
-  mode = 'playing'
-  const countBeforeBackoff = requestCount
+  previousCount = requestCount
   await page.clock.runFor(30_000)
-  expect(requestCount).toBe(countBeforeBackoff)
+  await expect.poll(() => requestCount).toBe(previousCount + 1)
+  await expect(trackLink).toBeVisible()
 
-  // Once the backoff window passes, polling resumes.
-  await advancePoll(page)
-  expect(requestCount).toBe(countBeforeBackoff + 1)
+  // Rate limited with a plain 429: the widget keeps showing the last played
+  // track, and the client backs off for the Retry-After window.
+  mode = 'rate-limited'
+  previousCount = requestCount
+  await page.clock.runFor(30_000)
+  await expect.poll(() => requestCount).toBe(previousCount + 1)
+  await expect(trackLink).toBeVisible()
+
+  await page.clock.runFor(30_000)
+  expect(requestCount).toBe(previousCount + 1)
+
+  // Once the Retry-After window (60s) has fully passed, polling resumes.
+  mode = 'playing'
+  await page.clock.runFor(30_000)
+  await expect.poll(() => requestCount).toBe(previousCount + 2)
+  await expect(trackLink).toBeVisible()
+
+  // A cached 200 response during a rate-limit window also requests backoff
+  // via Retry-After.
+  mode = 'rate-limited-cached'
+  previousCount = requestCount
+  await page.clock.runFor(30_000)
+  await expect.poll(() => requestCount).toBe(previousCount + 1)
+  await expect(trackLink).toBeVisible()
+
+  await page.clock.runFor(30_000)
+  expect(requestCount).toBe(previousCount + 1)
+
+  mode = 'playing'
+  await page.clock.runFor(30_000)
+  await expect.poll(() => requestCount).toBe(previousCount + 2)
   await expect(trackLink).toBeVisible()
 })

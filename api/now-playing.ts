@@ -24,6 +24,10 @@ let rateLimitedUntil = 0
 // The most recent track fetched from Spotify, kept so the page keeps showing
 // the last played song when Spotify goes idle, times out, or rate limits us.
 let lastKnownTrack: NowPlayingTrack | null = null
+// Guards cache updates: concurrent requests can complete out of order, so an
+// older playback result must never overwrite a newer one.
+let playbackRequestSequence = 0
+let lastCacheWriteSequence = 0
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
@@ -183,10 +187,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const requestId = ++playbackRequestSequence
     let result = await getPlaybackWithRefresh()
 
     if (result.track) {
-      lastKnownTrack = result.track
+      if (requestId >= lastCacheWriteSequence) {
+        lastKnownTrack = result.track
+        lastCacheWriteSequence = requestId
+      }
     } else if (lastKnownTrack) {
       // Spotify has no playback history to report. Keep serving the last
       // played track so the widget never disappears.

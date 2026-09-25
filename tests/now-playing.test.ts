@@ -215,6 +215,76 @@ describe('GET /api/now-playing', () => {
     expect(fetchMock.mock.calls.length).toBe(callsAfterSecond)
   })
 
+  it('keeps the newest track when concurrent responses arrive out of order', async () => {
+    const olderTrack = {
+      name: 'Older Track',
+      artists: [{ name: 'Older Artist' }],
+      external_urls: { spotify: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds' },
+    }
+    const newerTrack = {
+      name: 'Newer Track',
+      artists: [{ name: 'Newer Artist' }],
+      external_urls: { spotify: 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv' },
+    }
+
+    const resolveCurrentlyPlaying: Array<(response: Response) => void> = []
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url === 'https://accounts.spotify.com/api/token') {
+        return jsonResponse({ access_token: 'test-access-token', expires_in: 3600 })
+      }
+      if (url === 'https://api.spotify.com/v1/me/player/currently-playing') {
+        const deferred = Promise.withResolvers<Response>()
+        resolveCurrentlyPlaying.push(deferred.resolve)
+        return deferred.promise
+      }
+      if (url === 'https://api.spotify.com/v1/me/player/recently-played?limit=1') {
+        return jsonResponse({ items: [] })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    vi.resetModules()
+    const { default: handler } = await import('../api/now-playing')
+
+    const runHandler = async () => {
+      const request = { method: 'GET', query: {} } as unknown as VercelRequest
+      const response = makeResponse()
+      await handler(request, response as unknown as VercelResponse)
+      return response
+    }
+
+    const first = runHandler()
+    const second = runHandler()
+    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(2))
+
+    // The newer request finishes first; the older one finishes last.
+    resolveCurrentlyPlaying[1](jsonResponse({ is_playing: true, item: newerTrack }))
+    await second
+    resolveCurrentlyPlaying[0](jsonResponse({ is_playing: true, item: olderTrack }))
+    await first
+
+    // A later request with no playback history reveals which track was
+    // kept as the last played one.
+    const third = runHandler()
+    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(3))
+    resolveCurrentlyPlaying[2](new Response(null, { status: 204 }))
+    const response = await third
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toEqual({
+      status: 'recent',
+      track: {
+        title: 'Newer Track',
+        artist: 'Newer Artist',
+        spotifyUrl: 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
+      },
+    })
+  })
+
   it('rejects unsupported methods and unexpected query parameters without contacting Spotify', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)

@@ -42,6 +42,12 @@ export function SpotifyStatus() {
     let controller: AbortController | null = null
     let pausedUntil = 0
 
+    function backoffUntil(headers: Headers) {
+      const retryAfter = Number(headers.get('Retry-After'))
+      const seconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60
+      return Date.now() + seconds * 1_000
+    }
+
     async function refresh() {
       // While rate limited, back off instead of hammering the endpoint.
       if (Date.now() < pausedUntil) return
@@ -54,9 +60,7 @@ export function SpotifyStatus() {
         const response = await fetch('/api/now-playing', { signal: request.signal })
 
         if (response.status === 429) {
-          const retryAfter = Number(response.headers.get('Retry-After'))
-          pausedUntil =
-            Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60) * 1_000
+          pausedUntil = backoffUntil(response.headers)
           return
         }
 
@@ -67,8 +71,21 @@ export function SpotifyStatus() {
 
         setLivePlayback(data)
         if (data.track) setLastTrack(data.track)
+
+        // The API serves the cached last played track during a rate-limit
+        // window and asks us to back off with Retry-After even though the
+        // response is a 200.
+        if (response.headers.has('Retry-After')) pausedUntil = backoffUntil(response.headers)
       } catch {
-        // Keep the last known playback so failed polls never hide the widget.
+        if (request.signal.aborted) return
+
+        // Keep the last known track, but playback is no longer confirmed, so
+        // stop announcing it as currently playing.
+        setLivePlayback((previous) =>
+          previous?.track && previous.status !== 'recent'
+            ? { status: 'recent', track: previous.track }
+            : previous,
+        )
       }
     }
 
