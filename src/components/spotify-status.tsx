@@ -5,6 +5,7 @@ import { Tooltip } from '@/components/motion/tooltip'
 import {
   isNowPlayingResponse,
   type NowPlayingResponse,
+  type NowPlayingTrack,
 } from '../../shared/now-playing'
 
 const useMock = import.meta.env.DEV && import.meta.env.VITE_SPOTIFY_USE_MOCK !== 'false'
@@ -30,28 +31,61 @@ const mockPlaybacks = mockTracks.map(({ title, artist }): NowPlayingResponse => 
 export function SpotifyStatus() {
   const [mockIndex, setMockIndex] = useState(0)
   const [livePlayback, setLivePlayback] = useState<NowPlayingResponse | null>(null)
+  // The last track Spotify reported. Kept so the widget keeps showing the
+  // last played song when Spotify goes idle or a poll fails (e.g. 429s).
+  const [lastTrack, setLastTrack] = useState<NowPlayingTrack | null>(null)
   const playback = useMock ? mockPlaybacks[mockIndex] : livePlayback
 
   useEffect(() => {
     if (useMock) return
 
     let controller: AbortController | null = null
+    let pausedUntil = 0
+
+    function backoffUntil(headers: Headers) {
+      const retryAfter = Number(headers.get('Retry-After'))
+      const seconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60
+      return Date.now() + seconds * 1_000
+    }
 
     async function refresh() {
+      // While rate limited, back off instead of hammering the endpoint.
+      if (Date.now() < pausedUntil) return
+
       controller?.abort()
       const request = new AbortController()
       controller = request
 
       try {
         const response = await fetch('/api/now-playing', { signal: request.signal })
+
+        if (response.status === 429) {
+          pausedUntil = backoffUntil(response.headers)
+          return
+        }
+
         if (!response.ok) throw new Error('Spotify playback is unavailable')
 
         const data: unknown = await response.json()
         if (!isNowPlayingResponse(data)) throw new Error('Invalid Spotify playback')
 
         setLivePlayback(data)
+        if (data.track) setLastTrack(data.track)
+
+        // The API serves the cached last played track during a rate-limit
+        // window and asks us to back off with Retry-After even though the
+        // response is a 200.
+        if (response.headers.has('Retry-After')) pausedUntil = backoffUntil(response.headers)
       } catch {
-        if (!request.signal.aborted) setLivePlayback(null)
+        if (request.signal.aborted) return
+
+        // Keep the last known track, but playback is no longer confirmed, so
+        // stop announcing it as currently playing.
+        setLivePlayback((previous) =>
+          previous?.track && previous.status !== 'recent'
+            ? { status: 'recent', track: previous.track }
+            : previous,
+        )
       }
     }
 
@@ -64,30 +98,32 @@ export function SpotifyStatus() {
     }
   }, [])
 
-  if (!playback?.track || playback.status === 'idle') return null
+  const track = playback?.track ?? lastTrack
+
+  if (!track) return null
 
   return (
     <>
       <p className="w-fit min-w-0 max-w-full text-sm leading-6 text-muted-foreground">
         {!useMock && (
           <span className="sr-only">
-            {playback.status === 'playing' ? 'Now playing on Spotify: ' : 'Last played on Spotify: '}
+            {playback?.status === 'playing' ? 'Now playing on Spotify: ' : 'Last played on Spotify: '}
           </span>
         )}
         <Tooltip content="Open in Spotify" side="top" wrapperClassName="w-full min-w-0">
           <a
             className="group flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
-            href={playback.track.spotifyUrl}
+            href={track.spotifyUrl}
             target="_blank"
             rel="noopener noreferrer"
           >
             <PiSpotifyLogo aria-hidden="true" className="size-6 shrink-0" />
             <span className="flex min-w-0 flex-1 items-baseline gap-1">
               <span className="min-w-0 truncate font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
-                {playback.track.title}
+                {track.title}
               </span>
               <span className="min-w-0 max-w-[40%] shrink overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
-                by {playback.track.artist}
+                by {track.artist}
               </span>
             </span>
           </a>
