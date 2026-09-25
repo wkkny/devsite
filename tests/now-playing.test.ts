@@ -60,7 +60,7 @@ function mockSpotifyFetch(currentResponse: Response, recentResponse?: Response) 
     if (url === 'https://api.spotify.com/v1/me/player/currently-playing') {
       return currentResponse
     }
-    if (url === 'https://api.spotify.com/v1/me/player/recently-played?limit=1') {
+    if (url === 'https://api.spotify.com/v1/me/player/recently-played?limit=10') {
       return recentResponse ?? jsonResponse({ items: [] })
     }
 
@@ -84,7 +84,7 @@ function mockSpotifyFetchWith(
     if (url === 'https://api.spotify.com/v1/me/player/currently-playing') {
       return getCurrent()
     }
-    if (url === 'https://api.spotify.com/v1/me/player/recently-played?limit=1') {
+    if (url === 'https://api.spotify.com/v1/me/player/recently-played?limit=10') {
       return getRecent()
     }
 
@@ -239,7 +239,7 @@ describe('GET /api/now-playing', () => {
         resolveCurrentlyPlaying.push(deferred.resolve)
         return deferred.promise
       }
-      if (url === 'https://api.spotify.com/v1/me/player/recently-played?limit=1') {
+      if (url === 'https://api.spotify.com/v1/me/player/recently-played?limit=10') {
         return jsonResponse({ items: [] })
       }
 
@@ -283,6 +283,48 @@ describe('GET /api/now-playing', () => {
         spotifyUrl: 'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
       },
     })
+  })
+
+  it('skips podcast episodes and unmappable items to serve the most recent playable track', async () => {
+    mockSpotifyFetch(
+      new Response(null, { status: 204 }),
+      jsonResponse({
+        items: [
+          // Podcast episode: track is null and the episode is ignored.
+          {
+            played_at: new Date().toISOString(),
+            track: null,
+            episode: { name: 'Some podcast episode' },
+          },
+          // Invalid played_at: skipped.
+          { played_at: 'not-a-date', track: currentTrack },
+          // First playable track in history wins.
+          { played_at: new Date().toISOString(), track: currentTrack },
+        ],
+      }),
+    )
+
+    const response = await invoke()
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toEqual({ status: 'recent', track: expectedTrack })
+  })
+
+  it('returns idle when the playback history contains no playable tracks', async () => {
+    mockSpotifyFetch(
+      new Response(null, { status: 204 }),
+      jsonResponse({
+        items: [
+          { played_at: new Date().toISOString(), track: null, episode: { name: 'Podcast' } },
+          { played_at: new Date().toISOString(), track: { name: 'Local file' } },
+        ],
+      }),
+    )
+
+    const response = await invoke()
+
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toEqual({ status: 'idle', track: null })
   })
 
   it('rejects unsupported methods and unexpected query parameters without contacting Spotify', async () => {

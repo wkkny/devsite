@@ -15,7 +15,7 @@ import {
 
 const NOW_PLAYING_URL = "https://api.spotify.com/v1/me/player/currently-playing"
 const RECENTLY_PLAYED_URL =
-  "https://api.spotify.com/v1/me/player/recently-played?limit=1"
+  "https://api.spotify.com/v1/me/player/recently-played?limit=10"
 const REQUEST_TIMEOUT_MS = 4_000
 const CACHE_CONTROL =
   "public, max-age=0, s-maxage=30, stale-while-revalidate=30"
@@ -95,23 +95,19 @@ async function getRecentlyPlayed(accessToken: string): Promise<NowPlayingRespons
     throw new Error("Invalid Spotify recently-played response")
   }
 
-  const item = data.items[0]
+  // History items are not always playable tracks — podcast episodes have a
+  // null track, local files lack a Spotify URL, and played_at can be invalid.
+  // Serve the most recent item that maps to a real track.
+  for (const item of data.items) {
+    if (!isRecord(item) || typeof item.played_at !== "string") continue
+    if (Number.isNaN(Date.parse(item.played_at))) continue
 
-  if (item === undefined) {
-    return { status: "idle", track: null }
+    const track = mapTrack(item.track)
+
+    if (track) return { status: "recent", track }
   }
 
-  if (!isRecord(item) || typeof item.played_at !== "string") {
-    throw new Error("Invalid Spotify recently-played item")
-  }
-
-  const track = mapTrack(item.track)
-
-  if (!track || Number.isNaN(Date.parse(item.played_at))) {
-    throw new Error("Invalid Spotify recently-played track")
-  }
-
-  return { status: "recent", track }
+  return { status: "idle", track: null }
 }
 
 async function getPlayback(accessToken: string): Promise<NowPlayingResponse> {
