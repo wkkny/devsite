@@ -105,6 +105,11 @@ test('spotify status keeps showing the last played track when playback stops or 
   await page.clock.runFor(30_000)
   await expect.poll(() => requestCount).toBe(previousCount + 1)
   await expect(trackLink).toBeVisible()
+  // requestCount bumps as soon as the route receives the poll, before the
+  // page has processed the 429 and started backing off. Give the page real
+  // time to process the response (the clock stays paused) before advancing
+  // past the interval tick that must be skipped.
+  await page.waitForTimeout(250)
 
   await page.clock.runFor(30_000)
   expect(requestCount).toBe(previousCount + 1)
@@ -122,6 +127,8 @@ test('spotify status keeps showing the last played track when playback stops or 
   await page.clock.runFor(30_000)
   await expect.poll(() => requestCount).toBe(previousCount + 1)
   await expect(trackLink).toBeVisible()
+  // Let the page process the cached response's Retry-After before advancing.
+  await page.waitForTimeout(250)
 
   await page.clock.runFor(30_000)
   expect(requestCount).toBe(previousCount + 1)

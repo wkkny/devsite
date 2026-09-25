@@ -24,10 +24,12 @@ let rateLimitedUntil = 0
 // The most recent track fetched from Spotify, kept so the page keeps showing
 // the last played song when Spotify goes idle, times out, or rate limits us.
 let lastKnownTrack: NowPlayingTrack | null = null
-// Guards cache updates: concurrent requests can complete out of order, so an
-// older playback result must never overwrite a newer one.
-let playbackRequestSequence = 0
-let lastCacheWriteSequence = 0
+// Serializes playback fetches: request start order does not establish which
+// result is newest (a token refresh can delay when a request reaches
+// Spotify), and out-of-order completions could cache an older track over a
+// newer one. A queue guarantees each result is fetched after — and so is at
+// least as new as — the previously cached track.
+let playbackFetchQueue: Promise<unknown> = Promise.resolve()
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
@@ -146,6 +148,15 @@ async function getPlaybackWithRefresh() {
   }
 }
 
+function getPlaybackInOrder() {
+  const result = playbackFetchQueue.then(() => getPlaybackWithRefresh())
+
+  // Keep the queue usable whether or not this fetch succeeds.
+  playbackFetchQueue = result.catch(() => undefined)
+
+  return result
+}
+
 function sendRateLimited(
   res: VercelResponse,
   retryAfterSeconds: number
@@ -183,14 +194,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const requestId = ++playbackRequestSequence
-    let result = await getPlaybackWithRefresh()
+    let result = await getPlaybackInOrder()
 
     if (result.track) {
-      if (requestId >= lastCacheWriteSequence) {
-        lastKnownTrack = result.track
-        lastCacheWriteSequence = requestId
-      }
+      lastKnownTrack = result.track
     } else if (lastKnownTrack) {
       // Spotify has no playback history to report. Keep serving the last
       // played track so the widget never disappears.

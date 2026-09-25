@@ -215,7 +215,7 @@ describe('GET /api/now-playing', () => {
     expect(fetchMock.mock.calls.length).toBe(callsAfterSecond)
   })
 
-  it('keeps the newest track when concurrent responses arrive out of order', async () => {
+  it('serializes concurrent requests so an older response never overwrites a newer track', async () => {
     const olderTrack = {
       name: 'Older Track',
       artists: [{ name: 'Older Artist' }],
@@ -258,14 +258,21 @@ describe('GET /api/now-playing', () => {
     }
 
     const first = runHandler()
-    const second = runHandler()
-    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(2))
+    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(1))
 
-    // The newer request finishes first; the older one finishes last.
-    resolveCurrentlyPlaying[1](jsonResponse({ is_playing: true, item: newerTrack }))
-    await second
+    // The second request queues behind the first and must not reach Spotify
+    // while the first one is still pending.
+    const second = runHandler()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(resolveCurrentlyPlaying).toHaveLength(1)
+
     resolveCurrentlyPlaying[0](jsonResponse({ is_playing: true, item: olderTrack }))
     await first
+
+    // With the first request finished, the second fetch starts.
+    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(2))
+    resolveCurrentlyPlaying[1](jsonResponse({ is_playing: true, item: newerTrack }))
+    await second
 
     // A later request with no playback history reveals which track was
     // kept as the last played one.
