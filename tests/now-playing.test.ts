@@ -36,8 +36,12 @@ function makeResponse() {
   return { ...response, headers } as typeof response & { headers: Map<string, string> }
 }
 
-async function invoke(method = 'GET', query: Record<string, string> = {}) {
-  vi.resetModules()
+async function invoke(
+  method = 'GET',
+  query: Record<string, string> = {},
+  options: { resetModules?: boolean } = {},
+) {
+  if (options.resetModules !== false) vi.resetModules()
   const { default: handler } = await import('../api/now-playing')
   const request = { method, query } as unknown as VercelRequest
   const response = makeResponse()
@@ -67,6 +71,36 @@ function mockSpotifyFetch(currentResponse: Response, recentResponse?: Response) 
   return fetchMock
 }
 
+function mockSpotifyFetchWith(
+  getCurrent: () => Response,
+  getRecent: () => Response = () => jsonResponse({ items: [] }),
+) {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input)
+
+    if (url === 'https://accounts.spotify.com/api/token') {
+      return jsonResponse({ access_token: 'test-access-token', expires_in: 3600 })
+    }
+    if (url === 'https://api.spotify.com/v1/me/player/currently-playing') {
+      return getCurrent()
+    }
+    if (url === 'https://api.spotify.com/v1/me/player/recently-played?limit=1') {
+      return getRecent()
+    }
+
+    throw new Error(`Unexpected fetch URL: ${url}`)
+  })
+
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+const expectedTrack = {
+  title: 'Runaway',
+  artist: 'Kanye West, Pusha T',
+  spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds',
+}
+
 describe('GET /api/now-playing', () => {
   beforeEach(() => {
     vi.stubEnv('SPOTIFY_CLIENT_ID', 'test-client-id')
@@ -88,7 +122,7 @@ describe('GET /api/now-playing', () => {
         spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds',
       },
     })
-    expect(response.headers.get('cache-control')).toContain('s-maxage=10')
+    expect(response.headers.get('cache-control')).toContain('s-maxage=30')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -130,6 +164,55 @@ describe('GET /api/now-playing', () => {
         spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds',
       },
     })
+  })
+
+  it('keeps serving the last played track when Spotify has no playback history', async () => {
+    let recentItems: unknown[] = [{ played_at: new Date().toISOString(), track: currentTrack }]
+    mockSpotifyFetchWith(
+      () => new Response(null, { status: 204 }),
+      () => jsonResponse({ items: recentItems }),
+    )
+
+    const first = await invoke()
+    expect(first.statusCode).toBe(200)
+    expect(first.body).toEqual({ status: 'recent', track: expectedTrack })
+
+    recentItems = []
+
+    const second = await invoke('GET', {}, { resetModules: false })
+    expect(second.statusCode).toBe(200)
+    expect(second.body).toEqual({ status: 'recent', track: expectedTrack })
+  })
+
+  it('serves the last played track and backs off when Spotify is rate limited', async () => {
+    let rateLimited = false
+    const fetchMock = mockSpotifyFetchWith(() =>
+      rateLimited
+        ? new Response(JSON.stringify({ error: 'too many requests' }), {
+            status: 429,
+            headers: { 'Retry-After': '30' },
+          })
+        : jsonResponse({ is_playing: true, item: currentTrack }),
+    )
+
+    const first = await invoke()
+    expect(first.statusCode).toBe(200)
+    expect(first.body).toEqual({ status: 'playing', track: expectedTrack })
+
+    rateLimited = true
+    const second = await invoke('GET', {}, { resetModules: false })
+    expect(second.statusCode).toBe(200)
+    expect(second.body).toEqual({ status: 'recent', track: expectedTrack })
+    expect(second.headers.get('retry-after')).toBe('30')
+    expect(second.headers.get('cache-control')).toBe('no-store')
+
+    // While the rate limit window is active, the cached track is served
+    // without contacting Spotify again.
+    const callsAfterSecond = fetchMock.mock.calls.length
+    const third = await invoke('GET', {}, { resetModules: false })
+    expect(third.statusCode).toBe(200)
+    expect(third.body).toEqual({ status: 'recent', track: expectedTrack })
+    expect(fetchMock.mock.calls.length).toBe(callsAfterSecond)
   })
 
   it('rejects unsupported methods and unexpected query parameters without contacting Spotify', async () => {

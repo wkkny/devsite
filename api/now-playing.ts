@@ -18,9 +18,12 @@ const RECENTLY_PLAYED_URL =
   "https://api.spotify.com/v1/me/player/recently-played?limit=1"
 const REQUEST_TIMEOUT_MS = 4_000
 const CACHE_CONTROL =
-  "public, max-age=0, s-maxage=10, stale-while-revalidate=20"
+  "public, max-age=0, s-maxage=30, stale-while-revalidate=30"
 
 let rateLimitedUntil = 0
+// The most recent track fetched from Spotify, kept so the page keeps showing
+// the last played song when Spotify goes idle, times out, or rate limits us.
+let lastKnownTrack: NowPlayingTrack | null = null
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
@@ -152,6 +155,14 @@ function sendRateLimited(
   return res.status(429).json({ error: "Spotify is temporarily rate limited" })
 }
 
+function sendLastKnownTrack(res: VercelResponse, retryAfterSeconds?: number) {
+  if (retryAfterSeconds !== undefined) {
+    res.setHeader("Retry-After", String(retryAfterSeconds))
+  }
+  res.setHeader("Cache-Control", "no-store")
+  return res.status(200).json({ status: "recent", track: lastKnownTrack })
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET")
@@ -167,11 +178,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const remainingRateLimit = Math.ceil((rateLimitedUntil - Date.now()) / 1_000)
 
   if (remainingRateLimit > 0) {
+    if (lastKnownTrack) return sendLastKnownTrack(res, remainingRateLimit)
     return sendRateLimited(res, remainingRateLimit)
   }
 
   try {
-    const result = await getPlaybackWithRefresh()
+    let result = await getPlaybackWithRefresh()
+
+    if (result.track) {
+      lastKnownTrack = result.track
+    } else if (lastKnownTrack) {
+      // Spotify has no playback history to report. Keep serving the last
+      // played track so the widget never disappears.
+      result = { status: "recent", track: lastKnownTrack }
+    }
 
     res.setHeader("Cache-Control", CACHE_CONTROL)
     return res.status(200).json(result)
@@ -182,11 +202,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const retryAfter = error.retryAfterSeconds ?? 10
       rateLimitedUntil = Date.now() + retryAfter * 1_000
       console.error("[spotify] upstream request failed", { status: 429 })
+
+      if (lastKnownTrack) {
+        // Rate limited by Spotify: keep showing the last played track and
+        // tell the client to back off instead of hiding the widget.
+        return sendLastKnownTrack(res, retryAfter)
+      }
+
       return sendRateLimited(res, retryAfter)
     }
 
     if (error instanceof SpotifyTimeoutError) {
       console.error("[spotify] upstream request timed out")
+      if (lastKnownTrack) return sendLastKnownTrack(res)
       return res.status(504).json({ error: "Spotify is temporarily unavailable" })
     }
 
@@ -201,6 +229,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : "unexpected",
       status: error instanceof SpotifyRequestError ? error.status : undefined,
     })
+    if (!isConfigurationError && lastKnownTrack) {
+      return sendLastKnownTrack(res)
+    }
+
     return res
       .status(isConfigurationError ? 503 : 502)
       .json({ error: "Failed to fetch Spotify playback" })
