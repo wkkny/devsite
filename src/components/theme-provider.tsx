@@ -39,11 +39,11 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   const toggleTheme = () => {
-    if (transitioning.current) return
+    if (transitioning.current) return false
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
     if (window.matchMedia(SKIP_THEME_REVEAL_QUERY).matches) {
       applyTheme(nextTheme)
-      return
+      return true
     }
 
     const styles = getComputedStyle(document.documentElement)
@@ -57,10 +57,11 @@ function ThemeProvider({ children }: { children: ReactNode }) {
         blue: styles.getPropertyValue('--portfolio-blue').trim(),
       },
     })
+    return true
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, isTransitioning: reveal !== null, toggleTheme }}>
       {children}
       {reveal && (
         <PixelReveal

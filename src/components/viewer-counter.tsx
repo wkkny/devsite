@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { FiEye } from 'react-icons/fi'
 
+import { NumberTicker } from '@/components/motion/number-ticker'
 import { Tooltip } from '@/components/motion/tooltip'
-import { EASED_LINEAR_CSS } from '@/lib/ease'
-import { cn } from '@/lib/utils'
 import { portfolioOwner } from '@/data'
 
-export function ViewerCounter() {
+export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
   const [viewers, setViewers] = useState<number | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -28,7 +28,10 @@ export function ViewerCounter() {
           signal: controller.signal,
           cache: 'no-store',
         })
-        if (!response.ok) return
+        if (!response.ok) {
+          setLoadFailed(true)
+          return
+        }
 
         const data: unknown = await response.json()
         if (
@@ -40,8 +43,11 @@ export function ViewerCounter() {
           data.value >= 0
         ) {
           setViewers(data.value)
+        } else {
+          setLoadFailed(true)
         }
       } catch {
+        if (!controller.signal.aborted) setLoadFailed(true)
         // Keep the profile usable when the counter service is unavailable.
       }
     }
@@ -55,18 +61,33 @@ export function ViewerCounter() {
       content="Visitors"
       side="bottom"
       gap={2}
-      wrapperClassName={viewers === null ? 'pointer-events-none' : undefined}
+      wrapperClassName={viewers === null || !startAnimation ? 'pointer-events-none' : undefined}
     >
       <output
-        className={cn(
-          'inline-flex h-10 shrink-0 items-center gap-2 text-sm font-medium text-muted-foreground motion-safe:transition-opacity motion-safe:duration-200',
-          viewers === null ? 'opacity-0' : 'opacity-100',
-        )}
-        style={{ transitionTimingFunction: EASED_LINEAR_CSS }}
-        aria-label={viewers === null ? 'Visitor count loading' : `${viewers.toLocaleString()} visitors`}
+        className="inline-flex h-8 shrink-0 items-center gap-2 px-2 text-sm font-medium leading-none text-muted-foreground"
+        aria-label={
+          viewers !== null
+            ? `${viewers.toLocaleString()} visitors`
+            : loadFailed
+              ? 'Visitor count unavailable'
+              : 'Visitor count loading'
+        }
       >
         <FiEye aria-hidden="true" className="size-4" />
-        <span className="tabular-nums">{viewers === null ? '—' : viewers.toLocaleString()}</span>
+        {viewers === null || !startAnimation ? (
+          <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">—</span>
+        ) : (
+          <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">
+            <NumberTicker
+              value={viewers}
+              locale
+              startOnView={false}
+              rolls={1}
+              duration={0.8}
+              stagger={0}
+            />
+          </span>
+        )}
       </output>
     </Tooltip>
   )

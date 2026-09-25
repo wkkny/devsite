@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Dithering } from '@paper-design/shaders-react'
 import { MapPin } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
@@ -20,6 +21,7 @@ export type ProfileSectionProps = {
 export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProps) {
   const { theme } = useTheme()
   const reducedMotion = useReducedMotion()
+  const [profileContentEntered, setProfileContentEntered] = useState(false)
   const styles = getComputedStyle(document.documentElement)
   const shaderColors = {
     back: styles.getPropertyValue('--background').trim(),
@@ -77,6 +79,7 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
           transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.42, ease: EASE_OUT, delay: 0.7 }}
         />
         <motion.div
+          onAnimationComplete={() => setProfileContentEntered(true)}
           initial={contentInitial}
           animate={contentAnimate}
           transition={contentTransition}
@@ -85,8 +88,13 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
             <h1 id="profile-name" className="min-w-0 text-3xl font-medium tracking-tight sm:text-4xl">
               {portfolioOwner.displayName}
             </h1>
-            <div className="flex shrink-0 items-center gap-2 sm:absolute sm:-top-[7.5rem] sm:right-0">
-              <ViewerCounter />
+            <div
+              role="group"
+              aria-label="Site controls"
+              className="inline-flex h-10 shrink-0 items-center gap-1 rounded-xl p-1 sm:absolute sm:-top-[7.5rem] sm:right-0"
+            >
+              <ViewerCounter startAnimation={profileContentEntered} />
+              <span aria-hidden="true" className="h-5 w-px bg-border" />
               <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} side="bottom">
                 <ThemeToggle />
               </Tooltip>
