@@ -30,6 +30,11 @@ let lastKnownTrack: NowPlayingTrack | null = null
 // queuing their own fetches behind slow upstream calls.
 let playbackInFlight: Promise<NowPlayingResponse> | undefined
 
+type PlaybackFetch = {
+  promise: Promise<NowPlayingResponse>
+  shared: boolean
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
@@ -152,10 +157,14 @@ function remainingRateLimitSeconds() {
   return remaining > 0 ? remaining : 0
 }
 
-function getPlaybackCoalesced() {
+function getPlaybackCoalesced(): PlaybackFetch {
   // A concurrent request may be sharing this in-flight fetch; joiners get
-  // the same result without issuing their own upstream call.
-  if (playbackInFlight) return playbackInFlight
+  // the same result without issuing their own upstream call. Their response
+  // is marked shared so it cannot be advertised as confirmed current playback
+  // or cached publicly below.
+  if (playbackInFlight) {
+    return { promise: playbackInFlight, shared: true }
+  }
 
   const remaining = remainingRateLimitSeconds()
 
@@ -164,7 +173,10 @@ function getPlaybackCoalesced() {
     // rate-limit check at the top of the handler. Do not reach Spotify
     // again while the window is active; the handler's 429 path serves the
     // cached last played track and Retry-After.
-    return Promise.reject(new SpotifyRequestError(429, remaining))
+    return {
+      promise: Promise.reject(new SpotifyRequestError(429, remaining)),
+      shared: false,
+    }
   }
 
   const run = getPlaybackWithRefresh()
@@ -175,7 +187,7 @@ function getPlaybackCoalesced() {
     playbackInFlight = undefined
   })
 
-  return playbackInFlight
+  return { promise: playbackInFlight, shared: false }
 }
 
 function sendRateLimited(
@@ -215,7 +227,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    let result = await getPlaybackCoalesced()
+    const playbackFetch = getPlaybackCoalesced()
+    let result = await playbackFetch.promise
 
     if (result.track) {
       lastKnownTrack = result.track
@@ -225,7 +238,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       result = { status: "recent", track: lastKnownTrack }
     }
 
-    res.setHeader("Cache-Control", CACHE_CONTROL)
+    if (playbackFetch.shared && result.status === "playing") {
+      // This request joined a fetch that started before it arrived, so its
+      // result is useful as the last played track but is not independently
+      // confirmed current playback. Do not let it become a public cache entry.
+      result = { status: "recent", track: result.track }
+    }
+
+    res.setHeader(
+      "Cache-Control",
+      playbackFetch.shared ? "no-store" : CACHE_CONTROL
+    )
     return res.status(200).json(result)
   } catch (error) {
     res.setHeader("Cache-Control", "no-store")

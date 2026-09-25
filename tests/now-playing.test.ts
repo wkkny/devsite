@@ -264,28 +264,27 @@ describe('GET /api/now-playing', () => {
     resolveCurrentlyPlaying[0](jsonResponse({ is_playing: true, item: currentTrack }))
     const [firstResponse, secondResponse] = await Promise.all([first, second])
 
-    const expectedBody = {
-      status: 'playing',
-      track: {
-        title: 'Runaway',
-        artist: 'Kanye West, Pusha T',
-        spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds',
-      },
+    const expectedTrack = {
+      title: 'Runaway',
+      artist: 'Kanye West, Pusha T',
+      spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds',
     }
     expect(firstResponse.statusCode).toBe(200)
-    expect(firstResponse.body).toEqual(expectedBody)
+    expect(firstResponse.body).toEqual({ status: 'playing', track: expectedTrack })
+    expect(firstResponse.headers.get('cache-control')).toContain('s-maxage=30')
     expect(secondResponse.statusCode).toBe(200)
-    expect(secondResponse.body).toEqual(expectedBody)
+    expect(secondResponse.body).toEqual({ status: 'recent', track: expectedTrack })
+    expect(secondResponse.headers.get('cache-control')).toBe('no-store')
 
-    // The coalesced result is cached: a later idle request serves the same
-    // track without a new Spotify track appearing in history.
+    // The coalesced result is kept as the last known track: a later idle
+    // request serves it without a new Spotify track appearing in history.
     const third = runHandler()
     await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(2))
     resolveCurrentlyPlaying[1](new Response(null, { status: 204 }))
     const response = await third
 
     expect(response.statusCode).toBe(200)
-    expect(response.body).toEqual({ status: 'recent', track: expectedBody.track })
+    expect(response.body).toEqual({ status: 'recent', track: expectedTrack })
   })
 
   it('skips podcast episodes and unmappable items to serve the most recent playable track', async () => {
