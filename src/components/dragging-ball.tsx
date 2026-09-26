@@ -23,6 +23,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Liquid } from "liquid-gooey";
+import { EASE_OUT } from "@/lib/ease";
 
 /* ══ Dragging ball ════════════════════════════════════════
    One body, deformed by its own speed. A trail would put a
@@ -213,6 +214,9 @@ export function DraggingBall({
   externalGestures = false,
   reducedMotion = false,
   controlsRef,
+  entryReady,
+  entryDelay = 0,
+  onReady,
   children,
 }: {
   stretch?: number;
@@ -224,6 +228,9 @@ export function DraggingBall({
   externalGestures?: boolean;
   reducedMotion?: boolean;
   controlsRef?: ControlsRef;
+  entryReady?: boolean;
+  entryDelay?: number;
+  onReady?: () => void;
   children?: ReactNode;
 } = {}) {
   const g = Math.min(1, Math.max(0, grip / 100));
@@ -266,6 +273,12 @@ export function DraggingBall({
     };
   });
 
+  useLayoutEffect(() => {
+    if (!onReady) return;
+    const frame = window.requestAnimationFrame(onReady);
+    return () => window.cancelAnimationFrame(frame);
+  }, [onReady]);
+
   /* room to move: half the well less half the ball, so the
      circle can touch each edge and go no further */
   const reach = { x: (well.w - size) / 2, y: (well.h - size) / 2 };
@@ -276,6 +289,14 @@ export function DraggingBall({
       : hovered
       ? { scaleX: 1 + SWELL * g, scaleY: 1 + SWELL * g }
       : { scaleX: 1, scaleY: 1 };
+  const ballTransition = reducedMotion
+    ? { duration: 0 }
+    : entryReady === undefined
+      ? { type: "spring" as const, stiffness: 520, damping: 24 }
+      : {
+          default: { type: "spring" as const, stiffness: 520, damping: 24 },
+          scale: { duration: 0.22, ease: EASE_OUT, delay: entryDelay / 1000 },
+        };
 
   return (
     <div
@@ -344,6 +365,7 @@ export function DraggingBall({
           <motion.span
             className="drg-ball"
             style={{ width: size, height: size }}
+            initial={entryReady === undefined || reducedMotion ? undefined : { scale: 0.95 }}
             drag={drag}
             /* Numeric, not a ref: the constraint is a distance
                from where the ball already sits, and the ball
@@ -374,12 +396,15 @@ export function DraggingBall({
                arrives on a curve is a shape being animated,
                and one that arrives with a little overshoot is
                a soft thing giving. */
-            animate={externalGestures ? externalGesturePose : undefined}
+            animate={externalGestures || entryReady !== undefined
+              ? {
+                  ...(externalGestures ? externalGesturePose : {}),
+                  ...(entryReady === undefined ? {} : { scale: entryReady || reducedMotion ? 1 : 0.95 }),
+                }
+              : undefined}
             whileHover={externalGestures || reducedMotion ? undefined : { scaleX: 1 + SWELL * g, scaleY: 1 + SWELL * g }}
             whileTap={externalGestures || reducedMotion ? undefined : { scaleX: 1 - 0.16 * g, scaleY: 1 + 0.08 * g }}
-            transition={reducedMotion
-              ? { duration: 0 }
-              : { type: "spring", stiffness: 520, damping: 24 }}
+            transition={ballTransition}
             onHoverStart={externalGestures && !reducedMotion ? () => setHovered(true) : undefined}
             onHoverEnd={externalGestures && !reducedMotion ? () => setHovered(false) : undefined}
             /* ── SILENT WHILE IT MOVES ────────────────────
