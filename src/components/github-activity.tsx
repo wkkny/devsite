@@ -21,6 +21,7 @@ function GitHubActivity() {
   const [contributions, setContributions] = useState<ContributionDay[]>([])
   const [hasError, setHasError] = useState(false)
   const calendarScrollRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
     const mobile = window.matchMedia('(max-width: 639px)')
@@ -36,9 +37,16 @@ function GitHubActivity() {
   }, [])
 
   useEffect(() => {
+    const section = sectionRef.current
+    if (!section) return
+
     const controller = new AbortController()
+    let started = false
 
     async function loadContributions() {
+      if (started) return
+      started = true
+
       try {
         const response = await fetch(
           `https://github-contributions-api.jogruber.de/v4/${portfolioOwner.githubUsername}?y=last`,
@@ -53,8 +61,25 @@ function GitHubActivity() {
       }
     }
 
-    void loadContributions()
-    return () => controller.abort()
+    if (typeof IntersectionObserver === 'undefined') {
+      void loadContributions()
+      return () => controller.abort()
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        observer.disconnect()
+        void loadContributions()
+      },
+      { rootMargin: '200px 0px' },
+    )
+    observer.observe(section)
+
+    return () => {
+      observer.disconnect()
+      controller.abort()
+    }
   }, [])
 
   const now = new Date()
@@ -71,7 +96,7 @@ function GitHubActivity() {
   )
 
   return (
-    <div className="w-full">
+    <div ref={sectionRef} className="w-full">
       <HeatCalendar
         weeks={WEEKS}
         endDate={endDate}
