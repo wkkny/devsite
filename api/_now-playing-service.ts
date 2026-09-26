@@ -53,11 +53,136 @@ function playbackOutcome(
   return { kind: "playback", playback, ...options }
 }
 
+function asCoalescedOutcome(outcome: NowPlayingOutcome): NowPlayingOutcome {
+  if (outcome.kind !== "playback" || !outcome.playback.track) return outcome
+
+  return playbackOutcome(
+    { status: "recent", track: outcome.playback.track },
+    {
+      stale: true,
+      ...(outcome.retryAfterSeconds === undefined
+        ? {}
+        : { retryAfterSeconds: outcome.retryAfterSeconds }),
+    },
+  )
+}
+
 export function createNowPlayingService({
   stateStore,
   getPlayback,
   now = Date.now,
 }: NowPlayingServiceDependencies) {
+  let localRefreshInFlight: Promise<NowPlayingOutcome> | undefined
+
+  async function refreshPlayback(
+    state: SharedSpotifyState,
+    lockToken: string,
+    store: SpotifyStateStore,
+  ): Promise<NowPlayingOutcome> {
+    const snapshot = state.snapshot
+    let keepLockUntilExpiry = false
+
+    try {
+      const shouldRefreshRecent =
+        !snapshot?.recentlyPlayedAt ||
+        now() - snapshot.recentlyPlayedAt >= RECENTLY_PLAYED_REFRESH_MS
+      let playback = await getPlayback(shouldRefreshRecent)
+
+      if (!playback.track && snapshot?.playback.track) {
+        playback = { status: "recent", track: snapshot.playback.track }
+      }
+
+      const recentlyPlayedAt =
+        shouldRefreshRecent && playback.status !== "playing"
+          ? now()
+          : snapshot?.recentlyPlayedAt
+      const nextSnapshot: StoredSnapshot = {
+        playback,
+        fetchedAt: now(),
+        ...(recentlyPlayedAt === undefined ? {} : { recentlyPlayedAt }),
+      }
+
+      try {
+        await store.writeSnapshot(nextSnapshot)
+      } catch {
+        console.error("[spotify] shared state snapshot write failed")
+        keepLockUntilExpiry = true
+        const stalePlayback = asRecentPlayback(state)
+        return stalePlayback
+          ? playbackOutcome(stalePlayback, {
+              stale: true,
+              retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
+            })
+          : {
+              kind: "unavailable",
+              status: 503,
+              retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
+            }
+      }
+
+      return playbackOutcome(playback)
+    } catch (error) {
+      if (error instanceof SpotifyRequestError && error.status === 429) {
+        const fallbackCooldown = error.reason === "QUOTA_EXCEEDED" ? 3_600 : 60
+        const retryAfter = Math.max(1, error.retryAfterSeconds ?? fallbackCooldown)
+        let cooldownUntil = now() + retryAfter * 1_000
+
+        try {
+          cooldownUntil = await store.extendCooldown(retryAfter)
+        } catch {
+          console.error("[spotify] shared state cooldown write failed")
+          keepLockUntilExpiry = true
+        }
+
+        const retryAfterSeconds = remainingSeconds(cooldownUntil, now())
+        console.error("[spotify] upstream request rate limited", {
+          endpoint: error.endpoint,
+          reason: error.reason,
+          retryAfterSeconds,
+        })
+
+        const stalePlayback = asRecentPlayback(state)
+        return stalePlayback
+          ? playbackOutcome(stalePlayback, { stale: true, retryAfterSeconds })
+          : { kind: "rate-limited", retryAfterSeconds }
+      }
+
+      if (error instanceof SpotifyTimeoutError) {
+        console.error("[spotify] upstream request timed out")
+        const stalePlayback = asRecentPlayback(state)
+        return stalePlayback
+          ? playbackOutcome(stalePlayback, {
+              stale: true,
+              retryAfterSeconds: 60,
+            })
+          : { kind: "unavailable", status: 503, retryAfterSeconds: 60 }
+      }
+
+      const isConfigurationError = error instanceof SpotifyConfigurationError
+      console.error("[spotify] now-playing request failed", {
+        kind: isConfigurationError ? "configuration" : "unexpected",
+        status: error instanceof SpotifyRequestError ? error.status : undefined,
+        endpoint: error instanceof SpotifyRequestError ? error.endpoint : undefined,
+      })
+
+      const stalePlayback = asRecentPlayback(state)
+      return stalePlayback
+        ? playbackOutcome(stalePlayback, { stale: true })
+        : {
+            kind: "unavailable",
+            status: isConfigurationError ? 503 : 502,
+          }
+    } finally {
+      if (!keepLockUntilExpiry) {
+        try {
+          await store.releaseRefreshLock(lockToken)
+        } catch {
+          console.error("[spotify] shared state lock release failed")
+        }
+      }
+    }
+  }
+
   return async function getNowPlaying(): Promise<NowPlayingOutcome> {
     if (!stateStore) {
       console.error("[spotify] shared state is required in deployed environments")
@@ -110,6 +235,10 @@ export function createNowPlayingService({
     }
 
     if (!lockToken) {
+      if (localRefreshInFlight) {
+        return asCoalescedOutcome(await localRefreshInFlight)
+      }
+
       try {
         const latestState = await stateStore.read()
         const latest = latestState.snapshot
@@ -130,105 +259,12 @@ export function createNowPlayingService({
       }
     }
 
-    let keepLockUntilExpiry = false
+    const refresh = refreshPlayback(state, lockToken, stateStore)
+    localRefreshInFlight = refresh
     try {
-      const shouldRefreshRecent =
-        !snapshot?.recentlyPlayedAt ||
-        now() - snapshot.recentlyPlayedAt >= RECENTLY_PLAYED_REFRESH_MS
-      let playback = await getPlayback(shouldRefreshRecent)
-
-      if (!playback.track && snapshot?.playback.track) {
-        playback = { status: "recent", track: snapshot.playback.track }
-      }
-
-      const recentlyPlayedAt =
-        shouldRefreshRecent && playback.status !== "playing"
-          ? now()
-          : snapshot?.recentlyPlayedAt
-      const nextSnapshot: StoredSnapshot = {
-        playback,
-        fetchedAt: now(),
-        ...(recentlyPlayedAt === undefined ? {} : { recentlyPlayedAt }),
-      }
-
-      try {
-        await stateStore.writeSnapshot(nextSnapshot)
-      } catch {
-        console.error("[spotify] shared state snapshot write failed")
-        keepLockUntilExpiry = true
-        const stalePlayback = asRecentPlayback(state)
-        return stalePlayback
-          ? playbackOutcome(stalePlayback, {
-              stale: true,
-              retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
-            })
-          : {
-              kind: "unavailable",
-              status: 503,
-              retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
-            }
-      }
-
-      return playbackOutcome(playback)
-    } catch (error) {
-      if (error instanceof SpotifyRequestError && error.status === 429) {
-        const fallbackCooldown = error.reason === "QUOTA_EXCEEDED" ? 3_600 : 60
-        const retryAfter = Math.max(1, error.retryAfterSeconds ?? fallbackCooldown)
-        let cooldownUntil = now() + retryAfter * 1_000
-
-        try {
-          cooldownUntil = await stateStore.extendCooldown(retryAfter)
-        } catch {
-          console.error("[spotify] shared state cooldown write failed")
-          keepLockUntilExpiry = true
-        }
-
-        const retryAfterSeconds = remainingSeconds(cooldownUntil, now())
-        console.error("[spotify] upstream request rate limited", {
-          endpoint: error.endpoint,
-          reason: error.reason,
-          retryAfterSeconds,
-        })
-
-        const stalePlayback = asRecentPlayback(state)
-        return stalePlayback
-          ? playbackOutcome(stalePlayback, { stale: true, retryAfterSeconds })
-          : { kind: "rate-limited", retryAfterSeconds }
-      }
-
-      if (error instanceof SpotifyTimeoutError) {
-        console.error("[spotify] upstream request timed out")
-        const stalePlayback = asRecentPlayback(state)
-        return stalePlayback
-          ? playbackOutcome(stalePlayback, {
-              stale: true,
-              retryAfterSeconds: 60,
-            })
-          : { kind: "unavailable", status: 503, retryAfterSeconds: 60 }
-      }
-
-      const isConfigurationError = error instanceof SpotifyConfigurationError
-      console.error("[spotify] now-playing request failed", {
-        kind: isConfigurationError ? "configuration" : "unexpected",
-        status: error instanceof SpotifyRequestError ? error.status : undefined,
-        endpoint: error instanceof SpotifyRequestError ? error.endpoint : undefined,
-      })
-
-      const stalePlayback = asRecentPlayback(state)
-      return stalePlayback
-        ? playbackOutcome(stalePlayback, { stale: true })
-        : {
-            kind: "unavailable",
-            status: isConfigurationError ? 503 : 502,
-          }
+      return await refresh
     } finally {
-      if (!keepLockUntilExpiry) {
-        try {
-          await stateStore.releaseRefreshLock(lockToken)
-        } catch {
-          console.error("[spotify] shared state lock release failed")
-        }
-      }
+      if (localRefreshInFlight === refresh) localRefreshInFlight = undefined
     }
   }
 }

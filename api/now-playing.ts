@@ -5,7 +5,7 @@ import { getSpotifyPlayback } from "./_spotify-playback.js"
 import { getSpotifyStateStore } from "./_spotify-store.js"
 
 const CACHE_CONTROL =
-  "public, max-age=0, s-maxage=60, stale-while-revalidate=60"
+  "public, max-age=0, s-maxage=30, stale-while-revalidate=30"
 
 const getNowPlaying = createNowPlayingService({
   stateStore: getSpotifyStateStore(),
