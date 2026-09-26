@@ -44,6 +44,7 @@ export function SpotifyStatus() {
     let controller: AbortController | null = null
     let pausedUntil = 0
     let pollTimer: number | undefined
+    let stopped = false
 
     function backoffUntil(headers: Headers) {
       const value = headers.get('Retry-After')
@@ -98,7 +99,9 @@ export function SpotifyStatus() {
     }
 
     async function poll() {
+      if (stopped) return
       if (document.visibilityState !== 'hidden') await refresh()
+      if (stopped) return
 
       const cooldownMs = Math.max(0, pausedUntil - Date.now())
       const delay = Math.max(POLL_INTERVAL_MS, cooldownMs) + Math.random() * POLL_JITTER_MS
@@ -108,6 +111,7 @@ export function SpotifyStatus() {
     void poll()
 
     return () => {
+      stopped = true
       if (pollTimer !== undefined) window.clearTimeout(pollTimer)
       controller?.abort()
     }
