@@ -85,7 +85,7 @@ test('spotify status keeps showing the last played track when playback stops or 
   // currently playing.
   mode = 'failing'
   let previousCount = requestCount
-  await page.clock.runFor(30_000)
+  await page.clock.runFor(136_000)
   await expect.poll(() => requestCount).toBe(previousCount + 1)
   await expect(trackLink).toBeVisible()
   await expect(page.getByText('Now playing on Spotify:', { exact: false })).toHaveCount(0)
@@ -94,7 +94,7 @@ test('spotify status keeps showing the last played track when playback stops or 
   // Playback history runs out: the widget keeps showing the last played track.
   mode = 'idle'
   previousCount = requestCount
-  await page.clock.runFor(30_000)
+  await page.clock.runFor(136_000)
   await expect.poll(() => requestCount).toBe(previousCount + 1)
   await expect(trackLink).toBeVisible()
 
@@ -102,7 +102,7 @@ test('spotify status keeps showing the last played track when playback stops or 
   // track, and the client backs off for the Retry-After window.
   mode = 'rate-limited'
   previousCount = requestCount
-  await page.clock.runFor(30_000)
+  await page.clock.runFor(136_000)
   await expect.poll(() => requestCount).toBe(previousCount + 1)
   await expect(trackLink).toBeVisible()
   // requestCount bumps as soon as the route receives the poll, before the
@@ -111,12 +111,12 @@ test('spotify status keeps showing the last played track when playback stops or 
   // past the interval tick that must be skipped.
   await page.waitForTimeout(250)
 
-  await page.clock.runFor(30_000)
+  await page.clock.runFor(60_000)
   expect(requestCount).toBe(previousCount + 1)
 
-  // Once the Retry-After window (60s) has fully passed, polling resumes.
+  // Polling resumes after the 60-second cooldown and two-minute poll interval.
   mode = 'playing'
-  await page.clock.runFor(30_000)
+  await page.clock.runFor(76_000)
   await expect.poll(() => requestCount).toBe(previousCount + 2)
   await expect(trackLink).toBeVisible()
 
@@ -124,17 +124,17 @@ test('spotify status keeps showing the last played track when playback stops or 
   // via Retry-After.
   mode = 'rate-limited-cached'
   previousCount = requestCount
-  await page.clock.runFor(30_000)
+  await page.clock.runFor(136_000)
   await expect.poll(() => requestCount).toBe(previousCount + 1)
   await expect(trackLink).toBeVisible()
   // Let the page process the cached response's Retry-After before advancing.
   await page.waitForTimeout(250)
 
-  await page.clock.runFor(30_000)
+  await page.clock.runFor(60_000)
   expect(requestCount).toBe(previousCount + 1)
 
   mode = 'playing'
-  await page.clock.runFor(30_000)
+  await page.clock.runFor(76_000)
   await expect.poll(() => requestCount).toBe(previousCount + 2)
   await expect(trackLink).toBeVisible()
 })
