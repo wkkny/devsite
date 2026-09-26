@@ -42,7 +42,13 @@ type DraggingBallProps = NonNullable<ComponentProps<typeof DraggingBallComponent
 
 /* The goo is an optional visual layer; the child still owns its keyboard
    and pointer behavior if the lazy chunk cannot be loaded. */
-function DraggingBallFallback({ children }: DraggingBallProps) {
+function DraggingBallFallback({ children, onReady }: DraggingBallProps) {
+  useLayoutEffect(() => {
+    if (!onReady) return
+    const frame = window.requestAnimationFrame(onReady)
+    return () => window.cancelAnimationFrame(frame)
+  }, [onReady])
+
   return <>{children}</>
 }
 
@@ -177,6 +183,8 @@ function DraggableItem({ label, boundsRef, helpId, top, align, left, entryDelay 
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   const ballControls = useRef<DraggingBallControls | null>(null)
+  const [ballReady, setBallReady] = useState(false)
+  const markBallReady = useCallback(() => setBallReady(true), [])
 
   useLayoutEffect(() => {
     const item = itemRef.current
@@ -295,12 +303,8 @@ function DraggableItem({ label, boundsRef, helpId, top, align, left, entryDelay 
     >
       <motion.div
         className="relative size-full"
-        initial={reduceMotion
-          ? { opacity: 0 }
-          : { opacity: 0, transform: 'translate3d(0, 5px, 0) scale(0.95)' }}
-        animate={reduceMotion
-          ? { opacity: 1 }
-          : { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: ballReady ? 1 : 0 }}
         transition={{
           duration: reduceMotion ? 0.14 : 0.22,
           ease: EASE_OUT,
@@ -309,7 +313,17 @@ function DraggableItem({ label, boundsRef, helpId, top, align, left, entryDelay 
       >
         <div className={cn('relative size-full', onRemove && 'absolute bottom-0 left-0 size-14')}>
           <Suspense fallback={itemButton}>
-            <DraggingBall well={{ w: 56, h: 56 }} size={56} drag={false} externalGestures reducedMotion={Boolean(reduceMotion)} controlsRef={ballControls}>
+            <DraggingBall
+              well={{ w: 56, h: 56 }}
+              size={56}
+              drag={false}
+              externalGestures
+              reducedMotion={Boolean(reduceMotion)}
+              controlsRef={ballControls}
+              entryReady={ballReady}
+              entryDelay={reduceMotion ? 0 : entryDelay}
+              onReady={markBallReady}
+            >
               {itemButton}
             </DraggingBall>
           </Suspense>
