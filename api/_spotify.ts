@@ -16,15 +16,21 @@ let refreshInFlight: Promise<string> | undefined
 export class SpotifyRequestError extends Error {
   readonly status: number
   readonly retryAfterSeconds: number | null
+  readonly reason: string | null
+  readonly endpoint: string
 
   constructor(
     status: number,
-    retryAfterSeconds: number | null = null
+    retryAfterSeconds: number | null = null,
+    reason: string | null = null,
+    endpoint = "web-api",
   ) {
     super("Spotify request failed")
     this.name = "SpotifyRequestError"
     this.status = status
     this.retryAfterSeconds = retryAfterSeconds
+    this.reason = reason
+    this.endpoint = endpoint
   }
 }
 
@@ -74,6 +80,32 @@ export function getRetryAfterSeconds(response: Response) {
     : Math.max(Math.ceil((retryAt - Date.now()) / 1_000), 0)
 }
 
+function safeSpotifyErrorReason(value: unknown) {
+  if (typeof value !== "string") return null
+  return /^[A-Z0-9_-]{1,80}$/.test(value) ? value : null
+}
+
+export async function getSpotifyErrorReason(response: Response) {
+  try {
+    const data: unknown = await response.clone().json()
+    if (typeof data !== "object" || data === null) return null
+
+    const record = data as Record<string, unknown>
+    const nestedError = record.error
+
+    if (typeof nestedError === "object" && nestedError !== null) {
+      const nestedReason = safeSpotifyErrorReason(
+        (nestedError as Record<string, unknown>).reason,
+      )
+      if (nestedReason) return nestedReason
+    }
+
+    return safeSpotifyErrorReason(record.reason)
+  } catch {
+    return null
+  }
+}
+
 async function requestAccessToken() {
   let response: Response
 
@@ -101,7 +133,9 @@ async function requestAccessToken() {
   if (!response.ok) {
     throw new SpotifyRequestError(
       response.status,
-      getRetryAfterSeconds(response)
+      getRetryAfterSeconds(response),
+      await getSpotifyErrorReason(response),
+      "token",
     )
   }
 

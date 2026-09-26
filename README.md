@@ -61,7 +61,7 @@ Spotify playback is optional. Without credentials, the live status is hidden. Th
 5. Add that refresh token to `.env`, then set `VITE_SPOTIFY_USE_MOCK=false`.
 6. Run `bun run dev:spotify` to use the `/api/now-playing` endpoint locally.
 
-The page checks Spotify every 30 seconds. When there is no active playback, the endpoint shows the most recently played track, regardless of when it was played. If Spotify reports no playback history or an upstream request fails (including 429 rate limits), the endpoint keeps serving the last played track, and the page backs off for the requested `Retry-After` duration before polling again.
+The page checks current playback about every two minutes while the tab is visible. It refreshes recently played history at most every 15 minutes. The deployed endpoint stores the latest track and Spotify's cooldown in shared Redis state, so Vercel instances reuse the same result and honor the same `Retry-After` period. It keeps showing the last known track during errors and rate limits.
 
 ### Environment variables
 
@@ -70,15 +70,17 @@ The page checks Spotify every 30 seconds. When there is no active playback, the 
 | `SPOTIFY_CLIENT_ID` | Live Spotify status | Spotify app client ID. Server-side only. |
 | `SPOTIFY_CLIENT_SECRET` | Live Spotify status | Spotify app client secret. Server-side only. |
 | `SPOTIFY_REFRESH_TOKEN` | Live Spotify status | Token printed by `bun run spotify:token`. Server-side only. |
+| `UPSTASH_REDIS_REST_URL` | Deployed live Spotify status | Explicit HTTPS REST URL for the shared Upstash Redis database. Set it together with `UPSTASH_REDIS_REST_TOKEN`; otherwise the Vercel Marketplace KV pair is used when available. Server-side only. |
+| `UPSTASH_REDIS_REST_TOKEN` | Deployed live Spotify status | Explicit Upstash Redis REST token. Set it together with `UPSTASH_REDIS_REST_URL`; otherwise the Vercel Marketplace KV pair is used when available. Server-side only. |
 | `VITE_SPOTIFY_USE_MOCK` | Local development | Leave as `true` to show the sample track. Set to `false` to request the local API. |
 
-Vite exposes variables with the `VITE_` prefix to the browser. Keep all Spotify credentials under their `SPOTIFY_` names and never rename them with a `VITE_` prefix.
+Vite exposes variables with the `VITE_` prefix to the browser. Keep Spotify credentials and Upstash settings server-side. Never rename them with a `VITE_` prefix.
 
 ## Deployment
 
 The app is set up for Vercel. Import the repository into Vercel, use `bun run build` as the build command, and use `dist` as the output directory. Vercel deploys `api/now-playing.ts` as a serverless function alongside the site.
 
-Add `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `SPOTIFY_REFRESH_TOKEN` to the Vercel environments where you want the live Spotify status. Keep these as server-side environment variables. The rest of the portfolio works without Spotify credentials.
+Before enabling live Spotify status, connect [Upstash Redis through the Vercel Marketplace](https://vercel.com/docs/marketplace-storage). The integration provides `KV_REST_API_URL` and `KV_REST_API_TOKEN` as a pair. If using the explicit `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` names instead, configure both; a partial explicit pair is not used. Then add `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `SPOTIFY_REFRESH_TOKEN` to the same Vercel environments. These settings stay server-side. The rest of the portfolio works without Spotify credentials.
 
 On a static host without Vercel functions, the frontend can still build and deploy, but live Spotify status needs a server endpoint that implements `/api/now-playing`.
 

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const currentTrack = {
   name: '  Runaway  ',
@@ -108,6 +108,10 @@ describe('GET /api/now-playing', () => {
     vi.stubEnv('SPOTIFY_REFRESH_TOKEN', 'test-refresh-token')
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('maps a current Spotify track into the public response shape', async () => {
     const fetchMock = mockSpotifyFetch(jsonResponse({ is_playing: true, item: currentTrack }))
 
@@ -185,6 +189,9 @@ describe('GET /api/now-playing', () => {
   })
 
   it('serves the last played track and backs off when Spotify is rate limited', async () => {
+    let currentTime = Date.now()
+    vi.spyOn(Date, 'now').mockImplementation(() => currentTime)
+
     let rateLimited = false
     const fetchMock = mockSpotifyFetchWith(() =>
       rateLimited
@@ -199,6 +206,8 @@ describe('GET /api/now-playing', () => {
     expect(first.statusCode).toBe(200)
     expect(first.body).toEqual({ status: 'playing', track: expectedTrack })
 
+    // Expire the shared playback snapshot so the next refresh reaches Spotify.
+    currentTime += 2 * 60 * 1000 + 1
     rateLimited = true
     const second = await invoke('GET', {}, { resetModules: false })
     expect(second.statusCode).toBe(200)
@@ -255,7 +264,7 @@ describe('GET /api/now-playing', () => {
     const first = runHandler()
     await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(1))
 
-    // The second request joins the in-flight fetch instead of starting its
+    // The second request joins the in-flight refresh instead of starting its
     // own upstream call.
     const second = runHandler()
     await new Promise((resolve) => setTimeout(resolve, 10))
@@ -276,15 +285,13 @@ describe('GET /api/now-playing', () => {
     expect(secondResponse.body).toEqual({ status: 'recent', track: expectedTrack })
     expect(secondResponse.headers.get('cache-control')).toBe('no-store')
 
-    // The coalesced result is kept as the last known track: a later idle
-    // request serves it without a new Spotify track appearing in history.
+    // The shared snapshot answers later requests until its two-minute cache expires.
     const third = runHandler()
-    await vi.waitFor(() => expect(resolveCurrentlyPlaying).toHaveLength(2))
-    resolveCurrentlyPlaying[1](new Response(null, { status: 204 }))
     const response = await third
 
     expect(response.statusCode).toBe(200)
-    expect(response.body).toEqual({ status: 'recent', track: expectedTrack })
+    expect(response.body).toEqual({ status: 'playing', track: expectedTrack })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('skips podcast episodes and unmappable items to serve the most recent playable track', async () => {

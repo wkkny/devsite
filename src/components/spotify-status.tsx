@@ -9,6 +9,8 @@ import {
 } from '../../shared/now-playing'
 
 const useMock = import.meta.env.DEV && import.meta.env.VITE_SPOTIFY_USE_MOCK !== 'false'
+const POLL_INTERVAL_MS = 120_000
+const POLL_JITTER_MS = 15_000
 const mockTracks = [
   { title: 'Save Your Tears', artist: 'The Weeknd' },
   { title: 'Bohemian Rhapsody', artist: 'Queen' },
@@ -41,11 +43,20 @@ export function SpotifyStatus() {
 
     let controller: AbortController | null = null
     let pausedUntil = 0
+    let pollTimer: number | undefined
+    let stopped = false
 
     function backoffUntil(headers: Headers) {
-      const retryAfter = Number(headers.get('Retry-After'))
-      const seconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60
-      return Date.now() + seconds * 1_000
+      const value = headers.get('Retry-After')
+      if (value === null) return null
+
+      const seconds = Number(value)
+      if (Number.isFinite(seconds) && seconds >= 0) {
+        return Date.now() + seconds * 1_000
+      }
+
+      const retryAt = Date.parse(value)
+      return Number.isNaN(retryAt) ? null : Math.max(retryAt, Date.now())
     }
 
     async function refresh() {
@@ -58,12 +69,14 @@ export function SpotifyStatus() {
 
       try {
         const response = await fetch('/api/now-playing', { signal: request.signal })
+        const retryAt = backoffUntil(response.headers)
 
         if (response.status === 429) {
-          pausedUntil = backoffUntil(response.headers)
+          pausedUntil = Math.max(pausedUntil, retryAt ?? Date.now() + 60_000)
           return
         }
 
+        if (retryAt !== null) pausedUntil = Math.max(pausedUntil, retryAt)
         if (!response.ok) throw new Error('Spotify playback is unavailable')
 
         const data: unknown = await response.json()
@@ -72,10 +85,6 @@ export function SpotifyStatus() {
         setLivePlayback(data)
         if (data.track) setLastTrack(data.track)
 
-        // The API serves the cached last played track during a rate-limit
-        // window and asks us to back off with Retry-After even though the
-        // response is a 200.
-        if (response.headers.has('Retry-After')) pausedUntil = backoffUntil(response.headers)
       } catch {
         if (request.signal.aborted) return
 
@@ -89,11 +98,21 @@ export function SpotifyStatus() {
       }
     }
 
-    void refresh()
-    const interval = window.setInterval(() => void refresh(), 30_000)
+    async function poll() {
+      if (stopped) return
+      if (document.visibilityState !== 'hidden') await refresh()
+      if (stopped) return
+
+      const cooldownMs = Math.max(0, pausedUntil - Date.now())
+      const delay = Math.max(POLL_INTERVAL_MS, cooldownMs) + Math.random() * POLL_JITTER_MS
+      pollTimer = window.setTimeout(() => void poll(), delay)
+    }
+
+    void poll()
 
     return () => {
-      window.clearInterval(interval)
+      stopped = true
+      if (pollTimer !== undefined) window.clearTimeout(pollTimer)
       controller?.abort()
     }
   }, [])
