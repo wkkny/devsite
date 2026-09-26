@@ -61,14 +61,17 @@ export class SpotifySharedStateError extends Error {
 }
 
 function getRedisCredentials() {
-  const url =
-    process.env.UPSTASH_REDIS_REST_URL?.trim() ||
-    process.env.KV_REST_API_URL?.trim()
-  const token =
-    process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ||
-    process.env.KV_REST_API_TOKEN?.trim()
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim()
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
 
-  return { url, token }
+  if (url || token) {
+    return { url, token }
+  }
+
+  return {
+    url: process.env.KV_REST_API_URL?.trim(),
+    token: process.env.KV_REST_API_TOKEN?.trim(),
+  }
 }
 
 export function hasSpotifySharedStateConfiguration() {
