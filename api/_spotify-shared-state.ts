@@ -60,11 +60,20 @@ export class SpotifySharedStateError extends Error {
   }
 }
 
+function getRedisCredentials() {
+  const url =
+    process.env.UPSTASH_REDIS_REST_URL?.trim() ||
+    process.env.KV_REST_API_URL?.trim()
+  const token =
+    process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ||
+    process.env.KV_REST_API_TOKEN?.trim()
+
+  return { url, token }
+}
+
 export function hasSpotifySharedStateConfiguration() {
-  return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
-      process.env.UPSTASH_REDIS_REST_TOKEN?.trim(),
-  )
+  const { url, token } = getRedisCredentials()
+  return Boolean(url && token)
 }
 
 export function requiresSpotifySharedState() {
@@ -72,8 +81,7 @@ export function requiresSpotifySharedState() {
 }
 
 function getConfiguration() {
-  const url = process.env.UPSTASH_REDIS_REST_URL?.trim()
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
+  const { url, token } = getRedisCredentials()
 
   if (!url || !token) {
     throw new SpotifySharedStateError("Spotify shared state is not configured")
