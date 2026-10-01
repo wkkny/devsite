@@ -73,7 +73,7 @@ export function SpotifyStatus() {
 
         if (response.status === 429) {
           pausedUntil = Math.max(pausedUntil, retryAt ?? Date.now() + 60_000)
-          return
+          throw new Error("Spotify is temporarily rate limited")
         }
 
         if (retryAt !== null) pausedUntil = Math.max(pausedUntil, retryAt)

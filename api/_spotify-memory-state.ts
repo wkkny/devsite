@@ -10,6 +10,7 @@ const REFRESH_LOCK_MS = 30_000
 
 let snapshot: StoredSnapshot | null = null
 let cooldownUntil = 0
+let backoffUntil = 0
 let lockToken: string | null = null
 let lockExpiresAt = 0
 
@@ -17,6 +18,7 @@ export const memorySpotifyStateStore: SpotifyStateStore = {
   async read(): Promise<SharedSpotifyState> {
     return {
       snapshot: snapshot ? { ...snapshot } : null,
+      backoffUntil: backoffUntil > Date.now() ? backoffUntil : 0,
       cooldownUntil: cooldownUntil > Date.now() ? cooldownUntil : 0,
     }
   },
@@ -29,6 +31,12 @@ export const memorySpotifyStateStore: SpotifyStateStore = {
     const proposed = Date.now() + Math.max(1, Math.ceil(retryAfterSeconds)) * 1_000
     cooldownUntil = Math.max(cooldownUntil, proposed)
     return cooldownUntil
+  },
+
+  async extendBackoff(retryAfterSeconds) {
+    const proposed = Date.now() + Math.max(1, Math.ceil(retryAfterSeconds)) * 1_000
+    backoffUntil = Math.max(backoffUntil, proposed)
+    return backoffUntil
   },
 
   async acquireRefreshLock() {

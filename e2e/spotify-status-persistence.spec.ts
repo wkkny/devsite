@@ -100,11 +100,20 @@ test('spotify status keeps showing the last played track when playback stops or 
 
   // Rate limited with a plain 429: the widget keeps showing the last played
   // track, and the client backs off for the Retry-After window.
+  // Reestablish confirmed playback so a direct 429 must demote it to recent.
+  mode = 'playing'
+  previousCount = requestCount
+  await page.clock.runFor(136_000)
+  await expect.poll(() => requestCount).toBe(previousCount + 1)
+  await expect(page.getByText('Now playing on Spotify:', { exact: false })).toHaveCount(1)
+
   mode = 'rate-limited'
   previousCount = requestCount
   await page.clock.runFor(136_000)
   await expect.poll(() => requestCount).toBe(previousCount + 1)
   await expect(trackLink).toBeVisible()
+  await expect(page.getByText('Now playing on Spotify:', { exact: false })).toHaveCount(0)
+  await expect(page.getByText('Last played on Spotify:', { exact: false })).toHaveCount(1)
   // requestCount bumps as soon as the route receives the poll, before the
   // page has processed the 429 and started backing off. Give the page real
   // time to process the response (the clock stays paused) before advancing

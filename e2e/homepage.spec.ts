@@ -136,3 +136,23 @@ test('decorations remain usable when the dragging ball chunk fails to load', asy
   await page.keyboard.press('ArrowRight')
   await expect.poll(async () => (await getClientRect(decoration)).x).toBeGreaterThan(before.x + 4)
 })
+
+test('production assets load and the page survives optional decoration chunk failures', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await stubHomepageApis(page)
+  const blocked = new Set<string>()
+  await page.route(/\/assets\/(profile-banner|draggable-decorations)-.*\.js$/, (route) => {
+    blocked.add(route.request().url().includes('profile-banner') ? 'banner' : 'decorations')
+    return route.abort()
+  })
+  await page.goto('/')
+  await expect(page.locator('script[type="module"]')).toHaveAttribute('src', /^\/assets\/.*\.js$/)
+  await expect(page.getByRole('button', { name: /Show next Spotify example/ })).toHaveCount(0)
+  const profile = page.getByRole('img', { name: "Kritiraj's profile picture" })
+  await expect.poll(() => profile.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBe(448)
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.png')
+  await expect.poll(() => blocked.size).toBe(2)
+  await expect(page.getByRole('heading', { name: 'Kritiraj (Kenny)' })).toBeVisible()
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+})
