@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import type { ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { EASE_OUT, SPRING_PRESS } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { useHeatCalendar } from "./context";
@@ -32,9 +32,18 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
     tooltipId,
     unit,
   } = useHeatCalendar();
+  const instructionsId = useId();
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  let lastIndex = weeks * 7 - 1;
+  while (lastIndex >= 0 && future(Math.floor(lastIndex / 7), lastIndex % 7)) lastIndex--;
+  const activeIndex = Math.max(0, Math.min(focusedIndex ?? lastIndex, lastIndex));
+
   return (
     <div
       ref={gridRef}
+      role="group"
+      aria-label={`${unit} calendar`}
+      aria-describedby={instructionsId}
       className={cn("relative grid", className)}
       style={{
         width: weeks * PITCH - GAP,
@@ -45,6 +54,11 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
       }}
       onPointerLeave={() => setHover(null)}
     >
+      <span id={instructionsId} className="sr-only">
+        Use arrow keys to move between days and weeks. Home moves to the first day,
+        End to the latest day. Enter or Space selects a day; Escape clears the selection.
+        Tab leaves the calendar.
+      </span>
       {cols.map((c) =>
         c.label ? (
           <span
@@ -95,12 +109,33 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
                 data-heat-cell={`${w}-${d}`}
                 aria-pressed={isEnd}
                 aria-describedby={on ? tooltipId : undefined}
+                tabIndex={i === activeIndex ? 0 : -1}
                 onPointerEnter={() => setHover({ w, d })}
-                onFocus={() => setHover({ w, d })}
+                onFocus={() => {
+                  setFocusedIndex(i);
+                  setHover({ w, d });
+                }}
                 onBlur={() => setHover(null)}
                 onClick={() => select({ w, d })}
                 onKeyDown={(e) => {
-                  if (e.key === "Escape") clear();
+                  if (e.key === "Escape") {
+                    clear();
+                    return;
+                  }
+                  let next: number;
+                  switch (e.key) {
+                    case "ArrowLeft": next = w > 0 ? i - 7 : i; break;
+                    case "ArrowRight": next = i + 7 <= lastIndex ? i + 7 : i; break;
+                    case "ArrowUp": next = Math.max(w * 7, i - 1); break;
+                    case "ArrowDown": next = Math.min(lastIndex, w * 7 + 6, i + 1); break;
+                    case "Home": next = 0; break;
+                    case "End": next = lastIndex; break;
+                    default: return;
+                  }
+                  e.preventDefault();
+                  gridRef.current?.querySelector<HTMLButtonElement>(
+                    `[data-heat-cell="${Math.floor(next / 7)}-${next % 7}"]`,
+                  )?.focus();
                 }}
                 className="absolute -inset-0.5 block rounded-[5px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 whileTap={reduce ? undefined : { scale: 0.9, transition: SPRING_PRESS }}
