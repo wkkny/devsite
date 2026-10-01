@@ -102,20 +102,27 @@ export function createNowPlayingService({
     let keepLockUntilExpiry = false
 
     try {
-      // A different instance may have published a snapshot or backoff since our first read.
+      // Another instance may publish a snapshot, cooldown, or backoff before we acquire the lock.
       try {
         state = await store.read()
       } catch {
         console.error("[spotify] shared state post-lock read failed")
-        return {
-          kind: "unavailable",
-          status: 503,
-          retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
-        }
+        const playback = asRecentPlayback(state)
+        return playback
+          ? playbackOutcome(playback, {
+              stale: true,
+              retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
+            })
+          : {
+              kind: "unavailable",
+              status: 503,
+              retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
+            }
       }
       const cached = stateOutcome(state)
       if (cached) return cached
       const snapshot = state.snapshot
+
       const shouldRefreshRecent =
         !snapshot?.recentlyPlayedAt ||
         now() - snapshot.recentlyPlayedAt >= RECENTLY_PLAYED_REFRESH_MS
