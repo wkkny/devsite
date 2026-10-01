@@ -24,6 +24,7 @@ function GitHubActivity() {
   const [attempt, setAttempt] = useState(0)
   const calendarScrollRef = useRef<HTMLDivElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
+  const retryButtonRef = useRef<HTMLButtonElement>(null)
 
   useLayoutEffect(() => {
     const mobile = window.matchMedia('(max-width: 639px)')
@@ -60,7 +61,13 @@ function GitHubActivity() {
 
         const data: unknown = await response.json()
         const contributions = parseContributions(data)
-        if (!controller.signal.aborted) setContributions(contributions)
+        if (!controller.signal.aborted) {
+          // Move focus only if the visitor is still on the retry control that will disappear.
+          if (document.activeElement === retryButtonRef.current) {
+            calendarScrollRef.current?.querySelector<HTMLButtonElement>('button[tabindex="0"]')?.focus()
+          }
+          setContributions(contributions)
+        }
       } catch {
         if (!controller.signal.aborted) setHasError(true)
       } finally {
@@ -123,11 +130,24 @@ function GitHubActivity() {
       {isLoading && <p role="status" className="mt-3 text-sm text-muted-foreground">Loading GitHub activity…</p>}
       {hasError && (
         <p role="status" className="mt-3 text-sm text-muted-foreground">
-          GitHub activity is unavailable right now.{' '}
-          <button type="button" className="rounded underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setAttempt((current) => current + 1)}>
-            Retry GitHub activity
-          </button>
+          GitHub activity is unavailable right now.
         </p>
+      )}
+      {(hasError || (attempt > 0 && isLoading)) && (
+        <button
+          ref={retryButtonRef}
+          type="button"
+          aria-disabled={isLoading}
+          className="mt-2 rounded text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-disabled:opacity-50"
+          onClick={() => {
+            if (isLoading) return
+            setIsLoading(true)
+            setHasError(false)
+            setAttempt((current) => current + 1)
+          }}
+        >
+          Retry GitHub activity
+        </button>
       )}
     </div>
   )
