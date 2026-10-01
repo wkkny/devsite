@@ -79,10 +79,41 @@ export function createNowPlayingService({
     lockToken: string,
     store: SpotifyStateStore,
   ): Promise<NowPlayingOutcome> {
-    const snapshot = state.snapshot
     let keepLockUntilExpiry = false
 
     try {
+      // Another worker may have refreshed or installed a cooldown between our
+      // first read and acquiring the lock. Only refresh from state read under it.
+      try {
+        state = await store.read()
+      } catch {
+        console.error("[spotify] shared state read under refresh lock failed")
+        const playback = asRecentPlayback(state)
+        return playback
+          ? playbackOutcome(playback, {
+              stale: true,
+              retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
+            })
+          : {
+              kind: "unavailable",
+              status: 503,
+              retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
+            }
+      }
+
+      const currentTime = now()
+      if (state.cooldownUntil > currentTime) {
+        const retryAfterSeconds = remainingSeconds(state.cooldownUntil, currentTime)
+        const playback = asRecentPlayback(state)
+        return playback
+          ? playbackOutcome(playback, { stale: true, retryAfterSeconds })
+          : { kind: "rate-limited", retryAfterSeconds }
+      }
+      const snapshot = state.snapshot
+      if (snapshot && currentTime - snapshot.fetchedAt < SNAPSHOT_FRESH_MS) {
+        return playbackOutcome(snapshot.playback)
+      }
+
       const shouldRefreshRecent =
         !snapshot?.recentlyPlayedAt ||
         now() - snapshot.recentlyPlayedAt >= RECENTLY_PLAYED_REFRESH_MS
