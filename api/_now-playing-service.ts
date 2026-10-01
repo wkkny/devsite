@@ -14,6 +14,7 @@ const SNAPSHOT_FRESH_MS = 2 * 60 * 1_000
 const RECENTLY_PLAYED_REFRESH_MS = 15 * 60 * 1_000
 const EMPTY_REFRESH_RETRY_SECONDS = 5
 const STATE_UNAVAILABLE_RETRY_SECONDS = 30
+const UPSTREAM_FAILURE_RETRY_SECONDS = 60
 
 export type NowPlayingOutcome =
   | {
@@ -74,6 +75,25 @@ export function createNowPlayingService({
 }: NowPlayingServiceDependencies) {
   let localRefreshInFlight: Promise<NowPlayingOutcome> | undefined
 
+  function stateOutcome(state: SharedSpotifyState): NowPlayingOutcome | null {
+    const currentTime = now()
+    const rateLimited = state.cooldownUntil > currentTime
+    const until = Math.max(state.cooldownUntil, state.backoffUntil)
+    if (until > currentTime) {
+      const retryAfterSeconds = remainingSeconds(until, currentTime)
+      const playback = asRecentPlayback(state)
+      return playback
+        ? playbackOutcome(playback, { stale: true, retryAfterSeconds })
+        : rateLimited
+          ? { kind: "rate-limited", retryAfterSeconds }
+          : { kind: "unavailable", status: 503, retryAfterSeconds }
+    }
+    const snapshot = state.snapshot
+    return snapshot && currentTime - snapshot.fetchedAt < SNAPSHOT_FRESH_MS
+      ? playbackOutcome(snapshot.playback)
+      : null
+  }
+
   async function refreshPlayback(
     state: SharedSpotifyState,
     lockToken: string,
@@ -82,12 +102,11 @@ export function createNowPlayingService({
     let keepLockUntilExpiry = false
 
     try {
-      // Another worker may have refreshed or installed a cooldown between our
-      // first read and acquiring the lock. Only refresh from state read under it.
+      // Another instance may publish a snapshot, cooldown, or backoff before we acquire the lock.
       try {
         state = await store.read()
       } catch {
-        console.error("[spotify] shared state read under refresh lock failed")
+        console.error("[spotify] shared state post-lock read failed")
         const playback = asRecentPlayback(state)
         return playback
           ? playbackOutcome(playback, {
@@ -100,19 +119,9 @@ export function createNowPlayingService({
               retryAfterSeconds: STATE_UNAVAILABLE_RETRY_SECONDS,
             }
       }
-
-      const currentTime = now()
-      if (state.cooldownUntil > currentTime) {
-        const retryAfterSeconds = remainingSeconds(state.cooldownUntil, currentTime)
-        const playback = asRecentPlayback(state)
-        return playback
-          ? playbackOutcome(playback, { stale: true, retryAfterSeconds })
-          : { kind: "rate-limited", retryAfterSeconds }
-      }
+      const cached = stateOutcome(state)
+      if (cached) return cached
       const snapshot = state.snapshot
-      if (snapshot && currentTime - snapshot.fetchedAt < SNAPSHOT_FRESH_MS) {
-        return playbackOutcome(snapshot.playback)
-      }
 
       const shouldRefreshRecent =
         !snapshot?.recentlyPlayedAt ||
@@ -178,30 +187,29 @@ export function createNowPlayingService({
           : { kind: "rate-limited", retryAfterSeconds }
       }
 
-      if (error instanceof SpotifyTimeoutError) {
-        console.error("[spotify] upstream request timed out")
-        const stalePlayback = asRecentPlayback(state)
-        return stalePlayback
-          ? playbackOutcome(stalePlayback, {
-              stale: true,
-              retryAfterSeconds: 60,
-            })
-          : { kind: "unavailable", status: 503, retryAfterSeconds: 60 }
-      }
-
+      const isTimeout = error instanceof SpotifyTimeoutError
       const isConfigurationError = error instanceof SpotifyConfigurationError
       console.error("[spotify] now-playing request failed", {
-        kind: isConfigurationError ? "configuration" : "unexpected",
+        kind: isTimeout ? "timeout" : isConfigurationError ? "configuration" : "unexpected",
         status: error instanceof SpotifyRequestError ? error.status : undefined,
         endpoint: error instanceof SpotifyRequestError ? error.endpoint : undefined,
       })
 
+      let backoffUntil = now() + UPSTREAM_FAILURE_RETRY_SECONDS * 1_000
+      try {
+        backoffUntil = await store.extendBackoff(UPSTREAM_FAILURE_RETRY_SECONDS)
+      } catch {
+        console.error("[spotify] shared state backoff write failed")
+        keepLockUntilExpiry = true
+      }
+      const retryAfterSeconds = remainingSeconds(backoffUntil, now())
       const stalePlayback = asRecentPlayback(state)
       return stalePlayback
-        ? playbackOutcome(stalePlayback, { stale: true })
+        ? playbackOutcome(stalePlayback, { stale: true, retryAfterSeconds })
         : {
             kind: "unavailable",
-            status: isConfigurationError ? 503 : 502,
+            status: isTimeout || isConfigurationError ? 503 : 502,
+            retryAfterSeconds,
           }
     } finally {
       if (!keepLockUntilExpiry) {
@@ -236,19 +244,8 @@ export function createNowPlayingService({
       }
     }
 
-    const currentTime = now()
-    if (state.cooldownUntil > currentTime) {
-      const retryAfterSeconds = remainingSeconds(state.cooldownUntil, currentTime)
-      const playback = asRecentPlayback(state)
-      return playback
-        ? playbackOutcome(playback, { stale: true, retryAfterSeconds })
-        : { kind: "rate-limited", retryAfterSeconds }
-    }
-
-    const snapshot = state.snapshot
-    if (snapshot && currentTime - snapshot.fetchedAt < SNAPSHOT_FRESH_MS) {
-      return playbackOutcome(snapshot.playback)
-    }
+    const cached = stateOutcome(state)
+    if (cached) return cached
 
     let lockToken: string | null
     try {
@@ -272,10 +269,8 @@ export function createNowPlayingService({
 
       try {
         const latestState = await stateStore.read()
-        const latest = latestState.snapshot
-        if (latest && now() - latest.fetchedAt < SNAPSHOT_FRESH_MS) {
-          return playbackOutcome(latest.playback)
-        }
+        const cached = stateOutcome(latestState)
+        if (cached) return cached
 
         const playback = asRecentPlayback(latestState)
         if (playback) return playbackOutcome(playback, { stale: true })

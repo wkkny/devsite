@@ -17,15 +17,17 @@ export function ProjectStatus() {
   const [messageIndex, setMessageIndex] = useState(0)
 
   useEffect(() => {
+    if (reducedMotion) return
+
     const interval = window.setInterval(() => {
       setMessageIndex((currentIndex) => (currentIndex + 1) % projectStatusMessages.length)
     }, statusInterval)
 
     return () => window.clearInterval(interval)
-  }, [])
+  }, [reducedMotion])
 
   return (
-    <motion.div className="project-status mt-6 flex w-full items-center justify-center gap-3 text-sm text-muted-foreground" aria-live="polite">
+    <motion.div className="project-status mt-6 flex w-full items-center justify-center gap-3 text-sm text-muted-foreground">
       <motion.svg
         layout="position"
         transition={{ layout: { duration: reducedMotion ? 0 : 0.3, ease: EASE_OUT } }}
@@ -53,7 +55,7 @@ export function ProjectStatus() {
             style={{ backfaceVisibility: 'hidden', transformOrigin: 'center center' }}
             transition={{ duration: reducedMotion ? 0.16 : 0.3, ease: EASE_OUT }}
           >
-            {projectStatusMessages[messageIndex]}
+            {projectStatusMessages[reducedMotion ? 0 : messageIndex]}
           </motion.span>
         </AnimatePresence>
       </motion.span>

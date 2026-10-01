@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { FiArrowUpRight } from 'react-icons/fi'
 
-import { DraggableDecorations } from '@/components/draggable-decorations'
+import { DeferredDecorations } from '@/components/deferred-decorations'
 import { GitHubActivity } from '@/components/github-activity'
 import { ThemeDotCursor } from '@/components/theme-dot-cursor'
 import { ProfileSection } from '@/components/portfolio/profile-section'
@@ -15,7 +15,7 @@ function App() {
   return (
     <div id="top" className="relative min-h-svh overflow-x-clip bg-background text-foreground">
       <ThemeDotCursor />
-      <DraggableDecorations entryReady={bannerAnimationComplete} />
+      <DeferredDecorations entryReady={bannerAnimationComplete} />
       <div className="mx-auto w-full max-w-3xl px-6 sm:px-8">
         <main className="flex flex-col gap-14 pb-12 sm:gap-16 sm:pb-16">
           <ProfileSection onBannerAnimationComplete={() => setBannerAnimationComplete(true)} />

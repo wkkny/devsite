@@ -20,8 +20,11 @@ function dateForCell(start: Date, week: number, day: number) {
 function GitHubActivity() {
   const [contributions, setContributions] = useState<ContributionDay[]>([])
   const [hasError, setHasError] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const calendarScrollRef = useRef<HTMLDivElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
+  const retryButtonRef = useRef<HTMLButtonElement>(null)
 
   useLayoutEffect(() => {
     const mobile = window.matchMedia('(max-width: 639px)')
@@ -46,6 +49,8 @@ function GitHubActivity() {
     async function loadContributions() {
       if (started) return
       started = true
+      setHasError(false)
+      setIsLoading(true)
 
       try {
         const response = await fetch(
@@ -55,13 +60,22 @@ function GitHubActivity() {
         if (!response.ok) throw new Error('Unable to fetch GitHub contributions')
 
         const data: unknown = await response.json()
-        setContributions(parseContributions(data))
+        const contributions = parseContributions(data)
+        if (!controller.signal.aborted) {
+          // Move focus only if the visitor is still on the retry control that will disappear.
+          if (document.activeElement === retryButtonRef.current) {
+            calendarScrollRef.current?.querySelector<HTMLButtonElement>('button[tabindex="0"]')?.focus()
+          }
+          setContributions(contributions)
+        }
       } catch {
         if (!controller.signal.aborted) setHasError(true)
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false)
       }
     }
 
-    if (typeof IntersectionObserver === 'undefined') {
+    if (attempt > 0 || typeof IntersectionObserver === 'undefined') {
       void loadContributions()
       return () => controller.abort()
     }
@@ -80,7 +94,7 @@ function GitHubActivity() {
       observer.disconnect()
       controller.abort()
     }
-  }, [])
+  }, [attempt])
 
   const now = new Date()
   const endDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
@@ -96,7 +110,7 @@ function GitHubActivity() {
   )
 
   return (
-    <div ref={sectionRef} className="w-full">
+    <div ref={sectionRef} className="w-full" aria-busy={isLoading}>
       <HeatCalendar
         weeks={WEEKS}
         endDate={endDate}
@@ -113,10 +127,27 @@ function GitHubActivity() {
         </div>
         <HeatCalendarLegend />
       </HeatCalendar>
+      {isLoading && <p role="status" className="mt-3 text-sm text-muted-foreground">Loading GitHub activity…</p>}
       {hasError && (
         <p role="status" className="mt-3 text-sm text-muted-foreground">
           GitHub activity is unavailable right now.
         </p>
+      )}
+      {(hasError || (attempt > 0 && isLoading)) && (
+        <button
+          ref={retryButtonRef}
+          type="button"
+          aria-disabled={isLoading}
+          className="mt-2 rounded text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-disabled:opacity-50"
+          onClick={() => {
+            if (isLoading) return
+            setIsLoading(true)
+            setHasError(false)
+            setAttempt((current) => current + 1)
+          }}
+        >
+          Retry GitHub activity
+        </button>
       )}
     </div>
   )

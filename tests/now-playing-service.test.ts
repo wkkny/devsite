@@ -15,11 +15,12 @@ const playback: NowPlayingResponse = {
 }
 
 function setup(latest: SharedSpotifyState) {
-  let state: SharedSpotifyState = { snapshot: null, cooldownUntil: 0 }
+  let state: SharedSpotifyState = { snapshot: null, cooldownUntil: 0, backoffUntil: 0 }
   const store = {
     read: vi.fn(async () => state),
     writeSnapshot: vi.fn(async () => {}),
     extendCooldown: vi.fn(async () => 0),
+    extendBackoff: vi.fn(async () => 0),
     acquireRefreshLock: vi.fn(async () => {
       // Simulate a different worker finishing after the initial read.
       state = latest
@@ -34,7 +35,7 @@ function setup(latest: SharedSpotifyState) {
 
 describe('refresh state changes between reading and locking', () => {
   it('honors a cooldown established by another worker', async () => {
-    const { store, getPlayback, service } = setup({ snapshot: null, cooldownUntil: now + 60_000 })
+    const { store, getPlayback, service } = setup({ snapshot: null, cooldownUntil: now + 60_000, backoffUntil: 0 })
 
     await expect(service()).resolves.toEqual({ kind: 'rate-limited', retryAfterSeconds: 60 })
     expect(getPlayback).not.toHaveBeenCalled()
@@ -45,6 +46,7 @@ describe('refresh state changes between reading and locking', () => {
     const { store, getPlayback, service } = setup({
       snapshot: { playback, fetchedAt: now - 300_000 },
       cooldownUntil: now + 60_000,
+      backoffUntil: 0,
     })
 
     await expect(service()).resolves.toEqual({
@@ -61,6 +63,7 @@ describe('refresh state changes between reading and locking', () => {
     const { store, getPlayback, service } = setup({
       snapshot: { playback, fetchedAt: now },
       cooldownUntil: 0,
+      backoffUntil: 0,
     })
 
     await expect(service()).resolves.toEqual({ kind: 'playback', playback })
@@ -70,8 +73,8 @@ describe('refresh state changes between reading and locking', () => {
   })
 
   it('avoids upstream calls and releases the lock when the locked read fails', async () => {
-    const { store, getPlayback, service } = setup({ snapshot: null, cooldownUntil: 0 })
-    store.read.mockResolvedValueOnce({ snapshot: null, cooldownUntil: 0 })
+    const { store, getPlayback, service } = setup({ snapshot: null, cooldownUntil: 0, backoffUntil: 0 })
+    store.read.mockResolvedValueOnce({ snapshot: null, cooldownUntil: 0, backoffUntil: 0 })
       .mockRejectedValueOnce(new Error('Redis unavailable'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -81,4 +84,25 @@ describe('refresh state changes between reading and locking', () => {
     expect(getPlayback).not.toHaveBeenCalled()
     expect(store.releaseRefreshLock).toHaveBeenCalledWith('lock-token')
   })
+
+  it('preserves the stale track if the locked read fails', async () => {
+    const state = {
+      snapshot: { playback, fetchedAt: now - 300_000 },
+      cooldownUntil: 0,
+      backoffUntil: 0,
+    }
+    const { store, getPlayback, service } = setup(state)
+    store.read.mockResolvedValueOnce(state).mockRejectedValueOnce(new Error('Redis unavailable'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await expect(service()).resolves.toEqual({
+      kind: 'playback',
+      playback: { ...playback, status: 'recent' },
+      stale: true,
+      retryAfterSeconds: 30,
+    })
+    expect(getPlayback).not.toHaveBeenCalled()
+    expect(store.releaseRefreshLock).toHaveBeenCalledWith('lock-token')
+  })
+
 })

@@ -8,6 +8,7 @@ import {
 
 const SNAPSHOT_KEY = "spotify:now-playing:snapshot:v1"
 const COOLDOWN_KEY = "spotify:now-playing:cooldown-until:v1"
+const BACKOFF_KEY = "spotify:now-playing:backoff-until:v1"
 const REFRESH_LOCK_KEY = "spotify:now-playing:refresh-lock:v1"
 const REQUEST_TIMEOUT_MS = 2_000
 const REFRESH_LOCK_SECONDS = 30
@@ -19,7 +20,7 @@ const RELEASE_LOCK_SCRIPT = `
   return 0
 `
 
-const EXTEND_COOLDOWN_SCRIPT = `
+const EXTEND_RETRY_WINDOW_SCRIPT = `
   local current = tonumber(redis.call("GET", KEYS[1]) or "0")
   local proposed = tonumber(ARGV[1])
   if proposed > current then
@@ -38,12 +39,14 @@ export type StoredSnapshot = {
 export type SharedSpotifyState = {
   snapshot: StoredSnapshot | null
   cooldownUntil: number
+  backoffUntil: number
 }
 
 export interface SpotifyStateStore {
   read(): Promise<SharedSpotifyState>
   writeSnapshot(snapshot: StoredSnapshot): Promise<void>
   extendCooldown(retryAfterSeconds: number): Promise<number>
+  extendBackoff(retryAfterSeconds: number): Promise<number>
   acquireRefreshLock(): Promise<string | null>
   releaseRefreshLock(token: string): Promise<void>
 }
@@ -174,15 +177,19 @@ export function createUpstashSpotifyStateStore(): SpotifyStateStore {
         "MGET",
         SNAPSHOT_KEY,
         COOLDOWN_KEY,
+        BACKOFF_KEY,
       ])
 
-      if (!Array.isArray(values) || values.length !== 2) {
+      if (!Array.isArray(values) || values.length !== 3) {
         throw new SpotifySharedStateError()
       }
 
       const cooldownValue = Number(values[1])
+      const backoffValue = Number(values[2])
       return {
         snapshot: parseSnapshot(values[0]),
+        backoffUntil:
+          Number.isFinite(backoffValue) && backoffValue > 0 ? backoffValue : 0,
         cooldownUntil:
           Number.isFinite(cooldownValue) && cooldownValue > 0 ? cooldownValue : 0,
       }
@@ -201,13 +208,27 @@ export function createUpstashSpotifyStateStore(): SpotifyStateStore {
       const proposedUntil = Date.now() + safeSeconds * 1_000
       const result = await runRedisCommand<number>([
         "EVAL",
-        EXTEND_COOLDOWN_SCRIPT,
+        EXTEND_RETRY_WINDOW_SCRIPT,
         1,
         COOLDOWN_KEY,
         proposedUntil,
         safeSeconds,
       ])
 
+      return Number.isFinite(result) ? result : proposedUntil
+    },
+
+    async extendBackoff(retryAfterSeconds) {
+      const safeSeconds = Math.max(1, Math.ceil(retryAfterSeconds))
+      const proposedUntil = Date.now() + safeSeconds * 1_000
+      const result = await runRedisCommand<number>([
+        "EVAL",
+        EXTEND_RETRY_WINDOW_SCRIPT,
+        1,
+        BACKOFF_KEY,
+        proposedUntil,
+        safeSeconds,
+      ])
       return Number.isFinite(result) ? result : proposedUntil
     },
 

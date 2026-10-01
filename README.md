@@ -61,7 +61,7 @@ Spotify playback is optional. Without credentials, the live status is hidden. Th
 5. Add that refresh token to `.env`, then set `VITE_SPOTIFY_USE_MOCK=false`.
 6. Run `bun run dev:spotify` to use the `/api/now-playing` endpoint locally.
 
-The page checks current playback about every two minutes while the tab is visible. It refreshes recently played history at most every 15 minutes. The deployed endpoint stores the latest track and Spotify's cooldown in shared Redis state, so Vercel instances reuse the same result and honor the same `Retry-After` period. It keeps showing the last known track during errors and rate limits.
+The page checks current playback about every two minutes while the tab is visible. It refreshes recently played history at most every 15 minutes. The deployed endpoint stores the latest track, Spotify's cooldown, and a 60-second backoff after upstream failures in shared Redis state, so Vercel instances reuse the same result and honor the same `Retry-After` period. It keeps showing the last known track during errors and rate limits.
 
 ### Environment variables
 
@@ -132,6 +132,8 @@ bun run test:unit
 bun run test:e2e
 bun run build
 ```
+
+The browser tests build the app and serve it with Vite preview, including checks for production assets and optional chunk failures. Shared-state tests exercise independent production Redis adapters through a simulated Redis REST transport.
 
 The browser tests use mocked responses for Spotify, GitHub contributions, and the visitor counter. They do not need credentials for those services.
 

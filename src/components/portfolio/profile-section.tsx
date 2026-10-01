@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Dithering } from '@paper-design/shaders-react'
+import { lazy, Suspense, useState, type ComponentType } from 'react'
 import { MapPin } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 
@@ -12,6 +11,8 @@ import { useTheme } from '@/components/theme-context'
 import { EASE_OUT } from '@/lib/ease'
 import { portfolioOwner } from '@/data'
 
+const ProfileBanner = lazy<ComponentType<{ theme: string }>>(() => import('./profile-banner').catch(() => ({ default: () => null })))
+
 const bannerTransition = { type: 'spring', visualDuration: 1.2, bounce: 0 } as const
 
 export type ProfileSectionProps = {
@@ -22,11 +23,7 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
   const { theme } = useTheme()
   const reducedMotion = useReducedMotion()
   const [profileContentEntered, setProfileContentEntered] = useState(false)
-  const styles = getComputedStyle(document.documentElement)
-  const shaderColors = {
-    back: styles.getPropertyValue('--background').trim(),
-    front: styles.getPropertyValue('--portfolio-blue').trim(),
-  }
+  const [bannerEntered, setBannerEntered] = useState(false)
   const contentInitial = reducedMotion ? { opacity: 0 } : { opacity: 0, transform: 'translate3d(0, 8px, 0)' }
   const contentAnimate = reducedMotion ? { opacity: 1 } : { opacity: 1, transform: 'translate3d(0, 0, 0)' }
   const contentTransition = reducedMotion
@@ -39,25 +36,20 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
         <motion.div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
-          onAnimationComplete={onBannerAnimationComplete}
+          onAnimationComplete={() => {
+            setBannerEntered(true)
+            onBannerAnimationComplete()
+          }}
           initial={reducedMotion ? { opacity: 0 } : { clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }}
           animate={reducedMotion ? { opacity: 1 } : { clipPath: 'polygon(0 0, 116% 0, 100% 100%, 0 100%)' }}
           transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : bannerTransition}
         >
-          <Dithering
-            className="absolute inset-0"
-            width="100%"
-            height="100%"
-            colorBack={shaderColors.back}
-            colorFront={shaderColors.front}
-            shape="simplex"
-            type="4x4"
-            size={4}
-            speed={reducedMotion ? 0 : 0.3}
-            scale={0.4}
-            rotation={70}
-            offsetX={-0.4}
-          />
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(var(--portfolio-blue) 1px, transparent 1px)', backgroundSize: '4px 4px', opacity: 0.25 }} />
+          {bannerEntered && !reducedMotion && (
+            <Suspense fallback={null}>
+              <ProfileBanner theme={theme} />
+            </Suspense>
+          )}
           {!reducedMotion && (
             <motion.span
               className="banner-shimmer"
@@ -74,6 +66,8 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
           alt={portfolioOwner.profilePictureAlt}
           className="size-44 rounded-lg border-8 border-background bg-background object-contain sm:size-56"
           fetchPriority="high"
+          width={448}
+          height={448}
           initial={reducedMotion ? { opacity: 0 } : { opacity: 0, transform: 'translate3d(0, 12px, 0)' }}
           animate={reducedMotion ? { opacity: 1 } : { opacity: 1, transform: 'translate3d(0, 0, 0)' }}
           transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.42, ease: EASE_OUT, delay: 0.7 }}

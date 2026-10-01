@@ -130,7 +130,7 @@ export function SocialLinks() {
       </Tooltip>
       {copyStatus === 'error' && (
         <a
-          className="max-w-full break-all text-foreground underline underline-offset-4 sm:hidden"
+          className="max-w-full break-all text-foreground underline underline-offset-4"
           href={`mailto:${portfolioOwner.email}`}
         >
           {portfolioOwner.email}
