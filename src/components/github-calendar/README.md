@@ -44,7 +44,8 @@ Without shadcn, define those CSS variables yourself or pass `color` explicitly.
 - **Read a day.** Hover or focus a square for its count and date.
 - **Total a range.** Click a day, and the tooltip previews the total up to wherever you
   point. Click a second day to keep that range on screen. Clicking again starts a new
-  selection, and clicking outside the calendar or pressing Escape clears it.
+  selection, and clicking outside the calendar or pressing Escape clears it. Completed
+  totals are announced to screen readers; day buttons include their count and date.
 - **Filter by level.** Hover or focus a shade in the legend to see only days at that
   level. Click it to keep the filter on.
 - **Keyboard.** The grid is a single Tab stop that starts on today. Arrow keys move by
@@ -52,7 +53,8 @@ Without shadcn, define those CSS variables yourself or pass `color` explicitly.
   the first or latest day. Moves never wrap or land on a blank or disabled square.
 - **Narrow screens.** When the year doesn't fit, the grid scrolls sideways and opens with
   today in view. Squares never shrink below 12px.
-- **Reduced motion.** The pop-in and the hover lift are turned off.
+- **Tooltips.** The visual readout stays open while hovered and Escape dismisses it.
+- **Reduced motion.** The pop-in, hover lift, and tooltip transforms are turned off.
 
 Weeks run Monday to Sunday, and all dates are calendar days in UTC.
 

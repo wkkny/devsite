@@ -54,7 +54,7 @@ a[href],
 
 @media (hover: hover) and (pointer: fine) {
   .animated-arrow-link:hover {
-    color: var(--portfolio-blue);
+    color: var(--portfolio-link-blue);
   }
 
   .animated-arrow-link:hover .animated-arrow-link-label::after {
@@ -69,7 +69,7 @@ a[href],
 }
 
 .animated-arrow-link:focus-visible {
-  color: var(--portfolio-blue);
+  color: var(--portfolio-link-blue);
 }
 
 .animated-arrow-link:focus-visible .animated-arrow-link-label::after {
@@ -128,6 +128,7 @@ a[href],
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   --portfolio-blue: #0095ff;
+  --portfolio-link-blue: #0074c7;
   --background: #ffffff;
   --foreground: #0a0a0a;
   --card: #ffffff;
@@ -164,6 +165,7 @@ a[href],
 
 .dark {
   color-scheme: dark;
+  --portfolio-link-blue: var(--portfolio-blue);
   --background: #060606;
   --foreground: #fafafa;
   --card: #0f0f0f;
@@ -244,6 +246,12 @@ a[href],
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+
+  a:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
   }
 
   html {

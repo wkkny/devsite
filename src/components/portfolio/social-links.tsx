@@ -49,11 +49,7 @@ export function SocialLinks() {
       ? 'Could not copy email'
       : 'Click to copy email'
 
-  const emailLabel = copyStatus === 'copied'
-    ? 'Email copied to clipboard'
-    : copyStatus === 'error'
-      ? 'Retry copying email address'
-      : 'Copy email address'
+  const emailLabel = `Copy email address ${portfolioOwner.email}${copyStatus === 'copied' ? ' (copied to clipboard)' : ''}`
   const copyMotionInitial = reducedMotion
     ? { opacity: 0 }
     : { opacity: 0, transform: 'translate3d(0, 2px, 0) scale(0.95)' }

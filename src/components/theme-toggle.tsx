@@ -32,7 +32,7 @@ function ThemeToggle({
       type="button"
       variant="ghost"
       size="icon"
-      disabled={isTransitioning}
+      aria-disabled={isTransitioning}
       aria-label={`Switch to ${nextTheme} mode`}
       onClick={handleToggle}
       className={className}

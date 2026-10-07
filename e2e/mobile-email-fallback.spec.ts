@@ -48,10 +48,10 @@ for (const width of [390, 1440]) {
     await expect(emailFallback).toBeVisible()
     await expect(emailFallback).toHaveAttribute('href', 'mailto:kritiraj.tech@gmail.com')
 
-    const retryButton = page.getByRole('button', { name: 'Retry copying email address' })
+    const retryButton = page.getByRole('button', { name: 'Copy email address' })
     await retryButton.click()
 
-    const copiedButton = page.getByRole('button', { name: 'Email copied to clipboard' })
+    const copiedButton = page.getByRole('button', { name: 'Copy email address' })
     await expect(copiedButton).toBeVisible()
     await copiedButton.click()
 

@@ -38,10 +38,11 @@ export function ProjectCard({ project, view }: ProjectCardProps) {
                   </AvatarFallback>
                 </Avatar>
               )}
-              <CardTitle>{project.name}</CardTitle>
+              <CardTitle role="heading" aria-level={3}>{project.name}</CardTitle>
             </div>
             <a
               className="inline-flex shrink-0 items-center gap-2 text-sm font-medium transition-colors hover:text-muted-foreground"
+              aria-label={`${project.name} on GitHub`}
               href={project.href}
               target="_blank"
               rel="noreferrer"
@@ -56,7 +57,7 @@ export function ProjectCard({ project, view }: ProjectCardProps) {
         <CardContent className={isList ? 'space-y-4' : 'flex flex-1 flex-col'}>
           <ul aria-label={`${project.name} technologies`} className="flex flex-wrap gap-x-3 gap-y-1">
             {project.stack.map((item) => (
-              <li key={item} className="text-xs text-muted-foreground/70">{item}</li>
+              <li key={item} className="text-xs text-muted-foreground">{item}</li>
             ))}
           </ul>
         </CardContent>

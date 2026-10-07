@@ -28,7 +28,7 @@ export function Tooltip({ content, children, side = 'top', gap = 8, disabled, cl
   return (
     <TooltipRoot disabled={disabled}>
       <TooltipTrigger render={children} />
-      <TooltipContent side={side} sideOffset={gap} className={cn(SITE_TOOLTIP, className)}>
+      <TooltipContent aria-hidden="true" side={side} sideOffset={gap} className={cn(SITE_TOOLTIP, className)}>
         {content}
       </TooltipContent>
     </TooltipRoot>

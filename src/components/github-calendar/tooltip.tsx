@@ -16,6 +16,8 @@ export function CalendarTooltip({
   anchorKey,
   getAnchor,
   children,
+  onPointerEnter,
+  onPointerLeave,
 }: {
   id: string;
   open: boolean;
@@ -23,6 +25,8 @@ export function CalendarTooltip({
   anchorKey: string | number | null;
   getAnchor: () => HTMLElement | null;
   children: ReactNode;
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
 }) {
   const surfaceRef = useRef<HTMLSpanElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -62,7 +66,9 @@ export function CalendarTooltip({
 
   return createPortal(
     <span
-      className="pointer-events-none fixed z-50"
+      className="fixed z-50"
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
       style={{
         top: position?.top ?? 0,
         left: position?.left ?? 0,
@@ -70,17 +76,18 @@ export function CalendarTooltip({
         // its natural width, not the space left between `left` and the viewport edge
         width: "max-content",
         visibility: position ? undefined : "hidden",
+        pointerEvents: visible ? "auto" : "none",
       }}
     >
       <span
         ref={surfaceRef}
         id={id}
         role="tooltip"
-        // stays mounted for the closing transition; out of the accessibility tree while closed
-        aria-hidden={visible ? undefined : true}
+        // Day names and the live selection status provide this readout to assistive tech.
+        aria-hidden="true"
         data-open={visible ? "" : undefined}
         style={{ maxWidth: "calc(100vw - 16px)", transformOrigin: "center bottom" }}
-        className="flex translate-y-1 scale-95 flex-wrap items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground opacity-0 blur-[2px] shadow-lg transition-[opacity,translate,scale,filter] duration-150 ease-out motion-reduce:transition-opacity data-open:translate-y-0 data-open:scale-100 data-open:opacity-100 data-open:blur-[0px]"
+        className="flex translate-y-1 scale-95 flex-wrap items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground opacity-0 blur-[2px] shadow-lg transition-[opacity,translate,scale,filter] duration-150 ease-out motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:blur-none data-open:translate-y-0 data-open:scale-100 data-open:opacity-100 data-open:blur-[0px]"
       >
         {content}
       </span>
