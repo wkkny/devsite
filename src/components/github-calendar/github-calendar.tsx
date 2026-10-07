@@ -15,7 +15,7 @@ const DEFAULT_LABELS: GitHubCalendarLabels = {
 };
 
 const YEAR_BUTTON =
-  "inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-input bg-transparent px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-muted";
+  "inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-input bg-transparent px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring aria-pressed:bg-muted";
 
 const NO_DAYS: ContributionDay[] = [];
 

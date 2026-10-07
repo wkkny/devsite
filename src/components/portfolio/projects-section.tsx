@@ -32,7 +32,7 @@ export function ProjectsSection() {
     if (nextView !== 'grid' && nextView !== 'list') return
     if (nextView === projectView) return
 
-    if (typeof document.startViewTransition !== 'function') {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || typeof document.startViewTransition !== 'function') {
       setProjectView(nextView)
       return
     }

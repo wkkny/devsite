@@ -70,6 +70,9 @@ export function ContributionCalendar({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const tooltipId = useId();
+  const [dismissed, setDismissed] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const hideTimer = useRef<number | undefined>(undefined);
   const helpId = useId();
 
   const isActive = (index: number | null | undefined): index is number =>
@@ -82,11 +85,19 @@ export function ContributionCalendar({
   const span = selection && spanEnd !== null ? [Math.min(selection.start, spanEnd), Math.max(selection.start, spanEnd)] : null;
   // A locked range keeps the tooltip on its end; otherwise it follows the pointer or focus.
   const tip = selection?.end ?? hover ?? selection?.start ?? null;
-  const tipCell = isActive(tip) ? model.cells[tip] : null;
+  const tipCell = !dismissed && isActive(tip) ? model.cells[tip] : null;
   const range = span ? rangeTotal(model, span[0], span[1]) : null;
 
   const choose = (next: Selection) => {
     setSelection(next);
+    setDismissed(false);
+    if (!next) setAnnouncement("Selection cleared.");
+    else if (next.end === undefined) {
+      setAnnouncement(`${formatDay.format(model.cells[next.start].date)} selected. Select a second day to total the range.`);
+    } else {
+      const total = rangeTotal(model, next.start, next.end);
+      setAnnouncement(`${total.total} ${unitFor(unit, total.total)} from ${formatDay.format(model.cells[Math.min(next.start, next.end)].date)} to ${formatDay.format(model.cells[Math.max(next.start, next.end)].date)}, ${total.days} days.`);
+    }
     if (!onSelectionChange) return;
     if (!next) return onSelectionChange(null);
     const result: CalendarSelection =
@@ -105,6 +116,34 @@ export function ContributionCalendar({
     else choose({ start: selection.start, end: index });
   };
 
+  const keepTooltip = () => window.clearTimeout(hideTimer.current);
+  const leaveTooltip = () => {
+    keepTooltip();
+    hideTimer.current = window.setTimeout(() => {
+      // Pointer exit must not hide a readout for a keyboard-focused square.
+      setHover(cellIndex(document.activeElement));
+    }, 150);
+  };
+
+  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
+
+  useEffect(() => {
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setDismissed(true);
+      setHover(null);
+      if (selection) {
+        setSelection(null);
+        setAnnouncement("Selection cleared.");
+        onSelectionChange?.(null);
+      }
+      setLegendLock(null);
+      setLegendPreview(null);
+    };
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [selection, onSelectionChange]);
+
   const cellIndex = (target: EventTarget | null) => {
     const element = target instanceof Element ? target.closest<HTMLElement>("[data-index]") : null;
     return element ? Number(element.dataset.index) : null;
@@ -119,14 +158,15 @@ export function ContributionCalendar({
   useEffect(() => {
     if (!selection && legendLock === null) return;
     const onPointerDown = (event: PointerEvent) => {
-      if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
+      if (event.target instanceof Node && (rootRef.current?.contains(event.target) || document.getElementById(tooltipId)?.contains(event.target))) return;
       setSelection(null);
+      if (selection) setAnnouncement("Selection cleared.");
       onSelectionChange?.(null);
       setLegendLock(null);
     };
     window.addEventListener("pointerdown", onPointerDown, true);
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
-  }, [selection, legendLock, onSelectionChange]);
+  }, [selection, legendLock, onSelectionChange, tooltipId]);
 
   // Squares pop in week by week when a new range mounts. Data arriving later does not replay it.
   useLayoutEffect(() => {
@@ -196,13 +236,12 @@ export function ContributionCalendar({
           tabIndex={cell.index === tabStop ? 0 : -1}
           aria-label={`${cell.count} ${unitFor(unit, cell.count)} on ${formatDay.format(cell.date)}`}
           aria-pressed={selected}
-          aria-describedby={tipCell?.index === cell.index ? tooltipId : undefined}
           className={cx(
             "block aspect-square w-full rounded-[3px] transition-[scale,opacity] duration-150 ease-out outline-none",
-            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground focus-visible:relative focus-visible:z-10",
             "hover:relative hover:z-10 motion-safe:pointer-fine:hover:scale-125",
             selected && "ring-2 ring-foreground ring-offset-1 ring-offset-background",
-            dimmed && "opacity-25",
+            dimmed && "opacity-25 focus-visible:opacity-100",
           )}
           style={{ background: fill(cell.level, color) }}
         />
@@ -218,7 +257,7 @@ export function ContributionCalendar({
       </span>
       <div
         ref={scrollerRef}
-        className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-m-1 w-[calc(100%+8px)] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-1"
       >
         <div
           ref={gridRef}
@@ -237,13 +276,19 @@ export function ContributionCalendar({
           }
           onPointerOver={(event) => {
             const index = cellIndex(event.target);
-            if (index !== null) setHover(index);
+            keepTooltip();
+            if (index !== null) {
+              if (index !== hover) setDismissed(false);
+              setHover(index);
+            }
             else if (event.target instanceof Element && event.target.closest("[data-disabled]")) setHover(null);
           }}
-          onPointerLeave={() => setHover(null)}
+          onPointerLeave={leaveTooltip}
           onFocus={(event) => {
             const index = cellIndex(event.target);
             if (index === null) return;
+            keepTooltip();
+            setDismissed(false);
             setFocusIndex(index);
             setHover(index);
           }}
@@ -255,11 +300,6 @@ export function ContributionCalendar({
             if (index !== null) pick(index);
           }}
           onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              if (selection) choose(null);
-              setHover(null);
-              return;
-            }
             const from = cellIndex(event.target);
             const next = from === null ? null : moveFocus(model, from, event.key, event.ctrlKey || event.metaKey);
             if (next === null) return;
@@ -295,7 +335,7 @@ export function ContributionCalendar({
               ? " "
               : `${formatDate.format(model.cells[model.firstActive].date)} – ${formatDate.format(model.lastActiveDate)}`}
           </span>
-          <span className="flex items-center gap-1" onPointerLeave={() => setLegendPreview(null)}>
+          <span className="flex items-center" onPointerLeave={() => setLegendPreview(null)}>
             <span className="mr-0.5">less</span>
             {LEVELS.map((level) => (
               <button
@@ -310,16 +350,19 @@ export function ContributionCalendar({
                 onFocus={() => setLegendPreview(level)}
                 onBlur={() => setLegendPreview(null)}
                 onClick={() => setLegendLock((current) => (current === level ? null : level))}
-                className="size-3 rounded-[3px] outline-none transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:data-active:scale-125"
-                style={{ background: fill(level, color) }}
-              />
+                className="group/level flex size-6 items-center justify-center rounded outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground"
+              >
+                <span aria-hidden="true" className="size-3 rounded-[3px] transition-[scale] duration-150 motion-safe:group-data-active/level:scale-125" style={{ background: fill(level, color) }} />
+              </button>
             ))}
             <span className="ml-0.5">more</span>
           </span>
         </div>
       )}
 
-      <CalendarTooltip id={tooltipId} open={tipCell !== null} anchorKey={tip} getAnchor={getAnchor}>
+      <span role="status" className="sr-only">{announcement}</span>
+
+      <CalendarTooltip onPointerEnter={keepTooltip} onPointerLeave={leaveTooltip} id={tooltipId} open={tipCell !== null} anchorKey={tip} getAnchor={getAnchor}>
         {range && range.days > 1 ? (
           <>
             <span className="font-mono tabular-nums">
