@@ -1,14 +1,13 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { useHeatCalendar } from "./context";
-import { fmtRange, STEPS } from "./utils";
+import { cx, fmtRange, STEPS } from "./utils";
 
 export function HeatCalendarLegend({ className }: { className?: string }) {
   const { start, first, lastDay, step, setStep, fill, canHover, reduce } = useHeatCalendar();
   const rangeStart = first ?? start;
   return (
-    <div className={cn("mt-3 flex flex-wrap items-center justify-between gap-3", className)}>
+    <div className={cx("mt-3 flex flex-wrap items-center justify-between gap-3", className)}>
       <span className="text-xs text-muted-foreground">
         {rangeStart && lastDay ? `${fmtRange.format(rangeStart)} – ${fmtRange.format(lastDay)}` : "\u00a0"}
       </span>

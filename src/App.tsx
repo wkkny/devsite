@@ -1,6 +1,6 @@
 import { FiArrowUpRight } from 'react-icons/fi'
 
-import { GitHubActivity } from '@/components/github-activity'
+import { GitHubCalendar } from '@/components/github-calendar'
 import { ThemeDotCursor } from '@/components/theme-dot-cursor'
 import { ProfileSection } from '@/components/portfolio/profile-section'
 import { ProjectsSection } from '@/components/portfolio/projects-section'
@@ -24,7 +24,13 @@ function App() {
               <span className="animated-arrow-link-label relative">{portfolioOwner.githubUsername}</span>
               <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3.5" />
             </a>
-            <GitHubActivity />
+            <GitHubCalendar
+              username={portfolioOwner.githubUsername}
+              fromYear={2026}
+              color="var(--portfolio-blue)"
+              showYearPicker
+              showProfileLink={false}
+            />
           </section>
           <ProjectsSection />
         </main>

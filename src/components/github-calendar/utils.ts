@@ -1,3 +1,13 @@
+/** Joins class names, skipping falsy parts. */
+export const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
+
+export const DAY_MS = 86_400_000;
+
+export const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+
+/** Press feedback and the cell ripple. */
+export const SPRING_PRESS = { type: "spring", stiffness: 500, damping: 30, mass: 0.6 } as const;
+
 export const STEPS = [0, 24, 46, 70, 94] as const;
 
 export const EMPTY = "color-mix(in srgb, var(--foreground) 6%, transparent)";

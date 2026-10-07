@@ -19,14 +19,6 @@
   }
 }
 
-.calendar-scroll {
-  scrollbar-width: none;
-}
-
-.calendar-scroll::-webkit-scrollbar {
-  display: none;
-}
-
 .theme-dot-cursor {
   position: fixed;
   z-index: 100000;

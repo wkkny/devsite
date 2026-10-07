@@ -2,9 +2,21 @@
 
 import { useReducedMotion } from "motion/react";
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
-import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
 import type { HeatCalendarCell, HeatCalendarProps, HeatCalendarSelection } from "./types";
-import { addDays, CELL, EMPTY, fmtMonth, GAP, MONTH_ROW, mondayOf, PITCH, STEPS, startOfDay } from "./utils";
+import { addDays, CELL, DAY_MS, EMPTY, fmtMonth, GAP, MONTH_ROW, mondayOf, PITCH, STEPS, startOfDay } from "./utils";
+
+/** True only on devices with real hover (mouse, trackpad); touch taps fire sticky phantom hovers. */
+function useHoverCapable() {
+  const [canHover, setCanHover] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setCanHover(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return canHover;
+}
 
 /**
  * Weeks of activity as a single-hue grid with month labels, so
@@ -92,7 +104,7 @@ export function useHeatCalendarModel({
   const anchor = today ?? end;
   const anchorIndex = Math.max(
     firstIndex,
-    Math.min(lastIndex, start && anchor ? Math.round((startOfDay(anchor).getTime() - start.getTime()) / 86_400_000) : lastIndex),
+    Math.min(lastIndex, start && anchor ? Math.round((startOfDay(anchor).getTime() - start.getTime()) / DAY_MS) : lastIndex),
   );
 
   const validCell = (cell: HeatCalendarCell) =>

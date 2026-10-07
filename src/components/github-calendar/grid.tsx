@@ -2,10 +2,8 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useId, useState, type ReactNode } from "react";
-import { EASE_OUT, SPRING_PRESS } from "@/lib/ease";
-import { cn } from "@/lib/utils";
 import { useHeatCalendar } from "./context";
-import { DAYS, fmtDay, FUTURE_EDGE, FUTURE_FILL, GAP, LIFT, MONTH_ROW, PITCH } from "./utils";
+import { cx, DAYS, EASE_OUT, fmtDay, FUTURE_EDGE, FUTURE_FILL, GAP, LIFT, MONTH_ROW, PITCH, SPRING_PRESS } from "./utils";
 
 export function HeatCalendarGrid({ children, className }: { children?: ReactNode; className?: string }) {
   const {
@@ -55,7 +53,7 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
         aria-colcount={weeks}
         aria-label={`${unit} calendar`}
         aria-describedby={instructionsId}
-        className={cn("relative grid", className)}
+        className={cx("relative grid", className)}
         style={{
           width: weeks * PITCH - GAP,
           maxWidth: "100%",
@@ -70,7 +68,7 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
             <span
               key={c.id}
               aria-hidden="true"
-              className={cn(
+              className={cx(
                 "whitespace-nowrap text-[10px] leading-none transition-colors duration-200",
                 hotMonth === c.m ? "text-foreground" : "text-muted-foreground",
               )}
