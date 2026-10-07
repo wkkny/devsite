@@ -133,7 +133,8 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
                       }
                       let next: number;
                       switch (e.key) {
-                        case "ArrowLeft": next = w > 0 ? Math.max(firstIndex, i - 7) : i; break;
+                        // stay put when the same weekday a week back is hidden, never jump rows
+                        case "ArrowLeft": next = i - 7 >= firstIndex ? i - 7 : i; break;
                         case "ArrowRight": next = i + 7 <= lastIndex ? i + 7 : i; break;
                         case "ArrowUp": next = Math.max(w * 7, firstIndex, i - 1); break;
                         case "ArrowDown": next = Math.min(lastIndex, w * 7 + 6, i + 1); break;

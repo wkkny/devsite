@@ -143,6 +143,8 @@ export function DitherCanvas({
   const lastTimeRef = useRef<number | null>(null)
   const noiseTimeRef = useRef(0)
   const colorRef = useRef<{ css: string; rgb: Rgb }>({ css: '', rgb: [0, 0, 0] })
+  const colorDirtyRef = useRef(true)
+  const imageRef = useRef<ImageData | null>(null)
   const wavesRef = useRef<Wave[]>([])
   const insideRef = useRef(false)
   const hoverX = useSpring(0, { stiffness: 260, damping: 32, mass: 0.6 })
@@ -167,9 +169,16 @@ export function DitherCanvas({
       visibleRef.current = entry.isIntersecting
     })
     visibilityObserver.observe(canvas)
+    // The dot color only changes with the theme, which toggles a class or style on <html>.
+    const themeObserver = new MutationObserver(() => {
+      colorDirtyRef.current = true
+      lastDrawRef.current = -Infinity
+    })
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] })
     return () => {
       resizeObserver.disconnect()
       visibilityObserver.disconnect()
+      themeObserver.disconnect()
     }
   }, [cellSize])
 
@@ -190,6 +199,14 @@ export function DitherCanvas({
 
     const handleMove = (event: PointerEvent) => {
       if (hoverDisplacement === 0 || event.pointerType === 'touch') return
+      // Skip the layout read while the banner is scrolled away.
+      if (!visibleRef.current) {
+        if (insideRef.current) {
+          insideRef.current = false
+          hoverStrength.set(0)
+        }
+        return
+      }
       const { inside, x, y } = locate(event)
       if (!inside) {
         insideRef.current = false
@@ -242,11 +259,13 @@ export function DitherCanvas({
     const waves = wavesRef.current
     const hover = hoverDisplacement === 0 ? 0 : hoverStrength.get()
     const interacting = hover > 0.003 || waves.length > 0
+    // Only moving springs and rings need display rate; a resting cursor keeps the fps cap.
+    const moving = waves.length > 0 || hoverStrength.isAnimating() || hoverX.isAnimating() || hoverY.isAnimating()
 
     const needsRedraw = lastDrawRef.current === -Infinity
     if (paused && !interacting && !needsRedraw) return
     // Interaction redraws at display rate so the cursor and ring feel immediate.
-    const interval = interacting ? 0 : 1000 / fps
+    const interval = moving ? 0 : 1000 / fps
     if (!needsRedraw && time - lastDrawRef.current < interval) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -256,13 +275,22 @@ export function DitherCanvas({
     lastDrawRef.current = time
     if (!paused) noiseTimeRef.current += elapsed
 
-    // Re-read the computed color so theme switches and CSS transitions are picked up.
-    const css = getComputedStyle(canvas).color
-    if (css !== colorRef.current.css) colorRef.current = { css, rgb: toRgb(css) }
+    // Re-read the computed color only after a theme change, not on every frame.
+    if (colorDirtyRef.current) {
+      colorDirtyRef.current = false
+      const css = getComputedStyle(canvas).color
+      if (css !== colorRef.current.css) colorRef.current = { css, rgb: toRgb(css) }
+    }
     const [r, g, b] = colorRef.current.rgb
 
     const { width, height } = canvas
-    const image = ctx.createImageData(width, height)
+    let image = imageRef.current
+    if (!image || image.width !== width || image.height !== height) {
+      image = ctx.createImageData(width, height)
+      imageRef.current = image
+    } else {
+      image.data.fill(0)
+    }
     const matrix = bayer(matrixSize)
     const angle = (rotation * Math.PI) / 180
     const cos = Math.cos(angle)

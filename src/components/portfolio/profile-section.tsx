@@ -11,9 +11,8 @@ import { useTheme } from '@/components/theme-context'
 import { EASE_OUT } from '@/lib/ease'
 import { portfolioOwner } from '@/data'
 
-// Start fetching the optional banner chunk immediately so the pattern is ready when the reveal begins.
-const bannerModule = import('./profile-banner').catch(() => ({ default: () => null }))
-const ProfileBanner = lazy<ComponentType>(() => bannerModule)
+// The optional banner chunk loads on first render, and only when motion is allowed.
+const ProfileBanner = lazy<ComponentType>(() => import('./profile-banner').catch(() => ({ default: () => null })))
 
 // Eases in as well as out so the wipe doesn't launch at full speed.
 const bannerTransition = { duration: 1.3, ease: [0.5, 0, 0.15, 1], delay: 0.1 } as const

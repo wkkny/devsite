@@ -60,10 +60,11 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await page.goto('/')
 
   const cells = page.locator('[data-heat-cell]')
-  // 2026 runs Jan 1 (a Thursday) to Dec 31 (also a Thursday); the leading Mon to Wed of 2025 are hidden
+  // 2026 runs Jan 1 (a Thursday) to Dec 31 (also a Thursday); the leading Mon to Wed of 2025 are hidden,
+  // and so is every day after today (Thu Oct 1), though the grid keeps the whole year's columns
   const first = page.locator('[data-heat-cell="0-3"]')
   const today = page.locator('[data-heat-cell="39-3"]')
-  const latest = page.locator('[data-heat-cell="52-3"]')
+  const latest = today
   const tabStop = page.locator('[data-heat-cell][tabindex="0"]')
   const grid = page.getByRole('grid', { name: 'contributions calendar' })
   await expect(grid).toHaveAttribute('aria-rowcount', '7')
@@ -71,13 +72,13 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(grid.getByRole('row')).toHaveCount(7)
   await expect(grid.getByRole('gridcell')).toHaveCount(await cells.count())
   await expect(grid.getByRole('row').nth(3)).toHaveAttribute('aria-rowindex', '4')
-  await expect(grid.getByRole('row').nth(3).getByRole('gridcell')).toHaveCount(53)
-  await expect(grid.getByRole('row').nth(6).getByRole('gridcell')).toHaveCount(52)
-  await expect(latest.locator('..')).toHaveAttribute('aria-colindex', '53')
-  await expect(page.locator('[data-heat-cell="52-4"]')).toHaveCount(0)
+  await expect(grid.getByRole('row').nth(3).getByRole('gridcell')).toHaveCount(40)
+  await expect(grid.getByRole('row').nth(6).getByRole('gridcell')).toHaveCount(39)
+  await expect(latest.locator('..')).toHaveAttribute('aria-colindex', '40')
+  for (const future of ['39-4', '40-0', '52-3']) await expect(page.locator(`[data-heat-cell="${future}"]`)).toHaveCount(0)
   for (const hidden of ['0-0', '0-1', '0-2']) await expect(page.locator(`[data-heat-cell="${hidden}"]`)).toHaveCount(0)
   await expect(grid.getByText('Jan', { exact: true })).toBeVisible()
-  await expect(page.getByText('Jan 1 – Dec 31')).toBeVisible()
+  await expect(page.getByText('Jan 1 – Oct 1')).toBeVisible()
   await expect(tabStop).toHaveCount(1)
   await expect(today).toHaveAttribute('tabindex', '0')
   await page.locator('#github-activity > a').focus()
@@ -111,6 +112,11 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await page.keyboard.press('Space')
   await expect(first).toHaveAttribute('aria-pressed', 'true')
   await page.keyboard.press('Escape')
+  // ArrowLeft from week 1 stays on its row when that weekday is hidden in week 0
+  await page.locator('[data-heat-cell="1-0"]').focus()
+  await page.keyboard.press('ArrowLeft')
+  await expect(page.locator('[data-heat-cell="1-0"]')).toBeFocused()
+  await first.focus()
   await page.keyboard.press('End')
   await expect(latest).toBeFocused()
   await page.keyboard.press('Control+End')
@@ -141,13 +147,14 @@ test('calendar shows one calendar year at a time, starting from 2026', async ({ 
   const picker = page.getByRole('group', { name: 'Contribution year' })
   await expect(picker.getByRole('button')).toHaveText(['2026', '2027'])
   await expect(page.getByRole('button', { name: 'Show 2027 activity' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByText('Jan 1 – Dec 31')).toBeVisible()
+  await expect(page.getByText('Jan 1 – Feb 10')).toBeVisible()
   await expect(page.getByRole('button', { name: '3 contributions on Tue, Jan 5' })).toBeVisible()
   expect(years).toEqual(['2027'])
 
   await page.getByRole('button', { name: 'Show 2026 activity' }).click()
   await expect(page.getByRole('button', { name: 'Show 2026 activity' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('button', { name: '3 contributions on Mon, Jan 5' })).toBeVisible()
+  await expect(page.getByText('Jan 1 – Dec 31')).toBeVisible()
   expect(years).toEqual(['2027', '2026'])
 
   await page.getByRole('button', { name: 'Show 2027 activity' }).click()

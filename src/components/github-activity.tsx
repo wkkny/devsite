@@ -14,6 +14,7 @@ import { parseContributions, type ContributionDay } from '../../shared/github-ac
 // The calendar covers whole calendar years, Jan to Dec, from this year onwards.
 const FIRST_YEAR = 2026
 const DAY_MS = 86_400_000
+const REQUEST_TIMEOUT_MS = 10_000
 const currentYear = () => Math.max(FIRST_YEAR, new Date().getUTCFullYear())
 
 function dateForCell(start: Date, week: number, day: number) {
@@ -24,7 +25,7 @@ function GitHubActivity() {
   const [year, setYear] = useState(currentYear)
   const [contributionsByYear, setContributionsByYear] = useState<Record<number, ContributionDay[]>>({})
   const [hasEntered, setHasEntered] = useState(() => typeof IntersectionObserver === 'undefined')
-  const [status, setStatus] = useState<{ year: number; kind: 'loading' | 'error' } | null>(null)
+  const [status, setStatus] = useState<{ year: number; kind: 'loading' | 'retrying' | 'error' } | null>(null)
   const [attempt, setAttempt] = useState(0)
   const calendarScrollRef = useRef<HTMLDivElement>(null)
   const sectionRef = useRef<HTMLDivElement>(null)
@@ -33,11 +34,15 @@ function GitHubActivity() {
   const years = Array.from({ length: currentYear() - FIRST_YEAR + 1 }, (_, index) => FIRST_YEAR + index)
   const yearStart = new Date(Date.UTC(year, 0, 1))
   const yearEnd = new Date(Date.UTC(year, 11, 31))
+  // The grid keeps the whole year's columns, but days after today are not shown.
+  const today = startOfDay(new Date())
+  const lastDay = today < yearEnd ? today : yearEnd
   const gridStart = mondayOf(yearStart)
   const weeks = Math.ceil(((yearEnd.getTime() - gridStart.getTime()) / DAY_MS + 1) / 7)
   const contributions = contributionsByYear[year]
   const isLoaded = contributions !== undefined
-  const isLoading = !isLoaded && status?.year === year && status.kind === 'loading'
+  const isRetrying = !isLoaded && status?.year === year && status.kind === 'retrying'
+  const isLoading = isRetrying || (!isLoaded && status?.year === year && status.kind === 'loading')
   const hasError = !isLoaded && status?.year === year && status.kind === 'error'
 
   // On narrow screens the calendar scrolls; open it at today, or at the year's end for past years.
@@ -80,9 +85,15 @@ function GitHubActivity() {
     if (isLoaded) return
 
     const controller = new AbortController()
+    let timedOut = false
+    const timeout = window.setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, REQUEST_TIMEOUT_MS)
 
     async function loadContributions() {
-      setStatus({ year, kind: 'loading' })
+      // Keep a retry marked as one, so only a retried year shows the busy Retry control.
+      setStatus((current) => (current?.year === year && current.kind === 'retrying' ? current : { year, kind: 'loading' }))
 
       try {
         const response = await fetch(
@@ -102,12 +113,17 @@ function GitHubActivity() {
           setStatus(null)
         }
       } catch {
-        if (!controller.signal.aborted) setStatus({ year, kind: 'error' })
+        if (timedOut || !controller.signal.aborted) setStatus({ year, kind: 'error' })
+      } finally {
+        window.clearTimeout(timeout)
       }
     }
 
     void loadContributions()
-    return () => controller.abort()
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
   }, [hasEntered, year, attempt, isLoaded])
 
   const byDate = new Map((contributions ?? []).map((day) => [day.date, day]))
@@ -141,7 +157,7 @@ function GitHubActivity() {
         key={year}
         weeks={weeks}
         startDate={yearStart}
-        endDate={yearEnd}
+        endDate={lastDay}
         values={values}
         counts={counts}
         unit="contributions"
@@ -161,7 +177,7 @@ function GitHubActivity() {
           GitHub activity is unavailable right now.
         </p>
       )}
-      {(hasError || (attempt > 0 && isLoading)) && (
+      {(hasError || isRetrying) && (
         <button
           ref={retryButtonRef}
           type="button"
@@ -169,7 +185,7 @@ function GitHubActivity() {
           className="mt-2 rounded text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-disabled:opacity-50"
           onClick={() => {
             if (isLoading) return
-            setStatus({ year, kind: 'loading' })
+            setStatus({ year, kind: 'retrying' })
             setAttempt((current) => current + 1)
           }}
         >

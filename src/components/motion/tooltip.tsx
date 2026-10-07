@@ -250,7 +250,9 @@ export function Tooltip({
                 side={side}
                 initial={false}
                 animate={open && coords ? "animate" : "exit"}
-                aria-hidden={repeatsAccessibleName ? true : undefined}
+                // A closed tooltip stays mounted for its exit animation; keep it out of the
+                // accessibility tree. aria-describedby still reads hidden content.
+                aria-hidden={repeatsAccessibleName || !open ? true : undefined}
                 style={{ transformOrigin: transformOrigin[side], maxWidth: "calc(100vw - 16px)", whiteSpace: "normal" }}
                 className={className}
               >

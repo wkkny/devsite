@@ -4,7 +4,15 @@ import { flushSync } from 'react-dom'
 import { ThemeContext, type Theme } from '@/components/theme-context'
 import { PixelReveal, type RevealColors } from '@/components/pixel-reveal'
 
+// Matches --background in index.css, so the browser UI follows the site theme.
+const THEME_COLORS: Record<Theme, string> = { light: '#ffffff', dark: '#060606' }
 const SKIP_THEME_REVEAL_QUERY = '(prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 768px)'
+
+function applyThemeToDocument(theme: Theme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark')
+  document.documentElement.style.colorScheme = theme
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme])
+}
 
 function getInitialTheme(): Theme {
   try {
@@ -23,13 +31,11 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   const transitioning = useRef(false)
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    document.documentElement.style.colorScheme = theme
+    applyThemeToDocument(theme)
   }, [theme])
 
   const applyTheme = (nextTheme: Theme) => {
-    document.documentElement.classList.toggle('dark', nextTheme === 'dark')
-    document.documentElement.style.colorScheme = nextTheme
+    applyThemeToDocument(nextTheme)
     try {
       window.localStorage.setItem('theme', nextTheme)
     } catch {
