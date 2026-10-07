@@ -20,7 +20,10 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
     fill,
     count,
     dateOf,
-    future,
+    hidden,
+    firstIndex,
+    lastIndex,
+    anchorIndex,
     cols,
     clear,
     span,
@@ -34,9 +37,7 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
   } = useHeatCalendar();
   const instructionsId = useId();
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
-  let lastIndex = weeks * 7 - 1;
-  while (lastIndex >= 0 && future(Math.floor(lastIndex / 7), lastIndex % 7)) lastIndex--;
-  const activeIndex = Math.max(0, Math.min(focusedIndex ?? lastIndex, lastIndex));
+  const activeIndex = Math.max(firstIndex, Math.min(focusedIndex ?? anchorIndex, lastIndex));
 
   return (
     <>
@@ -82,7 +83,7 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
           <div key={dayId} role="row" aria-rowindex={d + 1} className="contents">
             {cols.map(({ id, w }) => {
               const date = dateOf(w, d);
-              if (future(w, d)) return null;
+              if (hidden(w, d)) return null;
               const v = level(w, d);
               const b = bucket(v);
               const i = w * 7 + d;
@@ -132,11 +133,11 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
                       }
                       let next: number;
                       switch (e.key) {
-                        case "ArrowLeft": next = w > 0 ? i - 7 : i; break;
+                        case "ArrowLeft": next = w > 0 ? Math.max(firstIndex, i - 7) : i; break;
                         case "ArrowRight": next = i + 7 <= lastIndex ? i + 7 : i; break;
-                        case "ArrowUp": next = Math.max(w * 7, i - 1); break;
+                        case "ArrowUp": next = Math.max(w * 7, firstIndex, i - 1); break;
                         case "ArrowDown": next = Math.min(lastIndex, w * 7 + 6, i + 1); break;
-                        case "Home": next = e.ctrlKey ? 0 : d; break;
+                        case "Home": next = e.ctrlKey ? firstIndex : d < firstIndex ? 7 + d : d; break;
                         case "End": next = e.ctrlKey ? lastIndex :
                           Math.floor((lastIndex - d) / 7) * 7 + d; break;
                         default: return;
