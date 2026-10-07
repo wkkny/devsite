@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PiSpotifyLogo } from 'react-icons/pi'
 
-import { Tooltip } from '@/components/ui/tooltip'
+import { Tooltip } from '@/components/tooltip'
 import {
   isNowPlayingResponse,
   type NowPlayingResponse,

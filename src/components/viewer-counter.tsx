@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { animate, useReducedMotion } from 'motion/react'
 import { FiEye } from 'react-icons/fi'
 
-import { Tooltip } from '@/components/ui/tooltip'
+import { Tooltip } from '@/components/tooltip'
 import { portfolioOwner } from '@/data'
 import { EASE_OUT } from '@/lib/ease'
 

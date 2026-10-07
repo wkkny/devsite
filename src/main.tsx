@@ -8,7 +8,8 @@ import App from './App.tsx'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <TooltipProvider>
+      {/* After the first tooltip, neighbouring ones open without the delay. */}
+      <TooltipProvider delay={120}>
         <App />
       </TooltipProvider>
     </ThemeProvider>

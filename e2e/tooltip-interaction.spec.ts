@@ -24,7 +24,7 @@ test('tooltips appear on hover and stay hidden after touch taps', async ({ brows
   await desktopPage.goto('/')
 
   const desktopToggle = desktopPage.getByRole('button', { name: 'Switch to dark mode' })
-  const desktopTooltip = desktopPage.locator('[data-slot="tooltip"]').filter({ hasText: 'Switch to dark mode' })
+  const desktopTooltip = desktopPage.locator('[data-slot="tooltip-content"]').filter({ hasText: 'Switch to dark mode' })
   await desktopToggle.hover()
   await expect(desktopTooltip).toBeVisible()
   await expect(desktopTooltip).toHaveCSS('opacity', '1')
@@ -60,7 +60,7 @@ test('tooltips appear on hover and stay hidden after touch taps', async ({ brows
   await touchToggle.tap()
   await expect(touchPage.locator('html')).toHaveClass(/dark/)
   await touchPage.waitForTimeout(250)
-  const touchTooltip = touchPage.locator('[data-slot="tooltip"]')
+  const touchTooltip = touchPage.locator('[data-slot="tooltip-content"]')
   await expect(touchTooltip).toHaveCount(0)
 
   const touchVideo = touchPage.video()
