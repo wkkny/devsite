@@ -2,6 +2,11 @@ export const STEPS = [0, 24, 46, 70, 94] as const;
 
 export const EMPTY = "color-mix(in srgb, var(--foreground) 6%, transparent)";
 
+/** Days after the last date: a faint outlined square that reads as unavailable, not as zero. */
+export const FUTURE_FILL = "color-mix(in srgb, var(--foreground) 2%, transparent)";
+
+export const FUTURE_EDGE = "color-mix(in srgb, var(--foreground) 7%, transparent)";
+
 /** Cell size and gap; every position in the grid and the tooltip derive from these. */
 export const CELL = 16;
 

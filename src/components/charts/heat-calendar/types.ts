@@ -22,6 +22,8 @@ export interface HeatCalendarProps {
   endDate?: Date;
   /** First UTC calendar day shown. The grid opens on the week containing it, and earlier days in that week are hidden. Without it the grid is the `weeks` ending at `endDate`. */
   startDate?: Date;
+  /** Last day with data. Later days inside the grid render as inert, disabled squares. */
+  activeUntil?: Date;
   /** The single hue. Any CSS color; magnitude maps to its strength, never to a second color. */
   color?: string;
   className?: string;

@@ -5,7 +5,7 @@ import { useId, useState, type ReactNode } from "react";
 import { EASE_OUT, SPRING_PRESS } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { useHeatCalendar } from "./context";
-import { DAYS, fmtDay, GAP, LIFT, MONTH_ROW, PITCH } from "./utils";
+import { DAYS, fmtDay, FUTURE_EDGE, FUTURE_FILL, GAP, LIFT, MONTH_ROW, PITCH } from "./utils";
 
 export function HeatCalendarGrid({ children, className }: { children?: ReactNode; className?: string }) {
   const {
@@ -21,6 +21,7 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
     count,
     dateOf,
     hidden,
+    disabled,
     firstIndex,
     lastIndex,
     anchorIndex,
@@ -84,6 +85,31 @@ export function HeatCalendarGrid({ children, className }: { children?: ReactNode
             {cols.map(({ id, w }) => {
               const date = dateOf(w, d);
               if (hidden(w, d)) return null;
+              if (disabled(w, d)) {
+                // days after the data keep their square so the year reads whole,
+                // but they are inert and out of the accessibility tree
+                return (
+                  <span
+                    key={`${id}-${dayId}`}
+                    aria-hidden="true"
+                    data-heat-future={`${w}-${d}`}
+                    className="relative block aspect-square w-full cursor-not-allowed"
+                    style={{ gridColumn: w + 1, gridRow: d + 2 }}
+                    onPointerEnter={() => setHover(null)}
+                  >
+                    <motion.span
+                      className="pointer-events-none absolute inset-0 block rounded-[4px]"
+                      style={{ background: FUTURE_FILL, boxShadow: `inset 0 0 0 1px ${FUTURE_EDGE}` }}
+                      initial={reduce ? false : { opacity: 0, scale: 0.4 }}
+                      animate={{
+                        opacity: 1,
+                        scale: 1,
+                        transition: reduce ? { duration: 0 } : { ...SPRING_PRESS, delay: (w + d) * 0.018 },
+                      }}
+                    />
+                  </span>
+                );
+              }
               const v = level(w, d);
               const b = bucket(v);
               const i = w * 7 + d;

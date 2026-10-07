@@ -75,7 +75,12 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(grid.getByRole('row').nth(3).getByRole('gridcell')).toHaveCount(40)
   await expect(grid.getByRole('row').nth(6).getByRole('gridcell')).toHaveCount(39)
   await expect(latest.locator('..')).toHaveAttribute('aria-colindex', '40')
-  for (const future of ['39-4', '40-0', '52-3']) await expect(page.locator(`[data-heat-cell="${future}"]`)).toHaveCount(0)
+  for (const future of ['39-4', '40-0', '52-3']) {
+    // future days show as inert squares: no button, no tab stop, hidden from assistive tech
+    await expect(page.locator(`[data-heat-cell="${future}"]`)).toHaveCount(0)
+    await expect(page.locator(`[data-heat-future="${future}"]`)).toHaveAttribute('aria-hidden', 'true')
+  }
+  await expect(page.locator('[data-heat-future="52-4"]')).toHaveCount(0)
   for (const hidden of ['0-0', '0-1', '0-2']) await expect(page.locator(`[data-heat-cell="${hidden}"]`)).toHaveCount(0)
   await expect(grid.getByText('Jan', { exact: true })).toBeVisible()
   await expect(page.getByText('Jan 1 – Oct 1')).toBeVisible()

@@ -34,9 +34,8 @@ function GitHubActivity() {
   const years = Array.from({ length: currentYear() - FIRST_YEAR + 1 }, (_, index) => FIRST_YEAR + index)
   const yearStart = new Date(Date.UTC(year, 0, 1))
   const yearEnd = new Date(Date.UTC(year, 11, 31))
-  // The grid keeps the whole year's columns, but days after today are not shown.
+  // Days after today show as disabled squares, since they have no data yet.
   const today = startOfDay(new Date())
-  const lastDay = today < yearEnd ? today : yearEnd
   const gridStart = mondayOf(yearStart)
   const weeks = Math.ceil(((yearEnd.getTime() - gridStart.getTime()) / DAY_MS + 1) / 7)
   const contributions = contributionsByYear[year]
@@ -157,7 +156,8 @@ function GitHubActivity() {
         key={year}
         weeks={weeks}
         startDate={yearStart}
-        endDate={lastDay}
+        endDate={yearEnd}
+        activeUntil={today}
         values={values}
         counts={counts}
         unit="contributions"

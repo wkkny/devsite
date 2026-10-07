@@ -26,6 +26,7 @@ export function useHeatCalendarModel({
   counts,
   endDate,
   startDate,
+  activeUntil,
   color = "var(--accent)",
   selection: controlledSelection,
   defaultSelection = null,
@@ -58,6 +59,8 @@ export function useHeatCalendarModel({
   const end = useMemo(() => (endDate ? startOfDay(endDate) : today), [endDate, today]);
   const startTime = startDate?.getTime();
   const first = useMemo(() => (startTime === undefined ? null : startOfDay(new Date(startTime))), [startTime]);
+  const activeTime = activeUntil?.getTime();
+  const activeEnd = useMemo(() => (activeTime === undefined ? null : startOfDay(new Date(activeTime))), [activeTime]);
   const start = useMemo(
     () => (first ? mondayOf(first) : end ? addDays(mondayOf(end), -(weeks - 1) * 7) : null),
     [first, end, weeks],
@@ -73,10 +76,18 @@ export function useHeatCalendarModel({
     const date = dateOf(w, d);
     return date !== null && ((end !== null && date > end) || (first !== null && date < first));
   };
+  /** Days in the grid after `activeUntil`: drawn, but with no data and no interaction. */
+  const disabled = (w: number, d: number) => {
+    const date = dateOf(w, d);
+    return date !== null && activeEnd !== null && date > activeEnd && !hidden(w, d);
+  };
+  const inactive = (w: number, d: number) => hidden(w, d) || disabled(w, d);
+  /** The last day the legend reports: `activeUntil` when it ends the data early. */
+  const lastDay = activeEnd && end && activeEnd < end ? activeEnd : end;
   let firstIndex = 0;
-  while (firstIndex < weeks * 7 && hidden(Math.floor(firstIndex / 7), firstIndex % 7)) firstIndex++;
+  while (firstIndex < weeks * 7 && inactive(Math.floor(firstIndex / 7), firstIndex % 7)) firstIndex++;
   let lastIndex = weeks * 7 - 1;
-  while (lastIndex >= 0 && hidden(Math.floor(lastIndex / 7), lastIndex % 7)) lastIndex--;
+  while (lastIndex >= 0 && inactive(Math.floor(lastIndex / 7), lastIndex % 7)) lastIndex--;
   // the cell keyboard focus enters on: today when the grid covers it, else the nearest visible edge
   const anchor = today ?? end;
   const anchorIndex = Math.max(
@@ -91,7 +102,7 @@ export function useHeatCalendarModel({
     cell.w < weeks &&
     cell.d >= 0 &&
     cell.d < 7 &&
-    !hidden(cell.w, cell.d);
+    !inactive(cell.w, cell.d);
   const selection =
     requestedSelection &&
     validCell(requestedSelection.start) &&
@@ -139,7 +150,7 @@ export function useHeatCalendarModel({
   let spanTotal = 0;
   if (span) {
     for (let i = span.lo; i <= span.hi; i++) {
-      if (hidden(Math.floor(i / 7), i % 7)) continue;
+      if (inactive(Math.floor(i / 7), i % 7)) continue;
       spanTotal += count(level(Math.floor(i / 7), i % 7), Math.floor(i / 7), i % 7);
     }
   }
@@ -189,6 +200,7 @@ export function useHeatCalendarModel({
     start,
     first,
     end,
+    lastDay,
     firstIndex,
     lastIndex,
     anchorIndex,
@@ -198,6 +210,7 @@ export function useHeatCalendarModel({
     count,
     dateOf,
     hidden,
+    disabled,
     cols,
     clear,
     span,
