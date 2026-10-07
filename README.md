@@ -1,14 +1,13 @@
 # Kritiraj's portfolio
 
-This repository contains the source code and content for Kritiraj (Kenny)'s portfolio. The site is a responsive React app with a project list, GitHub contribution calendar, draggable tech logos, theme switcher, visitor count, and an optional live Spotify status.
+This repository contains the source code and content for Kritiraj (Kenny)'s portfolio. The site is a responsive React app with a project list, GitHub contribution calendar, theme switcher, visitor count, and an optional live Spotify status.
 
 ## Features
 
 - Light and dark themes, with the selected theme saved in the browser.
 - Responsive layout, touch-friendly controls, and reduced-motion support.
-- Draggable technology decorations on desktop. Visitors can add, move, and remove logos. Their layout is saved in local storage for seven days.
 - Project cards with grid and list views on desktop.
-- GitHub contribution activity loaded from a public API.
+- GitHub contribution activity for each calendar year from 2026, loaded from a public API. It opens on the current year, January to December.
 - Optional Spotify status for the current track or the most recently played track. The last played track stays visible even when Spotify reports no playback or requests fail.
 - A visitor count backed by CounterAPI. Local development reads the count without incrementing it.
 
@@ -17,7 +16,7 @@ This repository contains the source code and content for Kritiraj (Kenny)'s port
 - React 19 and TypeScript
 - Vite 8
 - Tailwind CSS 4 and shadcn/ui components built on Base UI
-- Motion for React, Paper Design shaders, and Geist Variable
+- Motion for React, a canvas-drawn dithered banner, and Geist Variable
 - Bun for package management and scripts
 - Vitest for unit tests, Playwright for browser tests, and Oxlint for linting
 
@@ -101,7 +100,6 @@ These widgets depend on their services being reachable. The portfolio page remai
 | `src/assets/profile-picture.png` | Profile image and favicon asset. |
 | `index.html` | Browser title, page description, favicon, and initial theme script. |
 | `src/components/portfolio/` | Profile, social links, project cards, projects section, and footer markup. |
-| `src/components/draggable-decorations.tsx` | Default decorations and logos visitors can add. |
 | `src/index.css` | Theme colors, global styles, font setup, and animation styles. |
 
 The visitor counter URL in `src/data.ts` currently points to the author's CounterAPI counter. Change it before using the counter on another portfolio.

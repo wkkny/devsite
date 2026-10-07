@@ -25,6 +25,7 @@ export function useHeatCalendarModel({
   values,
   counts,
   endDate,
+  startDate,
   color = "var(--accent)",
   selection: controlledSelection,
   defaultSelection = null,
@@ -55,17 +56,33 @@ export function useHeatCalendarModel({
   const [today, setToday] = useState<Date | null>(null);
   useEffect(() => setToday(startOfDay(new Date())), []);
   const end = useMemo(() => (endDate ? startOfDay(endDate) : today), [endDate, today]);
-  const start = useMemo(() => (end ? addDays(mondayOf(end), -(weeks - 1) * 7) : null), [end, weeks]);
+  const startTime = startDate?.getTime();
+  const first = useMemo(() => (startTime === undefined ? null : startOfDay(new Date(startTime))), [startTime]);
+  const start = useMemo(
+    () => (first ? mondayOf(first) : end ? addDays(mondayOf(end), -(weeks - 1) * 7) : null),
+    [first, end, weeks],
+  );
 
   const level = (w: number, d: number) => Math.max(0, Math.min(1, values?.[w]?.[d] ?? 0));
   const bucket = (v: number) => Math.min(4, Math.floor(v * 5));
   const fill = (b: number) => (b === 0 ? EMPTY : `color-mix(in srgb, ${color} ${STEPS[b]}%, transparent)`);
   const count = (v: number, w: number, d: number) => counts?.[w]?.[d] ?? Math.round(v * maxCount);
   const dateOf = (w: number, d: number) => (start ? addDays(start, w * 7 + d) : null);
-  const future = (w: number, d: number) => {
+  /** Cells outside the visible range: after `endDate`, or before `startDate` in the first week. */
+  const hidden = (w: number, d: number) => {
     const date = dateOf(w, d);
-    return end !== null && date !== null && date > end;
+    return date !== null && ((end !== null && date > end) || (first !== null && date < first));
   };
+  let firstIndex = 0;
+  while (firstIndex < weeks * 7 && hidden(Math.floor(firstIndex / 7), firstIndex % 7)) firstIndex++;
+  let lastIndex = weeks * 7 - 1;
+  while (lastIndex >= 0 && hidden(Math.floor(lastIndex / 7), lastIndex % 7)) lastIndex--;
+  // the cell keyboard focus enters on: today when the grid covers it, else the nearest visible edge
+  const anchor = today ?? end;
+  const anchorIndex = Math.max(
+    firstIndex,
+    Math.min(lastIndex, start && anchor ? Math.round((startOfDay(anchor).getTime() - start.getTime()) / 86_400_000) : lastIndex),
+  );
 
   const validCell = (cell: HeatCalendarCell) =>
     Number.isInteger(cell.w) &&
@@ -74,7 +91,7 @@ export function useHeatCalendarModel({
     cell.w < weeks &&
     cell.d >= 0 &&
     cell.d < 7 &&
-    !future(cell.w, cell.d);
+    !hidden(cell.w, cell.d);
   const selection =
     requestedSelection &&
     validCell(requestedSelection.start) &&
@@ -90,16 +107,22 @@ export function useHeatCalendarModel({
   // one label per month, at its first column; the leading label yields if the
   // next month starts within two columns, so two labels never overlap
   const cols = useMemo(() => {
+    // a column is labelled by its first visible day, so a hidden leading week never names the wrong month
+    const colDate = (w: number) => {
+      if (!start) return null;
+      const date = addDays(start, w * 7);
+      return first && date < first ? first : date;
+    };
     const list = Array.from({ length: weeks }, (_, w) => {
-      const date = start ? addDays(start, w * 7) : null;
+      const date = colDate(w);
       const m = date ? date.getUTCMonth() : -1;
-      const fresh =
-        start !== null && date !== null && (w === 0 || addDays(start, (w - 1) * 7).getUTCMonth() !== m);
+      const prev = colDate(w - 1);
+      const fresh = date !== null && (w === 0 || prev === null || prev.getUTCMonth() !== m);
       return { id: `w${w}`, w, m, label: fresh && date ? fmtMonth.format(date) : null };
     });
     if (list[1]?.label || list[2]?.label) list[0].label = null;
     return list;
-  }, [start, weeks]);
+  }, [start, first, weeks]);
 
   // one click anchors a span and dims everything else; hovering then previews
   // the run from the anchor to the pointer and totals it live, and a second
@@ -116,7 +139,7 @@ export function useHeatCalendarModel({
   let spanTotal = 0;
   if (span) {
     for (let i = span.lo; i <= span.hi; i++) {
-      if (future(Math.floor(i / 7), i % 7)) break;
+      if (hidden(Math.floor(i / 7), i % 7)) continue;
       spanTotal += count(level(Math.floor(i / 7), i % 7), Math.floor(i / 7), i % 7);
     }
   }
@@ -164,13 +187,17 @@ export function useHeatCalendarModel({
     setStep,
     settled,
     start,
+    first,
     end,
+    firstIndex,
+    lastIndex,
+    anchorIndex,
     level,
     bucket,
     fill,
     count,
     dateOf,
-    future,
+    hidden,
     cols,
     clear,
     span,

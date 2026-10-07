@@ -1,23 +1,18 @@
-import { Dithering } from '@paper-design/shaders-react'
+import { motion } from 'motion/react'
 
-// Keep the optional WebGL shader outside the initial application bundle.
-export default function ProfileBanner({ theme }: { theme: string }) {
-  const styles = getComputedStyle(document.documentElement)
+import { DitherCanvas } from '@/components/dither-canvas'
+
+// Site defaults for the banner. Colors come from the theme tokens, so restyle it with classes.
+// Kept in its own chunk so the banner stays optional.
+export default function ProfileBanner() {
   return (
-    <Dithering
-      key={theme}
+    <motion.div
       className="absolute inset-0"
-      width="100%"
-      height="100%"
-      colorBack={styles.getPropertyValue('--background').trim()}
-      colorFront={styles.getPropertyValue('--portfolio-blue').trim()}
-      shape="simplex"
-      type="4x4"
-      size={4}
-      speed={0.3}
-      scale={0.4}
-      rotation={70}
-      offsetX={-0.4}
-    />
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.9, ease: 'easeOut', delay: 0.1 }}
+    >
+      <DitherCanvas className="bg-background text-portfolio-blue" rotation={70} density={0.38} />
+    </motion.div>
   )
 }

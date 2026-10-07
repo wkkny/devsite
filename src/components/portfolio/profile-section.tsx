@@ -11,24 +11,22 @@ import { useTheme } from '@/components/theme-context'
 import { EASE_OUT } from '@/lib/ease'
 import { portfolioOwner } from '@/data'
 
-const ProfileBanner = lazy<ComponentType<{ theme: string }>>(() => import('./profile-banner').catch(() => ({ default: () => null })))
+// Start fetching the optional banner chunk immediately so the pattern is ready when the reveal begins.
+const bannerModule = import('./profile-banner').catch(() => ({ default: () => null }))
+const ProfileBanner = lazy<ComponentType>(() => bannerModule)
 
-const bannerTransition = { type: 'spring', visualDuration: 1.2, bounce: 0 } as const
+// Eases in as well as out so the wipe doesn't launch at full speed.
+const bannerTransition = { duration: 1.3, ease: [0.5, 0, 0.15, 1], delay: 0.1 } as const
 
-export type ProfileSectionProps = {
-  onBannerAnimationComplete: () => void
-}
-
-export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProps) {
+export function ProfileSection() {
   const { theme } = useTheme()
   const reducedMotion = useReducedMotion()
   const [profileContentEntered, setProfileContentEntered] = useState(false)
-  const [bannerEntered, setBannerEntered] = useState(false)
   const contentInitial = reducedMotion ? { opacity: 0 } : { opacity: 0, transform: 'translate3d(0, 8px, 0)' }
   const contentAnimate = reducedMotion ? { opacity: 1 } : { opacity: 1, transform: 'translate3d(0, 0, 0)' }
   const contentTransition = reducedMotion
     ? { duration: 0.2, ease: EASE_OUT }
-    : { duration: 0.36, ease: EASE_OUT, delay: 1.12 }
+    : { duration: 0.36, ease: EASE_OUT, delay: 1.2 }
 
   return (
     <section id="profile" aria-labelledby="profile-name">
@@ -36,27 +34,15 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
         <motion.div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
-          onAnimationComplete={() => {
-            setBannerEntered(true)
-            onBannerAnimationComplete()
-          }}
           initial={reducedMotion ? { opacity: 0 } : { clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }}
           animate={reducedMotion ? { opacity: 1 } : { clipPath: 'polygon(0 0, 116% 0, 100% 100%, 0 100%)' }}
           transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : bannerTransition}
         >
           <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(var(--portfolio-blue) 1px, transparent 1px)', backgroundSize: '4px 4px', opacity: 0.25 }} />
-          {bannerEntered && !reducedMotion && (
-            <Suspense fallback={null}>
-              <ProfileBanner theme={theme} />
-            </Suspense>
-          )}
           {!reducedMotion && (
-            <motion.span
-              className="banner-shimmer"
-              initial={{ transform: 'translate3d(0%, 0, 0) skewX(-16deg)' }}
-              animate={{ transform: 'translate3d(116%, 0, 0) skewX(-16deg)' }}
-              transition={bannerTransition}
-            />
+            <Suspense fallback={null}>
+              <ProfileBanner />
+            </Suspense>
           )}
         </motion.div>
       </div>
@@ -64,7 +50,7 @@ export function ProfileSection({ onBannerAnimationComplete }: ProfileSectionProp
         <motion.img
           src={portfolioOwner.profilePicture}
           alt={portfolioOwner.profilePictureAlt}
-          className="size-44 rounded-lg border-8 border-background bg-background object-contain sm:size-56"
+          className="size-44 object-contain sm:size-56"
           fetchPriority="high"
           width={448}
           height={448}

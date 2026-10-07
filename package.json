@@ -19,11 +19,9 @@
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@fontsource-variable/geist": "^5.3.0",
-    "@paper-design/shaders-react": "^0.0.81",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.4.0",
-    "liquid-gooey": "^0.2.2",
     "lucide-react": "^1.47.0",
     "motion": "^13.4.1",
     "react": "^19.3.0",

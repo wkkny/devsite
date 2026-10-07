@@ -1,11 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
-
-async function getClientRect(locator: Locator) {
-  return locator.evaluate((element) => {
-    const { x, y, width, height } = element.getBoundingClientRect()
-    return { x, y, width, height }
-  })
-}
+import { expect, test, type Page } from '@playwright/test'
 
 async function stubHomepageApis(page: Page) {
   await page.route('https://github-contributions-api.jogruber.de/**', (route) =>
@@ -44,7 +37,7 @@ test('homepage loads and its main controls work', async ({ page }) => {
   await page.goto('/')
 
   await expect(page.getByRole('heading', { name: 'Kritiraj (Kenny)' })).toBeVisible()
-  await expect(page.getByText('Design Engineer', { exact: true })).toBeVisible()
+  await expect(page.getByText('Software Engineer', { exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Bohemian Rhapsody by Queen' })).toHaveAttribute(
     'href',
     'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
@@ -59,10 +52,6 @@ test('homepage loads and its main controls work', async ({ page }) => {
 
   await page.getByRole('button', { name: 'List view' }).click()
   await expect(page.locator('#projects .flex.flex-col.divide-y')).toBeVisible()
-
-  await page.getByRole('button', { name: 'Add a draggable item' }).click()
-  await page.getByRole('menuitem', { name: 'Next.js' }).click()
-  await expect(page.getByRole('button', { name: 'Next.js logo', exact: true })).toBeVisible()
 })
 
 test('calendar has one tab stop and supports keyboard navigation and selection', async ({ page }) => {
@@ -71,7 +60,9 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await page.goto('/')
 
   const cells = page.locator('[data-heat-cell]')
-  const first = page.locator('[data-heat-cell="0-0"]')
+  // 2026 runs Jan 1 (a Thursday) to Dec 31 (also a Thursday); the leading Mon to Wed of 2025 are hidden
+  const first = page.locator('[data-heat-cell="0-3"]')
+  const today = page.locator('[data-heat-cell="39-3"]')
   const latest = page.locator('[data-heat-cell="52-3"]')
   const tabStop = page.locator('[data-heat-cell][tabindex="0"]')
   const grid = page.getByRole('grid', { name: 'contributions calendar' })
@@ -84,14 +75,18 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(grid.getByRole('row').nth(6).getByRole('gridcell')).toHaveCount(52)
   await expect(latest.locator('..')).toHaveAttribute('aria-colindex', '53')
   await expect(page.locator('[data-heat-cell="52-4"]')).toHaveCount(0)
+  for (const hidden of ['0-0', '0-1', '0-2']) await expect(page.locator(`[data-heat-cell="${hidden}"]`)).toHaveCount(0)
+  await expect(grid.getByText('Jan', { exact: true })).toBeVisible()
+  await expect(page.getByText('Jan 1 – Dec 31')).toBeVisible()
   await expect(tabStop).toHaveCount(1)
-  await expect(latest).toHaveAttribute('tabindex', '0')
+  await expect(today).toHaveAttribute('tabindex', '0')
   await page.locator('#github-activity > a').focus()
   await page.keyboard.press('Tab')
-  await expect(latest).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(today).toBeFocused()
 
   await page.keyboard.press('Home')
-  await expect(page.locator('[data-heat-cell="0-3"]')).toBeFocused()
+  await expect(first).toBeFocused()
   await page.keyboard.press('End')
   await expect(latest).toBeFocused()
   await page.keyboard.press('Control+Home')
@@ -100,11 +95,11 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await page.keyboard.press('ArrowLeft')
   await expect(first).toBeFocused()
   await page.keyboard.press('ArrowDown')
-  await expect(page.locator('[data-heat-cell="0-1"]')).toBeFocused()
+  await expect(page.locator('[data-heat-cell="0-4"]')).toBeFocused()
   await page.keyboard.press('ArrowLeft')
-  await expect(page.locator('[data-heat-cell="0-1"]')).toBeFocused()
+  await expect(page.locator('[data-heat-cell="0-4"]')).toBeFocused()
   await page.keyboard.press('ArrowRight')
-  const selected = page.locator('[data-heat-cell="1-1"]')
+  const selected = page.locator('[data-heat-cell="1-4"]')
   await expect(selected).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(selected).toHaveAttribute('aria-pressed', 'true')
@@ -117,7 +112,7 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(first).toHaveAttribute('aria-pressed', 'true')
   await page.keyboard.press('Escape')
   await page.keyboard.press('End')
-  await expect(page.locator('[data-heat-cell="52-0"]')).toBeFocused()
+  await expect(latest).toBeFocused()
   await page.keyboard.press('Control+End')
   await expect(latest).toBeFocused()
   await page.keyboard.press('ArrowRight')
@@ -130,84 +125,42 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(latest).toBeFocused()
 })
 
-test('decorations support keyboard and pointer movement without liquid deformation under reduced motion', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
+test('calendar shows one calendar year at a time, starting from 2026', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2027-02-10T12:00:00Z'))
+  const years: string[] = []
   await stubHomepageApis(page)
-  await page.goto('/')
-
-  const decoration = page.getByRole('button', { name: 'TypeScript logo', exact: true })
-  await expect(decoration).toBeVisible()
-  await expect(page.locator('.drg-ball')).toHaveCount(4)
-  await decoration.scrollIntoViewIfNeeded()
-  await expect.poll(() => decoration.evaluate((element) => element.getBoundingClientRect().width)).toBeGreaterThan(0)
-  const beforeKeyboard = await getClientRect(decoration)
-  await decoration.focus()
-  await page.keyboard.press('ArrowRight')
-  await expect.poll(async () => (await getClientRect(decoration)).x).toBeGreaterThan(beforeKeyboard.x + 4)
-
-  const beforeDrag = await getClientRect(decoration)
-  const from = { x: beforeDrag.x + beforeDrag.width / 2, y: beforeDrag.y + beforeDrag.height / 2 }
-  const blob = page.locator('.drg-goo rect').first()
-  const ball = page.locator('.drg-ball').first()
-  await expect(blob).toHaveCount(1)
-
-  await page.mouse.move(from.x, from.y)
-  await page.mouse.down()
-  await page.mouse.move(from.x + 160, from.y + 32, { steps: 6 })
-  await expect.poll(async () => (await getClientRect(decoration)).x).toBeGreaterThan(beforeDrag.x + 80)
-  await expect.poll(async () => {
-    return blob.evaluate((element) => {
-      const match = element.getAttribute('style')?.match(/scale\(([^,]+),\s*([^)]+)\)/)
-      const scaleX = match ? Number(match[1]) : 1
-      const scaleY = match ? Number(match[2]) : 1
-      return Math.abs(scaleX - scaleY)
+  await page.route('https://github-contributions-api.jogruber.de/**', (route) => {
+    const year = new URL(route.request().url()).searchParams.get('y') ?? ''
+    years.push(year)
+    return route.fulfill({
+      json: { contributions: [{ date: `${year}-01-05`, count: 3, level: 2 }] },
     })
-  }).toBeLessThan(0.01)
-  await page.mouse.up()
-
-  await expect.poll(async () => {
-    return blob.evaluate((element) => {
-      const match = element.getAttribute('style')?.match(/scale\(([^,]+),\s*([^)]+)\)/)
-      const scaleX = match ? Number(match[1]) : 1
-      const scaleY = match ? Number(match[2]) : 1
-      return Math.abs(scaleX - scaleY)
-    })
-  }).toBeLessThan(0.01)
-
-  await expect.poll(async () => {
-    const transform = await ball.evaluate((element) => getComputedStyle(element).transform)
-    if (transform === 'none') return 0
-    const matrix = new DOMMatrixReadOnly(transform)
-    return Math.abs(Math.hypot(matrix.a, matrix.b) - Math.hypot(matrix.c, matrix.d))
-  }).toBeLessThan(0.01)
-})
-
-test('decorations remain usable when the dragging ball chunk fails to load', async ({ page }) => {
-  await stubHomepageApis(page)
-  let chunkRequestBlocked = false
-  await page.route('**/*dragging-ball*', (route) => {
-    chunkRequestBlocked = true
-    return route.abort()
   })
   await page.goto('/')
 
-  const decoration = page.getByRole('button', { name: 'TypeScript logo', exact: true })
-  await expect.poll(() => chunkRequestBlocked).toBe(true)
-  await expect(decoration).toBeVisible()
-  await decoration.scrollIntoViewIfNeeded()
-  await expect.poll(() => decoration.evaluate((element) => element.getBoundingClientRect().width)).toBeGreaterThan(0)
-  const before = await getClientRect(decoration)
-  await decoration.focus()
-  await page.keyboard.press('ArrowRight')
-  await expect.poll(async () => (await getClientRect(decoration)).x).toBeGreaterThan(before.x + 4)
+  const picker = page.getByRole('group', { name: 'Contribution year' })
+  await expect(picker.getByRole('button')).toHaveText(['2026', '2027'])
+  await expect(page.getByRole('button', { name: 'Show 2027 activity' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('Jan 1 – Dec 31')).toBeVisible()
+  await expect(page.getByRole('button', { name: '3 contributions on Tue, Jan 5' })).toBeVisible()
+  expect(years).toEqual(['2027'])
+
+  await page.getByRole('button', { name: 'Show 2026 activity' }).click()
+  await expect(page.getByRole('button', { name: 'Show 2026 activity' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: '3 contributions on Mon, Jan 5' })).toBeVisible()
+  expect(years).toEqual(['2027', '2026'])
+
+  await page.getByRole('button', { name: 'Show 2027 activity' }).click()
+  await expect(page.getByRole('button', { name: '3 contributions on Tue, Jan 5' })).toBeVisible()
+  expect(years).toEqual(['2027', '2026'])
 })
 
-test('production assets load and the page survives optional decoration chunk failures', async ({ page }) => {
+test('production assets load and the page survives an optional banner chunk failure', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await stubHomepageApis(page)
-  const blocked = new Set<string>()
-  await page.route(/\/assets\/(profile-banner|draggable-decorations)-.*\.js$/, (route) => {
-    blocked.add(route.request().url().includes('profile-banner') ? 'banner' : 'decorations')
+  let bannerBlocked = false
+  await page.route(/\/assets\/profile-banner-.*\.js$/, (route) => {
+    bannerBlocked = true
     return route.abort()
   })
   await page.goto('/')
@@ -216,7 +169,7 @@ test('production assets load and the page survives optional decoration chunk fai
   const profile = page.getByRole('img', { name: "Kritiraj's profile picture" })
   await expect.poll(() => profile.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBe(448)
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.png')
-  await expect.poll(() => blocked.size).toBe(2)
+  await expect.poll(() => bannerBlocked).toBe(true)
   await expect(page.getByRole('heading', { name: 'Kritiraj (Kenny)' })).toBeVisible()
   await page.getByRole('button', { name: 'Switch to dark mode' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
