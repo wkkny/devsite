@@ -1,9 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { animate, useReducedMotion } from 'motion/react'
 import { FiEye } from 'react-icons/fi'
 
-import { NumberTicker } from '@/components/motion/number-ticker'
-import { Tooltip } from '@/components/motion/tooltip'
+import { Tooltip } from '@/components/ui/tooltip'
 import { portfolioOwner } from '@/data'
+import { EASE_OUT } from '@/lib/ease'
+
+// Counts up from zero once. It writes the text directly, so the count never re-renders React.
+function CountUp({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const reduce = useReducedMotion()
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    const show = (current: number) => {
+      node.textContent = Math.round(current).toLocaleString()
+    }
+    if (reduce) {
+      show(value)
+      return
+    }
+    const controls = animate(0, value, { duration: 0.8, ease: EASE_OUT, onUpdate: show })
+    return () => controls.stop()
+  }, [value, reduce])
+
+  return <span ref={ref}>0</span>
+}
 
 export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
   const [viewers, setViewers] = useState<number | null>(null)
@@ -57,12 +80,7 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
   }, [])
 
   return (
-    <Tooltip
-      content="Visitors"
-      side="bottom"
-      gap={2}
-      wrapperClassName={viewers === null || !startAnimation ? 'pointer-events-none' : undefined}
-    >
+    <Tooltip content="Visitors" side="bottom" gap={2} disabled={viewers === null || !startAnimation}>
       <output
         className="inline-flex h-8 shrink-0 items-center gap-2 px-2 text-sm font-medium leading-none text-muted-foreground"
         aria-label={
@@ -78,14 +96,7 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
           <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">—</span>
         ) : (
           <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">
-            <NumberTicker
-              value={viewers}
-              locale
-              startOnView={false}
-              rolls={1}
-              duration={0.8}
-              stagger={0}
-            />
+            <CountUp value={viewers} />
           </span>
         )}
       </output>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PiSpotifyLogo } from 'react-icons/pi'
 
-import { Tooltip } from '@/components/motion/tooltip'
+import { Tooltip } from '@/components/ui/tooltip'
 import {
   isNowPlayingResponse,
   type NowPlayingResponse,
@@ -129,7 +129,7 @@ export function SpotifyStatus() {
             {playback?.status === 'playing' ? 'Now playing on Spotify: ' : 'Last played on Spotify: '}
           </span>
         )}
-        <Tooltip content="Open in Spotify" side="top" wrapperClassName="w-full min-w-0">
+        <Tooltip content="Open in Spotify" side="top">
           <a
             className="group flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
             href={track.spotifyUrl}

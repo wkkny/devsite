@@ -3,7 +3,7 @@ import { MapPin } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 
 import { SpotifyStatus } from '@/components/spotify-status'
-import { Tooltip } from '@/components/motion/tooltip'
+import { Tooltip } from '@/components/ui/tooltip'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ViewerCounter } from '@/components/viewer-counter'
 import { SocialLinks } from '@/components/portfolio/social-links'

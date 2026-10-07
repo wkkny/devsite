@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FaXTwitter } from 'react-icons/fa6'
 import { FiCheck, FiGithub, FiMail } from 'react-icons/fi'
 
-import { Tooltip } from '@/components/motion/tooltip'
+import { Tooltip } from '@/components/ui/tooltip'
 import { portfolioOwner, socialLinks } from '@/data'
 import { EASE_OUT, SPRING_SWAP } from '@/lib/ease'
 
