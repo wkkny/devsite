@@ -1,4 +1,4 @@
-export type PlaybackStatus = "playing" | "recent" | "idle"
+type PlaybackStatus = "playing" | "recent" | "idle"
 
 export interface NowPlayingTrack {
   title: string

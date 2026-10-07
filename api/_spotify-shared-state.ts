@@ -56,7 +56,7 @@ type RedisResponse = {
   error?: unknown
 }
 
-export class SpotifySharedStateError extends Error {
+class SpotifySharedStateError extends Error {
   constructor(message = "Spotify shared state is unavailable") {
     super(message)
     this.name = "SpotifySharedStateError"

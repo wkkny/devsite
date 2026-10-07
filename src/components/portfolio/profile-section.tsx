@@ -1,9 +1,9 @@
 import { lazy, Suspense, useState, type ComponentType } from 'react'
-import { MapPin } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
+import { FiMapPin } from 'react-icons/fi'
 
 import { SpotifyStatus } from '@/components/spotify-status'
-import { Tooltip } from '@/components/motion/tooltip'
+import { Tooltip } from '@/components/tooltip'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ViewerCounter } from '@/components/viewer-counter'
 import { SocialLinks } from '@/components/portfolio/social-links'
@@ -11,9 +11,8 @@ import { useTheme } from '@/components/theme-context'
 import { EASE_OUT } from '@/lib/ease'
 import { portfolioOwner } from '@/data'
 
-// Start fetching the optional banner chunk immediately so the pattern is ready when the reveal begins.
-const bannerModule = import('./profile-banner').catch(() => ({ default: () => null }))
-const ProfileBanner = lazy<ComponentType>(() => bannerModule)
+// The optional banner chunk loads on first render, and only when motion is allowed.
+const ProfileBanner = lazy<ComponentType>(() => import('./profile-banner').catch(() => ({ default: () => null })))
 
 // Eases in as well as out so the wipe doesn't launch at full speed.
 const bannerTransition = { duration: 1.3, ease: [0.5, 0, 0.15, 1], delay: 0.1 } as const
@@ -83,7 +82,7 @@ export function ProfileSection() {
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <p>{portfolioOwner.role}</p>
             <p className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <MapPin aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
+              <FiMapPin aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
               {portfolioOwner.location}
             </p>
           </div>

@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { FiArrowUpRight, FiGrid, FiList } from 'react-icons/fi'
 
 import { ProjectStatus } from '@/components/project-status'
-import { Tooltip } from '@/components/motion/tooltip'
+import { Tooltip } from '@/components/tooltip'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ProjectCard, type ProjectView } from '@/components/portfolio/project-card'
 import { portfolioOwner, projects } from '@/data'

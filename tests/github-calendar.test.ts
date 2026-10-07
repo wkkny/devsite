@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseContributions } from '../shared/github-activity'
+import { parseContributions } from '../src/components/github-calendar/data'
 
 describe('parseContributions', () => {
   it('accepts a valid contribution response', () => {

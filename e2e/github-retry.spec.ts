@@ -66,10 +66,46 @@ for (const moveFocusAway of [false, true]) {
     if (moveFocusAway) {
       await expect(otherControl).toBeFocused()
     } else {
-      await expect(page.locator('#github-activity button[data-heat-cell][tabindex="0"]')).toBeFocused()
+      await expect(page.locator('#github-activity [role="grid"] button[tabindex="0"]')).toBeFocused()
     }
   })
 }
+
+test('a GitHub request that never answers times out and offers a retry', async ({ page }) => {
+  await page.clock.install()
+  await page.route('https://github-contributions-api.jogruber.de/**', () => new Promise<void>(() => {}))
+  await page.route('https://counterapi.com/**', (route) => route.fulfill({ json: { value: 42 } }))
+  await page.route('**/api/now-playing', (route) => route.fulfill({ json: { status: 'idle', track: null } }))
+  await page.goto('/')
+  await expect(page.getByText('Loading GitHub activity…')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry GitHub activity' })).toHaveCount(0)
+  await page.clock.runFor(10_000)
+  await expect(page.getByText('GitHub activity is unavailable right now.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry GitHub activity' })).toBeVisible()
+})
+
+test('a retry in one year does not show Retry on the first load of another year', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2027-02-10T12:00:00Z'))
+  const requests: string[] = []
+  await page.route('https://github-contributions-api.jogruber.de/**', async (route) => {
+    const year = new URL(route.request().url()).searchParams.get('y') ?? ''
+    requests.push(year)
+    if (year === '2027' && requests.length === 1) return route.fulfill({ status: 503, body: '{}' })
+    // 2026 never answers, so its first load stays visible
+    if (year === '2026') return new Promise<void>(() => {})
+    return route.fulfill({ json: { contributions: [] } })
+  })
+  await page.route('https://counterapi.com/**', (route) => route.fulfill({ json: { value: 42 } }))
+  await page.route('**/api/now-playing', (route) => route.fulfill({ json: { status: 'idle', track: null } }))
+  await page.goto('/')
+
+  const retry = page.getByRole('button', { name: 'Retry GitHub activity' })
+  await retry.click()
+  await expect(retry).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show 2026 activity' }).click()
+  await expect(page.getByText('Loading GitHub activity…')).toBeVisible()
+  await expect(retry).toHaveCount(0)
+})
 
 test('reduced-motion project status is static ordinary text', async ({ page }) => {
   await page.route('https://github-contributions-api.jogruber.de/**', (route) => route.fulfill({ json: { contributions: [] } }))

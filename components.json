@@ -22,7 +22,6 @@
   "menuColor": "default",
   "menuAccent": "subtle",
   "registries": {
-    "@beui": "https://beui.dev/r/{name}.json",
     "@soundcn": "https://soundcn.xyz/r/{name}.json"
   }
 }
