@@ -1,5 +1,3 @@
-import { FiArrowUpRight } from 'react-icons/fi'
-
 import { GitHubCalendar } from '@/components/github-calendar'
 import { ProfileSection } from '@/components/portfolio/profile-section'
 import { ProjectsSection } from '@/components/portfolio/projects-section'
@@ -13,15 +11,6 @@ function App() {
         <main className="flex flex-col gap-14 pb-12 sm:gap-16 sm:pb-16">
           <ProfileSection />
           <section id="github-activity" aria-label="GitHub contributions" className="-mt-6 sm:-mt-8">
-            <a
-              className="animated-arrow-link mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground"
-              href={portfolioOwner.githubUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <span className="animated-arrow-link-label relative">{portfolioOwner.githubUsername}</span>
-              <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3.5" />
-            </a>
             <GitHubCalendar
               username={portfolioOwner.githubUsername}
               fromYear={2026}

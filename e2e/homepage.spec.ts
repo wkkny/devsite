@@ -88,8 +88,8 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(page.getByText('Jan 1 – Oct 1')).toBeVisible()
   await expect(tabStop).toHaveCount(1)
   await expect(today).toHaveAttribute('tabindex', '0')
-  await page.locator('#github-activity > a').focus()
-  await page.keyboard.press('Tab')
+  // the year picker is the stop before the grid
+  await page.getByRole('button', { name: 'Show 2026 activity' }).focus()
   await page.keyboard.press('Tab')
   await expect(today).toBeFocused()
 
