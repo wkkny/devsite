@@ -32,33 +32,43 @@
   will-change: transform;
 }
 
+/* A soft follower behind the system cursor, which always stays visible. */
 .theme-dot-cursor::before {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 40%, transparent);
   content: "";
+  transition:
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+/* Over anything clickable it opens into a faint halo around the pointer. */
+.theme-dot-cursor--interactive::before {
+  background: color-mix(in srgb, var(--foreground) 14%, transparent);
+  transform: scale(3);
+}
+
+.theme-dot-cursor--pressed::before {
+  transform: scale(0.6);
+}
+
+.theme-dot-cursor--interactive.theme-dot-cursor--pressed::before {
+  transform: scale(2.4);
+}
+
+/* High-contrast modes get the system cursor alone. */
+@media (forced-colors: active), (prefers-contrast: more) {
+  .theme-dot-cursor {
+    display: none;
+  }
 }
 
 a[href],
 [role="link"] {
   cursor: pointer;
-}
-
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  html.has-theme-dot-cursor,
-  html.has-theme-dot-cursor * {
-    cursor: none !important;
-  }
-
-  .theme-dot-cursor::before {
-    transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
-    will-change: transform;
-  }
-
-  .theme-dot-cursor--link::before {
-    transform: scale(1.5);
-  }
 }
 
 .email-trigger {
