@@ -1,18 +1,13 @@
 // Standalone GitHub contributions calendar. See README.md in this folder.
 export { GitHubCalendar } from "./github-calendar";
-export {
-  HeatCalendar,
-  HeatCalendarGrid,
-  HeatCalendarLegend,
-  HeatCalendarTooltip,
-  useHeatCalendar,
-} from "./heat-calendar";
+export { ContributionCalendar } from "./calendar";
 export { fetchGitHubContributions, parseContributions } from "./data";
 export type { ContributionDay, FetchContributions } from "./data";
 export type {
+  CalendarDay,
+  CalendarSelection,
+  CalendarUnit,
+  ContributionCalendarProps,
   GitHubCalendarLabels,
   GitHubCalendarProps,
-  HeatCalendarCell,
-  HeatCalendarProps,
-  HeatCalendarSelection,
 } from "./types";

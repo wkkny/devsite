@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ContributionCalendar } from "./calendar";
 import { type ContributionDay, fetchGitHubContributions } from "./data";
-import { HeatCalendar, HeatCalendarGrid, HeatCalendarLegend, HeatCalendarTooltip } from "./heat-calendar";
 import type { GitHubCalendarLabels, GitHubCalendarProps } from "./types";
-import { addDays, cx, DAY_MS, mondayOf, startOfDay } from "./utils";
+import { cx, utcDay } from "./utils";
 
 const DEFAULT_LABELS: GitHubCalendarLabels = {
   loading: "Loading GitHub activity…",
@@ -17,11 +17,9 @@ const DEFAULT_LABELS: GitHubCalendarLabels = {
 const YEAR_BUTTON =
   "inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-input bg-transparent px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-muted";
 
-const utcYear = () => new Date().getUTCFullYear();
+const NO_DAYS: ContributionDay[] = [];
 
-function dateForCell(start: Date, week: number, day: number) {
-  return addDays(start, week * 7 + day).toISOString().slice(0, 10);
-}
+const utcYear = () => new Date().getUTCFullYear();
 
 /**
  * A drop-in GitHub contributions calendar: one calendar year at a time, Monday-first weeks in
@@ -33,7 +31,7 @@ export function GitHubCalendar({
   fromYear,
   defaultYear,
   color = "var(--primary)",
-  unit = "contributions",
+  unit,
   showYearPicker = "auto",
   showLegend = true,
   showProfileLink = true,
@@ -52,7 +50,6 @@ export function GitHubCalendar({
   const [hasEntered, setHasEntered] = useState(() => typeof IntersectionObserver === "undefined");
   const [status, setStatus] = useState<{ key: string; kind: "loading" | "retrying" | "error" } | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const calendarScrollRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
   const retryButtonRef = useRef<HTMLButtonElement>(null);
   // the latest fetcher, so an inline function does not restart the request on every render
@@ -67,32 +64,13 @@ export function GitHubCalendar({
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEnd = new Date(Date.UTC(year, 11, 31));
   // Days after today show as disabled squares, since they have no data yet.
-  const today = startOfDay(new Date());
-  const gridStart = mondayOf(yearStart);
-  const weeks = Math.ceil(((yearEnd.getTime() - gridStart.getTime()) / DAY_MS + 1) / 7);
+  const today = utcDay(new Date());
   const contributions = contributionsByKey[key];
   const isLoaded = contributions !== undefined;
   const isRetrying = !isLoaded && status?.key === key && status.kind === "retrying";
   const isLoading = isRetrying || (!isLoaded && status?.key === key && status.kind === "loading");
   const hasError = !isLoaded && status?.key === key && status.kind === "error";
   const pickerVisible = showYearPicker === "auto" ? years.length > 1 : showYearPicker;
-
-  // On narrow screens the calendar scrolls; open it at today, or at the year's end for past years.
-  useLayoutEffect(() => {
-    const mobile = window.matchMedia("(max-width: 639px)");
-    const firstMonday = mondayOf(new Date(Date.UTC(year, 0, 1)));
-    const showLatestWeeks = () => {
-      const scroller = calendarScrollRef.current;
-      if (!mobile.matches || !scroller) return;
-      const todayWeek = Math.floor((startOfDay(new Date()).getTime() - firstMonday.getTime()) / DAY_MS / 7);
-      const lastVisibleWeek = Math.min(Math.max(todayWeek, 0), weeks - 1);
-      scroller.scrollLeft = ((lastVisibleWeek + 1) / weeks) * scroller.scrollWidth - scroller.clientWidth;
-    };
-
-    showLatestWeeks();
-    mobile.addEventListener("change", showLatestWeeks);
-    return () => mobile.removeEventListener("change", showLatestWeeks);
-  }, [year, weeks]);
 
   // Wait until the calendar is near the viewport before the first request.
   useEffect(() => {
@@ -133,7 +111,7 @@ export function GitHubCalendar({
         if (!controller.signal.aborted) {
           // Move focus only if the visitor is still on the retry control that will disappear.
           if (document.activeElement === retryButtonRef.current) {
-            calendarScrollRef.current?.querySelector<HTMLButtonElement>('button[tabindex="0"]')?.focus();
+            sectionRef.current?.querySelector<HTMLButtonElement>('[role="grid"] button[tabindex="0"]')?.focus();
           }
           setContributionsByKey((current) => ({ ...current, [key]: days }));
           setStatus(null);
@@ -151,14 +129,6 @@ export function GitHubCalendar({
       controller.abort();
     };
   }, [ready, key, username, year, attempt, isLoaded, timeoutMs]);
-
-  const byDate = new Map((contributions ?? []).map((day) => [day.date, day]));
-  const values = Array.from({ length: weeks }, (_, week) =>
-    Array.from({ length: 7 }, (_, day) => (byDate.get(dateForCell(gridStart, week, day))?.level ?? 0) / 4),
-  );
-  const counts = Array.from({ length: weeks }, (_, week) =>
-    Array.from({ length: 7 }, (_, day) => byDate.get(dateForCell(gridStart, week, day))?.count ?? 0),
-  );
 
   return (
     <div ref={sectionRef} className={cx("w-full", className)} aria-busy={isLoading}>
@@ -202,26 +172,17 @@ export function GitHubCalendar({
           </div>
         </div>
       )}
-      <HeatCalendar
+      <ContributionCalendar
         key={key}
-        weeks={weeks}
-        startDate={yearStart}
-        endDate={yearEnd}
+        days={contributions ?? NO_DAYS}
+        start={yearStart}
+        end={yearEnd}
         activeUntil={today}
-        values={values}
-        counts={counts}
         unit={unit}
         color={color}
+        showLegend={showLegend}
         onSelectionChange={onSelectionChange}
-        className="w-full"
-      >
-        <div ref={calendarScrollRef} className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <HeatCalendarGrid className="min-w-[742px] sm:min-w-0">
-            <HeatCalendarTooltip />
-          </HeatCalendarGrid>
-        </div>
-        {showLegend && <HeatCalendarLegend />}
-      </HeatCalendar>
+      />
       {isLoading && <p role="status" className="mt-3 text-sm text-muted-foreground">{text.loading}</p>}
       {hasError && (
         <p role="status" className="mt-3 text-sm text-muted-foreground">

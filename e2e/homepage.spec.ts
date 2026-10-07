@@ -59,13 +59,13 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await stubHomepageApis(page)
   await page.goto('/')
 
-  const cells = page.locator('[data-heat-cell]')
+  const cells = page.locator('[role="grid"] button[data-date]')
   // 2026 runs Jan 1 (a Thursday) to Dec 31 (also a Thursday); the leading Mon to Wed of 2025 are hidden,
   // and so is every day after today (Thu Oct 1), though the grid keeps the whole year's columns
-  const first = page.locator('[data-heat-cell="0-3"]')
-  const today = page.locator('[data-heat-cell="39-3"]')
+  const first = page.locator('[data-date="2026-01-01"]')
+  const today = page.locator('[data-date="2026-10-01"]')
   const latest = today
-  const tabStop = page.locator('[data-heat-cell][tabindex="0"]')
+  const tabStop = page.locator('[role="grid"] button[tabindex="0"]')
   const grid = page.getByRole('grid', { name: 'contributions calendar' })
   await expect(grid).toHaveAttribute('aria-rowcount', '7')
   await expect(grid).toHaveAttribute('aria-colcount', '53')
@@ -75,13 +75,15 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(grid.getByRole('row').nth(3).getByRole('gridcell')).toHaveCount(40)
   await expect(grid.getByRole('row').nth(6).getByRole('gridcell')).toHaveCount(39)
   await expect(latest.locator('..')).toHaveAttribute('aria-colindex', '40')
-  for (const future of ['39-4', '40-0', '52-3']) {
+  for (const future of ['2026-10-02', '2026-10-05', '2026-12-31']) {
     // future days show as inert squares: no button, no tab stop, hidden from assistive tech
-    await expect(page.locator(`[data-heat-cell="${future}"]`)).toHaveCount(0)
-    await expect(page.locator(`[data-heat-future="${future}"]`)).toHaveAttribute('aria-hidden', 'true')
+    await expect(page.locator(`[data-date="${future}"]`)).toHaveCount(0)
+    await expect(page.locator(`[data-disabled="${future}"]`)).toHaveAttribute('aria-hidden', 'true')
   }
-  await expect(page.locator('[data-heat-future="52-4"]')).toHaveCount(0)
-  for (const hidden of ['0-0', '0-1', '0-2']) await expect(page.locator(`[data-heat-cell="${hidden}"]`)).toHaveCount(0)
+  // days outside the year are blank: neither buttons nor disabled squares
+  for (const outside of ['2025-12-29', '2025-12-30', '2025-12-31', '2027-01-01']) {
+    await expect(page.locator(`[data-date="${outside}"], [data-disabled="${outside}"]`)).toHaveCount(0)
+  }
   await expect(grid.getByText('Jan', { exact: true })).toBeVisible()
   await expect(page.getByText('Jan 1 – Oct 1')).toBeVisible()
   await expect(tabStop).toHaveCount(1)
@@ -101,11 +103,11 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await page.keyboard.press('ArrowLeft')
   await expect(first).toBeFocused()
   await page.keyboard.press('ArrowDown')
-  await expect(page.locator('[data-heat-cell="0-4"]')).toBeFocused()
+  await expect(page.locator('[data-date="2026-01-02"]')).toBeFocused()
   await page.keyboard.press('ArrowLeft')
-  await expect(page.locator('[data-heat-cell="0-4"]')).toBeFocused()
+  await expect(page.locator('[data-date="2026-01-02"]')).toBeFocused()
   await page.keyboard.press('ArrowRight')
-  const selected = page.locator('[data-heat-cell="1-4"]')
+  const selected = page.locator('[data-date="2026-01-09"]')
   await expect(selected).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(selected).toHaveAttribute('aria-pressed', 'true')
@@ -118,9 +120,9 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(first).toHaveAttribute('aria-pressed', 'true')
   await page.keyboard.press('Escape')
   // ArrowLeft from week 1 stays on its row when that weekday is hidden in week 0
-  await page.locator('[data-heat-cell="1-0"]').focus()
+  await page.locator('[data-date="2026-01-05"]').focus()
   await page.keyboard.press('ArrowLeft')
-  await expect(page.locator('[data-heat-cell="1-0"]')).toBeFocused()
+  await expect(page.locator('[data-date="2026-01-05"]')).toBeFocused()
   await first.focus()
   await page.keyboard.press('End')
   await expect(latest).toBeFocused()
@@ -131,7 +133,7 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(latest).toBeFocused()
   await expect(tabStop).toHaveCount(1)
   await page.keyboard.press('Tab')
-  await expect(page.locator('[data-heat-cell]:focus')).toHaveCount(0)
+  await expect(page.locator('[role="grid"] button:focus')).toHaveCount(0)
   await page.keyboard.press('Shift+Tab')
   await expect(latest).toBeFocused()
 })

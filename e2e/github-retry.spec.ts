@@ -66,7 +66,7 @@ for (const moveFocusAway of [false, true]) {
     if (moveFocusAway) {
       await expect(otherControl).toBeFocused()
     } else {
-      await expect(page.locator('#github-activity button[data-heat-cell][tabindex="0"]')).toBeFocused()
+      await expect(page.locator('#github-activity [role="grid"] button[tabindex="0"]')).toBeFocused()
     }
   })
 }

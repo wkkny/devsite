@@ -1,38 +1,37 @@
-import type { ReactNode } from "react";
 import type { FetchContributions } from "./data";
 
-export type HeatCalendarCell = { w: number; d: number };
-
-export interface HeatCalendarSelection {
-  start: HeatCalendarCell;
-  end?: HeatCalendarCell;
+/** One day of activity. `level` (0 to 4) is optional; without it the shade follows `count`. */
+export interface CalendarDay {
+  date: string;
+  count: number;
+  level?: number;
 }
 
-export interface HeatCalendarProps {
-  /** Noun after every count, e.g. "commits", "ships". */
-  unit?: string;
-  /** Number of week columns. */
-  weeks?: number;
-  /** Count a cell at intensity 1 stands for; a cell reads `intensity × maxCount`. */
-  maxCount?: number;
-  /** `values[week][day]` intensities in 0..1, seven days per week. Missing values are zero. */
-  values?: number[][];
-  /** Exact counts for each cell, indexed by week then Monday-first day. */
-  counts?: number[][];
-  /** Last UTC calendar day of the grid. Defaults to today after mount; explicit dates render identically in every timezone. */
-  endDate?: Date;
-  /** First UTC calendar day shown. The grid opens on the week containing it, and earlier days in that week are hidden. Without it the grid is the `weeks` ending at `endDate`. */
-  startDate?: Date;
-  /** Last day with data. Later days inside the grid render as inert, disabled squares. */
+/** A selected day, or a range when `end` is set. Dates are `YYYY-MM-DD`, `start` before `end`. */
+export interface CalendarSelection {
+  start: string;
+  end?: string;
+}
+
+/** The noun after each count: one word, or singular and plural forms. */
+export type CalendarUnit = string | { one: string; other: string };
+
+export interface ContributionCalendarProps {
+  /** Activity by date. Days that are missing count as zero. */
+  days: readonly CalendarDay[];
+  /** First day shown. The grid starts on the Monday of its week; earlier days are left blank. */
+  start: Date;
+  /** Last day of the grid. Later days in its week are left blank. */
+  end: Date;
+  /** Last day with data. Days after it, up to `end`, show as disabled squares. */
   activeUntil?: Date;
-  /** The single hue. Any CSS color; magnitude maps to its strength, never to a second color. */
+  /** Defaults to "contribution" and "contributions". */
+  unit?: CalendarUnit;
+  /** The single hue of the squares. Any CSS color. */
   color?: string;
+  showLegend?: boolean;
+  onSelectionChange?: (selection: CalendarSelection | null) => void;
   className?: string;
-  children?: ReactNode;
-  /** Controlled selection; null clears it. Cell coordinates are zero-based week/day (Monday first). */
-  selection?: HeatCalendarSelection | null;
-  defaultSelection?: HeatCalendarSelection | null;
-  onSelectionChange?: (selection: HeatCalendarSelection | null) => void;
 }
 
 /** Every piece of text GitHubCalendar shows or announces. */
@@ -55,8 +54,7 @@ export interface GitHubCalendarProps {
   defaultYear?: number;
   /** The single hue of the squares. Any CSS color. */
   color?: string;
-  /** Noun after every count. */
-  unit?: string;
+  unit?: CalendarUnit;
   /** `"auto"` shows the picker only when there is more than one year. */
   showYearPicker?: boolean | "auto";
   showLegend?: boolean;
@@ -69,6 +67,6 @@ export interface GitHubCalendarProps {
   /** Replace the data source, e.g. with your own API route. Defaults to `fetchGitHubContributions`. */
   fetchContributions?: FetchContributions;
   labels?: Partial<GitHubCalendarLabels>;
-  onSelectionChange?: (selection: HeatCalendarSelection | null) => void;
+  onSelectionChange?: (selection: CalendarSelection | null) => void;
   className?: string;
 }
