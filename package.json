@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:spotify": "vercel dev",
+    "dev:spotify": "bunx vercel dev",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
@@ -40,7 +40,6 @@
     "oxlint": "^1.85.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~7.0.2",
-    "vercel": "^59.25.4",
     "vite": "^8.3.0",
     "vitest": "^5.0.1"
   }
