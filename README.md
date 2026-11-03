@@ -9,7 +9,7 @@ This repository contains the source code and content for Kritiraj (Kenny)'s port
 - Project cards with grid and list views on desktop.
 - GitHub contribution activity for each calendar year from 2026, loaded from a public API. It opens on the current year, January to December.
 - Optional Spotify status for the current track or the most recently played track. The last played track stays visible even when Spotify reports no playback or requests fail.
-- A visitor count backed by CounterAPI. Local development reads the count without incrementing it.
+- A visitor count backed by a Vercel function and Upstash Redis. Local development reads the count without incrementing it.
 
 ## Tech stack
 
@@ -86,7 +86,7 @@ On a static host without Vercel functions, the frontend can still build and depl
 ## External services
 
 - The GitHub calendar requests public contribution data for the configured username from [github-contributions-api.jogruber.de](https://github-contributions-api.jogruber.de/). Change the username in `src/data.ts` when you fork the site.
-- The visitor count uses CounterAPI. Its endpoint is configured in `src/data.ts` and currently belongs to the author's portfolio.
+- The visitor count is served by `api/visitors.ts`, which keeps one counter in the same Upstash Redis database as the Spotify status. Each browser is counted once (tracked in `localStorage`), and only the production deployment increments it, so local development and previews never do.
 - The Spotify function requests playback data from Spotify's Web API. It keeps credentials on the server and returns only the track title, artist, link, and playback status to the browser.
 
 These widgets depend on their services being reachable. The portfolio page remains usable if a service is unavailable.
@@ -102,12 +102,11 @@ These widgets depend on their services being reachable. The portfolio page remai
 | `src/components/portfolio/` | Profile, social links, project cards, projects section, and footer markup. |
 | `src/index.css` | Theme colors, global styles, font setup, and animation styles. |
 
-The visitor counter URL in `src/data.ts` currently points to the author's CounterAPI counter. Change it before using the counter on another portfolio.
 
 ## Project structure
 
 ```text
-api/                   Vercel function for Spotify playback
+api/                   Vercel functions for Spotify playback and the visitor count
 e2e/                   Playwright browser tests
 scripts/               Spotify authorization helper
 shared/                Types and data parsing shared by the app and API
