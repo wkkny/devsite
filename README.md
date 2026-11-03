@@ -9,7 +9,7 @@ This repository contains the source code and content for Kritiraj (Kenny)'s port
 - Project cards with grid and list views on desktop.
 - GitHub contribution activity for each calendar year from 2026, loaded from a public API. It opens on the current year, January to December.
 - Optional Spotify status for the current track or the most recently played track. The last played track stays visible even when Spotify reports no playback or requests fail.
-- A visitor count backed by a Vercel function and Upstash Redis. Local development reads the count without incrementing it.
+- A visitor count backed by a Vercel function and Upstash Redis. `bun run dev` proxies `/api/visitors` to the production site (see `vite.config.ts`) and only reads the count.
 
 ## Tech stack
 
