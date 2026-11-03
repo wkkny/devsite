@@ -12,7 +12,7 @@ export const portfolioOwner = {
   githubUrl: 'https://github.com/wkkny',
   githubRepositoriesUrl: 'https://github.com/wkkny?tab=repositories',
   xUrl: 'https://x.com/wkknyy',
-  visitorCounterUrl: 'https://counterapi.com/api/wkkny-devsite/view/home',
+  visitorCounterUrl: '/api/visitors',
 } as const
 
 export const socialLinks = [

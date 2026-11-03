@@ -6,6 +6,8 @@ import { Tooltip } from '@/components/tooltip'
 import { portfolioOwner } from '@/data'
 import { EASE_OUT } from '@/lib/ease'
 
+const VISITED_KEY = 'visitor-counted'
+
 // Counts up from zero once. It writes the text directly, so the count never re-renders React.
 function CountUp({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null)
@@ -34,24 +36,41 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
 
   useEffect(() => {
     const controller = new AbortController()
-    const url = new URL(portfolioOwner.visitorCounterUrl)
-    url.searchParams.set('unique', 'true')
+    const url = portfolioOwner.visitorCounterUrl
 
-    if (
+    // Count each browser once, and never count local development.
+    let countVisit = !(
       import.meta.env.DEV ||
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1'
-    ) {
-      url.searchParams.set('readOnly', 'true')
+    )
+    try {
+      if (window.localStorage.getItem(VISITED_KEY)) countVisit = false
+      // Mark before the request so a second tab opened meanwhile doesn't count again.
+      else if (countVisit) window.localStorage.setItem(VISITED_KEY, '1')
+    } catch {
+      // Storage can be blocked; count the visit and carry on.
+    }
+
+    // A failed count shouldn't stop this browser from being counted next time.
+    function unmarkVisit() {
+      if (!countVisit) return
+      try {
+        window.localStorage.removeItem(VISITED_KEY)
+      } catch {
+        // Ignore blocked storage.
+      }
     }
 
     async function loadViewers() {
       try {
         const response = await fetch(url, {
+          method: countVisit ? 'POST' : 'GET',
           signal: controller.signal,
           cache: 'no-store',
         })
         if (!response.ok) {
+          unmarkVisit()
           setLoadFailed(true)
           return
         }
@@ -67,10 +86,14 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
         ) {
           setViewers(data.value)
         } else {
+          unmarkVisit()
           setLoadFailed(true)
         }
       } catch {
-        if (!controller.signal.aborted) setLoadFailed(true)
+        if (!controller.signal.aborted) {
+          unmarkVisit()
+          setLoadFailed(true)
+        }
         // Keep the profile usable when the counter service is unavailable.
       }
     }

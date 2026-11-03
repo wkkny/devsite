@@ -8,7 +8,7 @@ async function stubHomepageApis(page: Page) {
       body: JSON.stringify({ contributions: [] }),
     }),
   )
-  await page.route('https://counterapi.com/**', (route) =>
+  await page.route('**/api/visitors', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
