@@ -17,7 +17,7 @@ test('theme toggles on touch and long Spotify titles truncate', async ({ page })
       body: JSON.stringify({ contributions: [] }),
     }),
   )
-  await page.route('https://counterapi.com/**', (route) =>
+  await page.route('**/api/visitors', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',

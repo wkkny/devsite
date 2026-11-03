@@ -9,7 +9,7 @@ test('GitHub activity retries only on request and clears loading and errors afte
     await new Promise<void>((resolve) => { finishRetry = resolve })
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ contributions: [] }) })
   })
-  await page.route('https://counterapi.com/**', (route) => route.fulfill({ json: { value: 42 } }))
+  await page.route('**/api/visitors', (route) => route.fulfill({ json: { value: 42 } }))
   await page.route('**/api/now-playing', (route) => route.fulfill({ json: { status: 'idle', track: null } }))
   await page.goto('/')
   const retry = page.getByRole('button', { name: 'Retry GitHub activity' })
@@ -37,7 +37,7 @@ for (const moveFocusAway of [false, true]) {
         ? route.fulfill({ status: 503, body: '{}' })
         : route.fulfill({ json: { contributions: [] } })
     })
-    await page.route('https://counterapi.com/**', (route) => route.fulfill({ json: { value: 42 } }))
+    await page.route('**/api/visitors', (route) => route.fulfill({ json: { value: 42 } }))
     await page.route('**/api/now-playing', (route) => route.fulfill({ json: { status: 'idle', track: null } }))
     await page.goto('/')
 
@@ -74,7 +74,7 @@ for (const moveFocusAway of [false, true]) {
 test('a GitHub request that never answers times out and offers a retry', async ({ page }) => {
   await page.clock.install()
   await page.route('https://github-contributions-api.jogruber.de/**', () => new Promise<void>(() => {}))
-  await page.route('https://counterapi.com/**', (route) => route.fulfill({ json: { value: 42 } }))
+  await page.route('**/api/visitors', (route) => route.fulfill({ json: { value: 42 } }))
   await page.route('**/api/now-playing', (route) => route.fulfill({ json: { status: 'idle', track: null } }))
   await page.goto('/')
   await expect(page.getByText('Loading GitHub activity…')).toBeVisible()
@@ -95,7 +95,7 @@ test('a retry in one year does not show Retry on the first load of another year'
     if (year === '2026') return new Promise<void>(() => {})
     return route.fulfill({ json: { contributions: [] } })
   })
-  await page.route('https://counterapi.com/**', (route) => route.fulfill({ json: { value: 42 } }))
+  await page.route('**/api/visitors', (route) => route.fulfill({ json: { value: 42 } }))
   await page.route('**/api/now-playing', (route) => route.fulfill({ json: { status: 'idle', track: null } }))
   await page.goto('/')
 
@@ -109,7 +109,7 @@ test('a retry in one year does not show Retry on the first load of another year'
 
 test('reduced-motion project status is static ordinary text', async ({ page }) => {
   await page.route('https://github-contributions-api.jogruber.de/**', (route) => route.fulfill({ json: { contributions: [] } }))
-  await page.route('https://counterapi.com/**', (route) => route.fulfill({ json: { value: 42 } }))
+  await page.route('**/api/visitors', (route) => route.fulfill({ json: { value: 42 } }))
   await page.route('**/api/now-playing', (route) => route.fulfill({ json: { status: 'idle', track: null } }))
   await page.goto('/')
   const status = page.locator('.project-status')

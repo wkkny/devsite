@@ -15,7 +15,7 @@ test('tooltips appear on hover and stay hidden after touch taps', async ({ brows
   await desktopPage.route('https://github-contributions-api.jogruber.de/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ contributions: [] }) }),
   )
-  await desktopPage.route('https://counterapi.com/**', (route) =>
+  await desktopPage.route('**/api/visitors', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ value: 42 }) }),
   )
   await desktopPage.route('**/api/now-playing', (route) =>
@@ -48,7 +48,7 @@ test('tooltips appear on hover and stay hidden after touch taps', async ({ brows
   await touchPage.route('https://github-contributions-api.jogruber.de/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ contributions: [] }) }),
   )
-  await touchPage.route('https://counterapi.com/**', (route) =>
+  await touchPage.route('**/api/visitors', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ value: 42 }) }),
   )
   await touchPage.route('**/api/now-playing', (route) =>
