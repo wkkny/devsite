@@ -105,7 +105,7 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
   return (
     <Tooltip content="Visitors" side="bottom" gap={2} disabled={viewers === null || !startAnimation}>
       <output
-        className="inline-flex h-8 shrink-0 items-center gap-2 px-2 text-sm font-medium leading-none text-muted-foreground"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 px-2 type-label leading-none text-muted-foreground"
         aria-label={
           viewers !== null
             ? `${viewers.toLocaleString()} visitors`
@@ -114,7 +114,7 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
               : 'Visitor count loading'
         }
       >
-        <FiEye aria-hidden="true" className="size-4" />
+        <FiEye aria-hidden="true" className="size-3.5" />
         {viewers === null || !startAnimation ? (
           <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">—</span>
         ) : (

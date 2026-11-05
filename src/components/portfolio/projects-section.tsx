@@ -51,17 +51,17 @@ export function ProjectsSection() {
       viewport={{ once: true, amount: 0.15 }}
       transition={reducedMotion ? { duration: 0 } : { duration: 0.4, ease: EASE_OUT }}
     >
-      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <h2 id="projects-heading" className="text-2xl font-medium tracking-tight sm:text-3xl">Projects</h2>
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <h2 id="projects-heading" className="font-heading text-3xl leading-[1.05] tracking-[-0.01em] sm:text-4xl">Projects</h2>
+        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
           <a
-            className="animated-arrow-link inline-flex items-center gap-1 text-sm text-muted-foreground"
+            className="animated-arrow-link inline-flex items-center gap-1 type-label text-muted-foreground"
             href={portfolioOwner.githubRepositoriesUrl}
             target="_blank"
             rel="noreferrer"
           >
             <span className="animated-arrow-link-label relative">All repositories</span>
-            <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3.5" />
+            <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3" />
           </a>
           {desktopProjects ? (
             <ToggleGroup

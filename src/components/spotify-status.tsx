@@ -78,7 +78,7 @@ function TrackDetails({ track, playing, now }: { track: NowPlayingTrack; playing
       <span className="flex min-w-0 flex-col leading-snug">
         <span className="truncate">{track.title}</span>
         {track.album && <span className="truncate font-normal text-muted-foreground">{track.album}</span>}
-        <span className="mt-0.5 text-[11px] font-normal text-muted-foreground">
+        <span className="mt-1 type-label text-muted-foreground">
           {when && `${when} · `}Open in Spotify
         </span>
       </span>
@@ -209,14 +209,14 @@ export function SpotifyStatus() {
             rel="noopener noreferrer"
           >
             <span className="flex min-w-0 flex-1 items-baseline gap-1">
-              <span className="min-w-0 truncate font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
+              <span className="min-w-0 truncate text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
                 {track.title}
               </span>
-              <span className="min-w-0 max-w-[40%] shrink overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
+              <span className="min-w-0 shrink-[2] overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
                 by {track.artist}
               </span>
               {!playing && track.playedAt !== undefined && (
-                <span className="shrink-0 text-nowrap">
+                <span className="shrink-0 text-nowrap tabular-nums">
                   <span aria-hidden="true">· </span>
                   {formatRelativeTime(track.playedAt, now)}
                 </span>
@@ -235,7 +235,7 @@ export function SpotifyStatus() {
       {useMock && (
         <button
           type="button"
-          className="mt-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          className="mt-1 type-label text-muted-foreground underline underline-offset-2 hover:text-foreground"
           aria-label={`Show next Spotify example. Currently showing example ${mockIndex + 1} of ${mockPlaybacks.length}.`}
           onClick={() => setMockIndex((index) => (index + 1) % mockPlaybacks.length)}
         >

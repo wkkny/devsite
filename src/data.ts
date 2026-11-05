@@ -44,7 +44,7 @@ export const projects = [
     name: 'DigiLicense',
     mark: 'DL',
     description:
-      'A frontend prototype for a clearer driving-licence service in India. It covers service discovery and application tracking, but does not submit to a government system.',
+      'A frontend prototype for a clearer driving‑licence service in India. It covers service discovery and application tracking, but does not submit to a government system.',
     stack: ['React', 'TanStack Start', 'TypeScript', 'Tailwind CSS'],
     href: 'https://github.com/BrandNewDevs/DigiLicense',
   },
