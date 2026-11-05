@@ -7,6 +7,18 @@ import { portfolioOwner } from '@/data'
 import { EASE_OUT } from '@/lib/ease'
 
 const VISITED_KEY = 'visitor-counted'
+// A count in flight blocks other tabs for this long. If the page closes mid-request,
+// the marker goes stale and the next visit counts again.
+const PENDING_MS = 10_000
+
+function shouldCountVisit() {
+  const marker = window.localStorage.getItem(VISITED_KEY)
+  if (marker === null) return true
+  // 'done', or '1' from before pending markers existed: already counted.
+  if (!marker.startsWith('pending:')) return false
+  const startedAt = Number(marker.slice(8))
+  return !(Date.now() - startedAt < PENDING_MS)
+}
 
 // Counts up from zero once. It writes the text directly, so the count never re-renders React.
 function CountUp({ value }: { value: number }) {
@@ -45,9 +57,9 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
       window.location.hostname === '127.0.0.1'
     )
     try {
-      if (window.localStorage.getItem(VISITED_KEY)) countVisit = false
+      if (countVisit && !shouldCountVisit()) countVisit = false
       // Mark before the request so a second tab opened meanwhile doesn't count again.
-      else if (countVisit) window.localStorage.setItem(VISITED_KEY, '1')
+      else if (countVisit) window.localStorage.setItem(VISITED_KEY, `pending:${Date.now()}`)
     } catch {
       // Storage can be blocked; count the visit and carry on.
     }
@@ -85,6 +97,13 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
           data.value >= 0
         ) {
           setViewers(data.value)
+          if (countVisit) {
+            try {
+              window.localStorage.setItem(VISITED_KEY, 'done')
+            } catch {
+              // Ignore blocked storage.
+            }
+          }
         } else {
           unmarkVisit()
           setLoadFailed(true)

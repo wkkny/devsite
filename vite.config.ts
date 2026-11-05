@@ -17,6 +17,13 @@ export default {
       },
     },
   },
+  server: {
+    // Vite serves no /api routes, so read the live visitor count from production.
+    // Local pages only read; the function ignores counts outside production anyway.
+    proxy: {
+      '/api/visitors': { target: 'https://www.wkkny.tech', changeOrigin: true },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
