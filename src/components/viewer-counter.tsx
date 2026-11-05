@@ -13,8 +13,10 @@ const PENDING_MS = 10_000
 
 function shouldCountVisit() {
   const marker = window.localStorage.getItem(VISITED_KEY)
-  if (marker === 'done') return false
-  const startedAt = marker?.startsWith('pending:') ? Number(marker.slice(8)) : NaN
+  if (marker === null) return true
+  // 'done', or '1' from before pending markers existed: already counted.
+  if (!marker.startsWith('pending:')) return false
+  const startedAt = Number(marker.slice(8))
   return !(Date.now() - startedAt < PENDING_MS)
 }
 
@@ -76,7 +78,6 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
       try {
         const response = await fetch(url, {
           method: countVisit ? 'POST' : 'GET',
-          keepalive: countVisit,
           signal: controller.signal,
           cache: 'no-store',
         })
