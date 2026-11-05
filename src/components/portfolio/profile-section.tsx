@@ -64,7 +64,7 @@ export function ProfileSection() {
           transition={contentTransition}
         >
           <div className="relative flex min-w-0 items-center justify-between gap-2">
-            <h1 id="profile-name" className="min-w-0 text-3xl font-medium tracking-tight sm:text-4xl">
+            <h1 id="profile-name" className="min-w-0 font-heading text-[2.5rem] leading-[1.05] tracking-[-0.015em] text-balance sm:text-[3.5rem]">
               {portfolioOwner.displayName}
             </h1>
             <div
@@ -79,16 +79,16 @@ export function ProfileSection() {
               </Tooltip>
             </div>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 type-label text-muted-foreground">
             <p>{portfolioOwner.role}</p>
             <p className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <FiMapPin aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.8} />
+              <FiMapPin aria-hidden="true" className="size-3 shrink-0" strokeWidth={2} />
               {portfolioOwner.location}
             </p>
           </div>
-          <p className="mt-4 max-w-lg text-sm leading-6">{portfolioOwner.bio}</p>
+          <p className="mt-5 max-w-[60ch] text-[0.9375rem] leading-[1.65] text-pretty text-foreground/85">{portfolioOwner.bio}</p>
           <SocialLinks />
-          <div className="mt-5 min-h-6 w-fit max-w-xs sm:max-w-none">
+          <div className="mt-5 min-h-6 w-fit max-w-full">
             <SpotifyStatus />
           </div>
         </motion.div>

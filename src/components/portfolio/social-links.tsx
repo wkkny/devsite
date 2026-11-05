@@ -66,7 +66,7 @@ export function SocialLinks() {
   const copyMotionTransition = reducedMotion ? { duration: 0.12, ease: EASE_OUT } : SPRING_SWAP
 
   return (
-    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm text-muted-foreground sm:gap-x-4">
+    <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
       {socialLinks.map((link) => {
         const Icon = socialIcons[link.platform]
 
@@ -88,7 +88,7 @@ export function SocialLinks() {
       <Tooltip content={emailTooltip} side="top">
         <button
           aria-label={emailLabel}
-          className="email-trigger inline-flex items-center gap-1.5 leading-none text-muted-foreground hover:text-foreground focus-visible:text-foreground max-sm:h-8 max-sm:rounded-lg max-sm:border max-sm:border-border max-sm:bg-background max-sm:px-2.5 max-sm:font-medium max-sm:transition-colors max-sm:hover:bg-muted max-sm:hover:text-foreground max-sm:focus-visible:outline-none max-sm:focus-visible:ring-2 max-sm:focus-visible:ring-ring"
+          className="email-trigger inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 leading-none font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={copyEmail}
           type="button"
         >
