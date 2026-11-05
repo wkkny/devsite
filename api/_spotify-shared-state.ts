@@ -33,7 +33,6 @@ const EXTEND_RETRY_WINDOW_SCRIPT = `
 export type StoredSnapshot = {
   playback: NowPlayingResponse
   fetchedAt: number
-  recentlyPlayedAt?: number
 }
 
 export type SharedSpotifyState = {
@@ -157,14 +156,7 @@ function parseSnapshot(value: unknown): StoredSnapshot | null {
       return null
     }
 
-    const recentlyPlayedAt = record.recentlyPlayedAt
-    return {
-      playback: record.playback,
-      fetchedAt: record.fetchedAt,
-      ...(typeof recentlyPlayedAt === "number" && Number.isFinite(recentlyPlayedAt)
-        ? { recentlyPlayedAt }
-        : {}),
-    }
+    return { playback: record.playback, fetchedAt: record.fetchedAt }
   } catch {
     return null
   }

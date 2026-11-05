@@ -1,9 +1,9 @@
 import type { NowPlayingResponse } from "../shared/now-playing.js"
 import {
-  SpotifyConfigurationError,
-  SpotifyRequestError,
-  SpotifyTimeoutError,
-} from "./_spotify.js"
+  LastfmConfigurationError,
+  LastfmRequestError,
+  LastfmTimeoutError,
+} from "./_lastfm.js"
 import type {
   SharedSpotifyState,
   SpotifyStateStore,
@@ -11,7 +11,6 @@ import type {
 } from "./_spotify-shared-state.js"
 
 const SNAPSHOT_FRESH_MS = 2 * 60 * 1_000
-const RECENTLY_PLAYED_REFRESH_MS = 15 * 60 * 1_000
 const EMPTY_REFRESH_RETRY_SECONDS = 5
 const STATE_UNAVAILABLE_RETRY_SECONDS = 30
 const UPSTREAM_FAILURE_RETRY_SECONDS = 60
@@ -32,7 +31,7 @@ export type NowPlayingOutcome =
 
 type NowPlayingServiceDependencies = {
   stateStore: SpotifyStateStore | null
-  getPlayback: (refreshRecentWhenIdle: boolean) => Promise<NowPlayingResponse>
+  getPlayback: () => Promise<NowPlayingResponse>
   now?: () => number
 }
 
@@ -123,24 +122,13 @@ export function createNowPlayingService({
       if (cached) return cached
       const snapshot = state.snapshot
 
-      const shouldRefreshRecent =
-        !snapshot?.recentlyPlayedAt ||
-        now() - snapshot.recentlyPlayedAt >= RECENTLY_PLAYED_REFRESH_MS
-      let playback = await getPlayback(shouldRefreshRecent)
+      let playback = await getPlayback()
 
       if (!playback.track && snapshot?.playback.track) {
         playback = { status: "recent", track: snapshot.playback.track }
       }
 
-      const recentlyPlayedAt =
-        shouldRefreshRecent && playback.status !== "playing"
-          ? now()
-          : snapshot?.recentlyPlayedAt
-      const nextSnapshot: StoredSnapshot = {
-        playback,
-        fetchedAt: now(),
-        ...(recentlyPlayedAt === undefined ? {} : { recentlyPlayedAt }),
-      }
+      const nextSnapshot: StoredSnapshot = { playback, fetchedAt: now() }
 
       try {
         await store.writeSnapshot(nextSnapshot)
@@ -162,9 +150,8 @@ export function createNowPlayingService({
 
       return playbackOutcome(playback)
     } catch (error) {
-      if (error instanceof SpotifyRequestError && error.status === 429) {
-        const fallbackCooldown = error.reason === "QUOTA_EXCEEDED" ? 3_600 : 60
-        const retryAfter = Math.max(1, error.retryAfterSeconds ?? fallbackCooldown)
+      if (error instanceof LastfmRequestError && error.status === 429) {
+        const retryAfter = Math.max(1, error.retryAfterSeconds ?? 60)
         let cooldownUntil = now() + retryAfter * 1_000
 
         try {
@@ -176,8 +163,7 @@ export function createNowPlayingService({
 
         const retryAfterSeconds = remainingSeconds(cooldownUntil, now())
         console.error("[spotify] upstream request rate limited", {
-          endpoint: error.endpoint,
-          reason: error.reason,
+          code: error.code,
           retryAfterSeconds,
         })
 
@@ -187,12 +173,12 @@ export function createNowPlayingService({
           : { kind: "rate-limited", retryAfterSeconds }
       }
 
-      const isTimeout = error instanceof SpotifyTimeoutError
-      const isConfigurationError = error instanceof SpotifyConfigurationError
+      const isTimeout = error instanceof LastfmTimeoutError
+      const isConfigurationError = error instanceof LastfmConfigurationError
       console.error("[spotify] now-playing request failed", {
         kind: isTimeout ? "timeout" : isConfigurationError ? "configuration" : "unexpected",
-        status: error instanceof SpotifyRequestError ? error.status : undefined,
-        endpoint: error instanceof SpotifyRequestError ? error.endpoint : undefined,
+        status: error instanceof LastfmRequestError ? error.status : undefined,
+        code: error instanceof LastfmRequestError ? error.code : undefined,
       })
 
       let backoffUntil = now() + UPSTREAM_FAILURE_RETRY_SECONDS * 1_000
