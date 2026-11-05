@@ -31,6 +31,7 @@ Without shadcn, define those CSS variables yourself or pass `color` explicitly.
 | `unit` | contribution / contributions | Noun after each count: a string, or `{ one, other }` |
 | `showYearPicker` | `"auto"` | `"auto"` shows it only when there is more than one year |
 | `showLegend` | `true` | Date range and the less/more scale under the grid |
+| `heading` | — | Content at the start of the row above the grid, beside the year picker |
 | `showProfileLink` | `true` | A link to the GitHub profile above the calendar |
 | `lazy` | `true` | Wait until the calendar is within 200px of the viewport before fetching |
 | `timeoutMs` | `10000` | Abort a request after this long and offer a retry |

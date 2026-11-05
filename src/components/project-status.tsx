@@ -27,11 +27,11 @@ export function ProjectStatus() {
   }, [reducedMotion])
 
   return (
-    <motion.div className="project-status mt-6 flex w-full items-center justify-center gap-3 text-sm text-muted-foreground">
+    <motion.div className="project-status mt-6 flex w-full items-center justify-start gap-2 text-sm text-muted-foreground">
       <motion.svg
         layout="position"
         transition={{ layout: { duration: reducedMotion ? 0 : 0.3, ease: EASE_OUT } }}
-        className="project-status-loader size-6 shrink-0 text-portfolio-blue"
+        className="project-status-loader size-4 shrink-0 text-portfolio-blue"
         viewBox="0 0 32 32"
         aria-hidden="true"
       >

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node"
 
 import { createNowPlayingService } from "./_now-playing-service.js"
-import { getSpotifyPlayback } from "./_spotify-playback.js"
+import { getLastfmPlayback } from "./_lastfm.js"
 import { getSpotifyStateStore } from "./_spotify-store.js"
 
 const CACHE_CONTROL =
@@ -9,7 +9,7 @@ const CACHE_CONTROL =
 
 const getNowPlaying = createNowPlayingService({
   stateStore: getSpotifyStateStore(),
-  getPlayback: getSpotifyPlayback,
+  getPlayback: getLastfmPlayback,
 })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

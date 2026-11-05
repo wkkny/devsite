@@ -15,7 +15,7 @@ const DEFAULT_LABELS: GitHubCalendarLabels = {
 };
 
 const YEAR_BUTTON =
-  "inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-input bg-transparent px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-muted";
+  "inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-input bg-transparent px-2.5 type-label whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-muted";
 
 const NO_DAYS: ContributionDay[] = [];
 
@@ -34,6 +34,7 @@ export function GitHubCalendar({
   unit,
   showYearPicker = "auto",
   showLegend = true,
+  heading,
   showProfileLink = true,
   lazy = true,
   timeoutMs = 10_000,
@@ -154,22 +155,25 @@ export function GitHubCalendar({
           </svg>
         </a>
       )}
-      {pickerVisible && (
-        <div className="mb-3 flex justify-end">
-          <div role="group" aria-label={text.yearPicker} className="flex w-fit items-center gap-2">
-            {years.map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={option === year}
-                aria-label={text.showYear(option)}
-                className={YEAR_BUTTON}
-                onClick={() => setYear(option)}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+      {(heading || pickerVisible) && (
+        <div className="mb-4 flex items-center justify-between gap-3">
+          {heading}
+          {pickerVisible && (
+            <div role="group" aria-label={text.yearPicker} className="ml-auto flex w-fit items-center gap-2">
+              {years.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={option === year}
+                  aria-label={text.showYear(option)}
+                  className={YEAR_BUTTON}
+                  onClick={() => setYear(option)}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
       <ContributionCalendar

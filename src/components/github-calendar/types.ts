@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { FetchContributions } from "./data";
 
 /** One day of activity. `level` (0 to 4) is optional; without it the shade follows `count`. */
@@ -58,6 +60,8 @@ export interface GitHubCalendarProps {
   /** `"auto"` shows the picker only when there is more than one year. */
   showYearPicker?: boolean | "auto";
   showLegend?: boolean;
+  /** Content at the start of the row above the grid, beside the year picker. */
+  heading?: ReactNode;
   /** A link to the GitHub profile above the calendar. */
   showProfileLink?: boolean;
   /** Wait until the calendar is near the viewport before the first request. */

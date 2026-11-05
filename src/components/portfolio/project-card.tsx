@@ -21,42 +21,43 @@ export function ProjectCard({ project, view }: ProjectCardProps) {
       {isList && (
         <div className="flex w-32 shrink-0 items-center p-3 sm:w-40">
           <Avatar className="size-24 rounded-lg after:rounded-lg sm:size-32">
-            <AvatarFallback className="rounded-lg bg-muted text-xl font-medium text-muted-foreground">
+            <AvatarFallback className="rounded-lg bg-muted font-mono text-2xl font-medium tracking-tight text-muted-foreground">
               {project.mark}
             </AvatarFallback>
           </Avatar>
         </div>
       )}
-      <div className={isList ? 'min-w-0 flex-1' : undefined}>
+      <div className={isList ? 'min-w-0 flex-1' : 'flex flex-1 flex-col'}>
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               {!isList && (
                 <Avatar size="lg" className="rounded-lg after:rounded-lg">
-                  <AvatarFallback className="rounded-lg bg-muted text-xs font-medium text-muted-foreground">
+                  <AvatarFallback className="rounded-lg bg-muted font-mono text-xs font-medium tracking-tight text-muted-foreground">
                     {project.mark}
                   </AvatarFallback>
                 </Avatar>
               )}
-              <CardTitle>{project.name}</CardTitle>
+              <CardTitle className="font-sans text-lg leading-snug font-medium tracking-[-0.015em]">{project.name}</CardTitle>
             </div>
             <a
-              className="inline-flex shrink-0 items-center gap-2 text-sm font-medium transition-colors hover:text-muted-foreground"
+              className="animated-arrow-link inline-flex shrink-0 items-center gap-1 type-label text-muted-foreground"
               href={project.href}
               target="_blank"
               rel="noreferrer"
             >
-              GitHub <FiArrowUpRight aria-hidden="true" />
+              <span className="animated-arrow-link-label relative">GitHub</span>
+              <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3" />
             </a>
           </div>
-          <p className={`${isList ? '' : 'min-h-20 '}leading-6 text-muted-foreground`}>
+          <p className="leading-6 text-pretty text-muted-foreground">
             {project.description}
           </p>
         </CardHeader>
         <CardContent className={isList ? 'space-y-4' : 'flex flex-1 flex-col'}>
-          <ul aria-label={`${project.name} technologies`} className="flex flex-wrap gap-x-3 gap-y-1">
+          <ul aria-label={`${project.name} technologies`} className="flex flex-wrap gap-1.5 pt-4">
             {project.stack.map((item) => (
-              <li key={item} className="text-xs text-muted-foreground/70">{item}</li>
+              <li key={item} className="rounded-[5px] bg-muted px-1.5 py-0.5 type-label text-muted-foreground">{item}</li>
             ))}
           </ul>
         </CardContent>

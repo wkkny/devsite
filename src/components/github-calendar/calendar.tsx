@@ -218,7 +218,7 @@ export function ContributionCalendar({
       </span>
       <div
         ref={scrollerRef}
-        className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] max-sm:mask-l-from-95% [&::-webkit-scrollbar]:hidden"
       >
         <div
           ref={gridRef}
@@ -272,7 +272,7 @@ export function ContributionCalendar({
               key={week}
               aria-hidden="true"
               className={cx(
-                "whitespace-nowrap pb-1 text-[10px] leading-none transition-colors duration-200",
+                "type-label whitespace-nowrap pb-1.5 leading-none transition-colors duration-200",
                 hotMonth === month ? "text-foreground" : "text-muted-foreground",
               )}
               style={{ gridColumn: week + 1, gridRow: 1 }}
@@ -289,7 +289,7 @@ export function ContributionCalendar({
       </div>
 
       {showLegend && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 type-label text-muted-foreground">
           <span>
             {model.firstActive === -1
               ? " "

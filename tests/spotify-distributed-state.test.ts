@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNowPlayingService } from '../api/_now-playing-service'
 import { createUpstashSpotifyStateStore } from '../api/_spotify-shared-state'
-import { SpotifyRequestError, SpotifyTimeoutError } from '../api/_spotify'
+import { LastfmRequestError, LastfmTimeoutError } from '../api/_lastfm'
 
 const track = { title: 'Runaway', artist: 'Kanye West', spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds' }
 const playing = { status: 'playing' as const, track }
@@ -66,7 +66,7 @@ afterEach(() => {
 })
 
 describe('distributed Spotify state through the production Redis adapter', () => {
-  it.each([new SpotifyTimeoutError(), new SpotifyRequestError(500), new Error('network failure')])('shares upstream failure backoff across cold instances: %s', async (error) => {
+  it.each([new LastfmTimeoutError(), new LastfmRequestError(500), new Error('network failure')])('shares upstream failure backoff across cold instances: %s', async (error) => {
     redisTransport()
     const getPlayback = vi.fn().mockRejectedValue(error)
     const first = createNowPlayingService({ stateStore: createUpstashSpotifyStateStore(), getPlayback })
@@ -86,7 +86,7 @@ describe('distributed Spotify state through the production Redis adapter', () =>
     redisTransport()
     const store = createUpstashSpotifyStateStore()
     await store.writeSnapshot({ playback: playing, fetchedAt: Date.now() - 120_001 })
-    const getPlayback = vi.fn().mockRejectedValue(new SpotifyTimeoutError())
+    const getPlayback = vi.fn().mockRejectedValue(new LastfmTimeoutError())
     const first = createNowPlayingService({ stateStore: store, getPlayback })
     const second = createNowPlayingService({ stateStore: createUpstashSpotifyStateStore(), getPlayback })
     const expected = { kind: 'playback', playback: { status: 'recent', track }, stale: true, retryAfterSeconds: 60 }
@@ -164,14 +164,12 @@ describe('production endpoint configuration', () => {
     const { fetch: redisFetch } = redisTransport()
     let upstreamCalls = 0
     vi.stubEnv('VERCEL_ENV', 'production')
-    vi.stubEnv('SPOTIFY_CLIENT_ID', 'test-client')
-    vi.stubEnv('SPOTIFY_CLIENT_SECRET', 'test-secret')
-    vi.stubEnv('SPOTIFY_REFRESH_TOKEN', 'test-refresh')
+    vi.stubEnv('LASTFM_API_KEY', 'test-key')
+    vi.stubEnv('LASTFM_USERNAME', 'test-user')
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === 'https://redis.example.test') return redisFetch(input, init)
-      if (String(input) === 'https://accounts.spotify.com/api/token') return Response.json({ access_token: 'test-access', expires_in: 3600 })
       upstreamCalls += 1
-      return Response.json({ error: 'upstream failure' }, { status: 500 })
+      return Response.json({ error: 16, message: 'Temporary error' }, { status: 500 })
     }))
     async function coldRequest() {
       vi.resetModules()
