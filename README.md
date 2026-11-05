@@ -8,7 +8,7 @@ This repository contains the source code and content for Kritiraj (Kenny)'s port
 - Responsive layout, touch-friendly controls, and reduced-motion support.
 - Project cards with grid and list views on desktop.
 - GitHub contribution activity for each calendar year from 2026, loaded from a public API. It opens on the current year, January to December.
-- Optional Spotify status for the current track or the most recently played track. The last played track stays visible even when Spotify reports no playback or requests fail.
+- Optional Spotify status for the current track or the most recently played track, read from Last.fm scrobbles. It shows a live indicator while playing and how long ago the last track played, and its tooltip shows the album cover and name. The last played track stays visible even when nothing is playing or requests fail.
 - A visitor count backed by a Vercel function and Upstash Redis. Local development reads the count without incrementing it.
 
 ## Tech stack
@@ -31,7 +31,7 @@ bun install
 bun run dev
 ```
 
-Open the local URL printed by Vite. The default development server shows sample Spotify playback and does not need Spotify credentials.
+Open the local URL printed by Vite. The default development server shows sample Spotify playback and does not need Last.fm credentials.
 
 ## Commands
 
@@ -45,41 +45,40 @@ Open the local URL printed by Vite. The default development server shows sample 
 | `bun run test` | Run unit tests and Playwright browser tests. |
 | `bun run test:unit` | Run the Vitest unit tests. |
 | `bun run test:e2e` | Run the Playwright tests in Chromium. |
-| `bun run spotify:token` | Authorize Spotify and print a refresh token for local use. |
 
 If Playwright has no Chromium binary installed, run `bunx playwright install chromium` once.
 
 ## Spotify setup
 
-Spotify playback is optional. Without credentials, the live status is hidden. The local Vite server uses a sample track unless you opt into the Vercel API.
+The Spotify status is optional. Without credentials, it is hidden. It reads your listening from [Last.fm](https://www.last.fm), which records what you play on Spotify, so it needs no Spotify app or OAuth token. The local Vite server uses sample tracks unless you opt into the Vercel API.
 
-1. Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. Add `http://127.0.0.1:8765/callback` as a redirect URI in the Spotify app settings.
-3. Copy `.env.example` to `.env` and fill in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`.
-4. Run `bun run spotify:token`. Authorize the requested current playback and recent playback access. The command prints `SPOTIFY_REFRESH_TOKEN` in the terminal.
-5. Add that refresh token to `.env`, then set `VITE_SPOTIFY_USE_MOCK=false`.
-6. Run `bun run dev:spotify` to use the `/api/now-playing` endpoint locally.
+1. Create a Last.fm account. In **Settings → Applications**, connect Spotify so your plays are scrobbled.
+2. In **Settings → Privacy**, leave **Hide recent listening information** off. With it on, the API refuses to return your tracks.
+3. Create an API account at [last.fm/api/account/create](https://www.last.fm/api/account/create) and copy the API key.
+4. Copy `.env.example` to `.env`, fill in `LASTFM_API_KEY` and `LASTFM_USERNAME`, then set `VITE_SPOTIFY_USE_MOCK=false`.
+5. Run `bun run dev:spotify` to use the `/api/now-playing` endpoint locally.
 
-The page checks current playback about every two minutes while the tab is visible. It refreshes recently played history at most every 15 minutes. The deployed endpoint stores the latest track, Spotify's cooldown, and a 60-second backoff after upstream failures in shared Redis state, so Vercel instances reuse the same result and honor the same `Retry-After` period. It keeps showing the last known track during errors and rate limits.
+The page checks for the current track about every two minutes while the tab is visible. The deployed endpoint stores the latest track, Last.fm's rate-limit cooldown, and a 60-second backoff after upstream failures in shared Redis state, so Vercel instances reuse the same result and honor the same `Retry-After` period. It keeps showing the last known track during errors and rate limits.
+
+Last.fm doesn't return Spotify track IDs, so the link opens a Spotify search for the song. New tracks can take up to a minute to appear, and a paused track can show as playing for a short while.
 
 ### Environment variables
 
 | Variable | Required for | Description |
 | --- | --- | --- |
-| `SPOTIFY_CLIENT_ID` | Live Spotify status | Spotify app client ID. Server-side only. |
-| `SPOTIFY_CLIENT_SECRET` | Live Spotify status | Spotify app client secret. Server-side only. |
-| `SPOTIFY_REFRESH_TOKEN` | Live Spotify status | Token printed by `bun run spotify:token`. Server-side only. |
+| `LASTFM_API_KEY` | Live Spotify status | Last.fm API key. Server-side only. |
+| `LASTFM_USERNAME` | Live Spotify status | The Last.fm user whose scrobbles are shown. Server-side only. |
 | `UPSTASH_REDIS_REST_URL` | Deployed live Spotify status | Explicit HTTPS REST URL for the shared Upstash Redis database. Set it together with `UPSTASH_REDIS_REST_TOKEN`; otherwise the Vercel Marketplace KV pair is used when available. Server-side only. |
 | `UPSTASH_REDIS_REST_TOKEN` | Deployed live Spotify status | Explicit Upstash Redis REST token. Set it together with `UPSTASH_REDIS_REST_URL`; otherwise the Vercel Marketplace KV pair is used when available. Server-side only. |
 | `VITE_SPOTIFY_USE_MOCK` | Local development | Leave as `true` to show the sample track. Set to `false` to request the local API. |
 
-Vite exposes variables with the `VITE_` prefix to the browser. Keep Spotify credentials and Upstash settings server-side. Never rename them with a `VITE_` prefix.
+Vite exposes variables with the `VITE_` prefix to the browser. Keep the Last.fm and Upstash settings server-side. Never rename them with a `VITE_` prefix.
 
 ## Deployment
 
 The app is set up for Vercel. Import the repository into Vercel, use `bun run build` as the build command, and use `dist` as the output directory. Vercel deploys `api/now-playing.ts` as a serverless function alongside the site.
 
-Before enabling live Spotify status, connect [Upstash Redis through the Vercel Marketplace](https://vercel.com/docs/marketplace-storage). The integration provides `KV_REST_API_URL` and `KV_REST_API_TOKEN` as a pair. If using the explicit `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` names instead, configure both; a partial explicit pair is not used. Then add `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `SPOTIFY_REFRESH_TOKEN` to the same Vercel environments. These settings stay server-side. The rest of the portfolio works without Spotify credentials.
+Before enabling live Spotify status, connect [Upstash Redis through the Vercel Marketplace](https://vercel.com/docs/marketplace-storage). The integration provides `KV_REST_API_URL` and `KV_REST_API_TOKEN` as a pair. If using the explicit `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` names instead, configure both; a partial explicit pair is not used. Then add `LASTFM_API_KEY` and `LASTFM_USERNAME` to the same Vercel environments. These settings stay server-side. The rest of the portfolio works without them.
 
 On a static host without Vercel functions, the frontend can still build and deploy, but live Spotify status needs a server endpoint that implements `/api/now-playing`.
 
@@ -87,7 +86,7 @@ On a static host without Vercel functions, the frontend can still build and depl
 
 - The GitHub calendar requests public contribution data for the configured username from [github-contributions-api.jogruber.de](https://github-contributions-api.jogruber.de/). Change the username in `src/data.ts` when you fork the site.
 - The visitor count is served by `api/visitors.ts`, which keeps one counter in the same Upstash Redis database as the Spotify status. Each browser is counted once (tracked in `localStorage`), and only the production deployment increments it, so local development and previews never do.
-- The Spotify function requests playback data from Spotify's Web API. It keeps credentials on the server and returns only the track title, artist, link, and playback status to the browser.
+- The Spotify status function requests your latest scrobble from the Last.fm API. It keeps the API key on the server and returns only the track title, artist, album, cover image, play time, link, and playback status to the browser. The browser loads cover images from Last.fm's image CDN.
 
 These widgets depend on their services being reachable. The portfolio page remains usable if a service is unavailable.
 
