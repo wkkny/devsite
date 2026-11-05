@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { PiSpotifyLogo } from 'react-icons/pi'
 
 import { Tooltip } from '@/components/tooltip'
 import { formatRelativeTime } from '@/lib/relative-time'
@@ -209,7 +208,6 @@ export function SpotifyStatus() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <PiSpotifyLogo aria-hidden="true" className="size-6 shrink-0" />
             <span className="flex min-w-0 flex-1 items-baseline gap-1">
               <span className="min-w-0 truncate font-medium text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
                 {track.title}
