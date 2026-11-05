@@ -30,7 +30,7 @@ export function isSpotifyTrackUrl(value: unknown): value is string {
 export function isAlbumImageUrl(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    /^https:\/\/lastfm\.freetls\.fastly\.net\/i\/u\/[A-Za-z0-9/._-]+$/.test(value)
+    /^https:\/\/lastfm(-img)?\.freetls\.fastly\.net\/i\/u\/[A-Za-z0-9/._-]+$/.test(value)
   )
 }
 

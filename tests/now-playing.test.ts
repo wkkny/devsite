@@ -350,6 +350,17 @@ describe('isNowPlayingResponse', () => {
     ).toBe(true)
   })
 
+  it('accepts covers from both Last.fm image hosts', () => {
+    for (const host of ['lastfm.freetls.fastly.net', 'lastfm-img.freetls.fastly.net']) {
+      expect(
+        isNowPlayingResponse({
+          status: 'recent',
+          track: { ...track, imageUrl: `https://${host}/i/u/300x300/96b9e27b681c7bcc96d4bfdd2bd1c3c5.png` },
+        }),
+      ).toBe(true)
+    }
+  })
+
   it('rejects covers from other hosts and invalid play times', () => {
     expect(
       isNowPlayingResponse({ status: 'recent', track: { ...track, imageUrl: 'https://example.com/cover.jpg' } }),
