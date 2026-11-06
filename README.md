@@ -1,6 +1,6 @@
 # Kritiraj's portfolio
 
-This repository contains the source code and content for Kritiraj (Kenny)'s portfolio. The site is a responsive React app with a project list, GitHub contribution calendar, theme switcher, visitor count, and an optional live Spotify status.
+This repository contains the source code and content for Kritiraj's portfolio. The site is a responsive React app with a project list, GitHub contribution calendar, theme switcher, visitor count, and an optional live Spotify status.
 
 ## Features
 

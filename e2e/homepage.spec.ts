@@ -36,16 +36,16 @@ test('homepage loads and its main controls work', async ({ page }) => {
 
   await page.goto('/')
 
-  await expect(page.getByRole('heading', { name: 'Kritiraj (Kenny)' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kritiraj' })).toBeVisible()
   await expect(page.getByText('Software Engineer', { exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Bohemian Rhapsody by Queen' })).toHaveAttribute(
     'href',
     'https://open.spotify.com/track/4u7EnebtmKWzUH433cf5Qv',
   )
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible()
-  const workbench = page.getByText('WorkBench', { exact: true }).first()
-  await workbench.scrollIntoViewIfNeeded()
-  await expect(workbench).toBeVisible()
+  const elegant = page.getByText('Elegant', { exact: true }).first()
+  await elegant.scrollIntoViewIfNeeded()
+  await expect(elegant).toBeVisible()
 
   await page.getByRole('button', { name: 'Switch to dark mode' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
@@ -184,7 +184,7 @@ test('production assets load and the page survives an optional banner chunk fail
   await expect.poll(() => profile.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBe(448)
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.png')
   await expect.poll(() => bannerBlocked).toBe(true)
-  await expect(page.getByRole('heading', { name: 'Kritiraj (Kenny)' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kritiraj' })).toBeVisible()
   await page.getByRole('button', { name: 'Switch to dark mode' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
 })
