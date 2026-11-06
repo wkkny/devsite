@@ -48,7 +48,9 @@ export function ProfileSection() {
           animate={reducedMotion ? { opacity: 1 } : { clipPath: 'polygon(0 0, 116% 0, 100% 100%, 0 100%)' }}
           transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : bannerTransition}
         >
-          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(var(--portfolio-blue) 1px, transparent 1px)', backgroundSize: '4px 4px', opacity: 0.25 }} />
+          {/* Holds the banner until the dither chunk loads: a checkerboard of the same 4px cells, so
+              nothing changes shape when the live field takes over. */}
+          <div className="absolute inset-0" style={{ backgroundImage: 'repeating-conic-gradient(var(--portfolio-blue) 0 25%, transparent 0 50%)', backgroundSize: '8px 8px', opacity: 0.16 }} />
           {!reducedMotion && (
             <Suspense fallback={null}>
               <ProfileBanner />

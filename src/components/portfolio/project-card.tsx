@@ -96,20 +96,22 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
         </motion.div>
       </CardHeader>
       <CardContent className={isList ? 'px-0' : 'flex flex-1 flex-col'}>
-        <motion.div layout="position" transition={{ layout: layoutTransition }} className="relative">
-          <AnimatePresence initial={false} mode="popLayout">
-            <motion.ul
-              key={view}
-              {...swapIn}
-              aria-label={`${project.name} technologies`}
-              className={isList ? 'flex flex-wrap gap-1.5' : 'flex flex-wrap gap-1.5 pt-4'}
+        {/* The tags keep their identity across views: each pill slides to its new place in the reflow. */}
+        <motion.ul
+          aria-label={`${project.name} technologies`}
+          className={isList ? 'flex flex-wrap gap-1.5' : 'flex flex-wrap gap-1.5 pt-4'}
+        >
+          {project.stack.map((item, index) => (
+            <motion.li
+              key={item}
+              layout="position"
+              transition={{ layout: reducedMotion ? { duration: 0 } : { ...LAYOUT_SWAP, delay: index * 0.015 } }}
+              className="rounded-[5px] bg-muted px-1.5 py-0.5 type-label text-muted-foreground"
             >
-              {project.stack.map((item) => (
-                <li key={item} className="rounded-[5px] bg-muted px-1.5 py-0.5 type-label text-muted-foreground">{item}</li>
-              ))}
-            </motion.ul>
-          </AnimatePresence>
-        </motion.div>
+              {item}
+            </motion.li>
+          ))}
+        </motion.ul>
       </CardContent>
     </MotionCard>
   )

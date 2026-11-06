@@ -52,6 +52,10 @@ export default function ProfileBanner() {
         hoverDisplacement={9}
         hoverRadius={18}
         hoverBoost={0.12}
+        // A tighter, quicker ring than the default reads as a snap rather than a screensaver.
+        shockwaveSpeed={170}
+        shockwaveWidth={7}
+        shockwaveDuration={1.25}
       />
     </motion.div>
   )
