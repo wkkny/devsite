@@ -179,7 +179,8 @@ export function PixelReveal({ onCovered, onRevealComplete, colors }: { onCovered
           complete()
           return
         }
-        drawFrame(eased, eased)
+        // Glyphs cycle on elapsed milliseconds; the eased progress alone moves too little to change them.
+        drawFrame(eased, elapsed)
         rafId = requestAnimationFrame(tick)
       }
       rafId = requestAnimationFrame(tick)

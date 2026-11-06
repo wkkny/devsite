@@ -33,7 +33,7 @@ export function ProfileSection() {
     }
     return {
       initial: { opacity: 0, y: 10, filter: 'blur(4px)' },
-      animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+      animate: { opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } },
       transition: { duration: 0.5, ease: EASE_OUT, delay: COPY_DELAY + step * COPY_STAGGER },
     }
   }
@@ -65,7 +65,7 @@ export function ProfileSection() {
           width={448}
           height={448}
           initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.96, filter: 'blur(6px)' }}
-          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
           transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.55, ease: EASE_OUT, delay: 0.24 }}
         />
         <div>

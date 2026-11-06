@@ -51,18 +51,26 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
       <CardHeader className={isList ? 'gap-1.5 px-0' : 'gap-3'}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            {/* The list view drops the mark to stay compact; it fades back in with the grid. */}
-            {!isList && (
-              <motion.div layout="position" transition={{ layout: layoutTransition }}>
-                <motion.div {...swapIn}>
+            {/* The list view drops the mark to stay compact: it shrinks away as the title slides into its
+                place, and grows back with the grid. */}
+            <AnimatePresence initial={false} mode="popLayout">
+              {!isList && (
+                <motion.div
+                  key="mark"
+                  layout="position"
+                  transition={{ layout: layoutTransition, duration: 0.2, ease: EASE_OUT }}
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85, filter: 'blur(3px)' }}
+                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85, filter: 'blur(3px)' }}
+                >
                   <Avatar size="lg" className="rounded-lg after:rounded-lg">
                     <AvatarFallback className="rounded-lg bg-muted font-mono text-xs font-medium tracking-tight text-muted-foreground">
                       {project.mark}
                     </AvatarFallback>
                   </Avatar>
                 </motion.div>
-              </motion.div>
-            )}
+              )}
+            </AnimatePresence>
             <motion.div layout="position" transition={{ layout: layoutTransition }}>
               <CardTitle className="font-sans text-lg leading-snug font-medium tracking-[-0.015em]">{project.name}</CardTitle>
             </motion.div>

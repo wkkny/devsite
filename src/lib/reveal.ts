@@ -3,7 +3,7 @@ import type { Variants } from 'motion/react'
 import { EASE_OUT } from '@/lib/ease'
 
 /** When the hero has finished entering, in seconds after navigation start. */
-const HERO_SETTLED = 0.95
+const HERO_SETTLED = 1.05
 
 /**
  * Seconds a section should wait before revealing. A section already on screen at load (tall
@@ -20,6 +20,8 @@ export const revealRise: Variants = {
     opacity: 1,
     y: 0,
     filter: 'blur(0px)',
+    // A leftover filter keeps a compositing layer and clips hover shadows, so clear it once settled.
+    transitionEnd: { filter: 'none' },
     transition: { duration: 0.55, ease: EASE_OUT, delay: heroHold() },
   }),
 }
@@ -33,7 +35,7 @@ export const revealStagger: Variants = {
 /** One staggered child: a card or row. */
 export const revealItem: Variants = {
   hidden: { opacity: 0, y: 16, filter: 'blur(4px)' },
-  shown: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.55, ease: EASE_OUT } },
+  shown: { opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' }, transition: { duration: 0.55, ease: EASE_OUT } },
 }
 
 /** Reduced motion: a short fade, no movement. */
