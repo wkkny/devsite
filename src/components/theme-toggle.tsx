@@ -21,7 +21,8 @@ function ThemeToggle({
 
   function handleToggle(event: Parameters<NonNullable<typeof onClick>>[0]) {
     onClick?.(event)
-    if (!toggleTheme()) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    if (!toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })) return
 
     void playSound(click8bitSound.dataUri, {
       volume: 0.25,

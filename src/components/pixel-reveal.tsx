@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 
-import { EASE_IN_OUT } from '@/lib/ease'
+import { cubicBezier, EASE_IN_OUT } from '@/lib/ease'
 
 const POOL: [string, number][] = [
   ['@', 1], ['8', 0.97], ['0', 0.94], ['#', 0.85], ['4', 0.78],
@@ -17,20 +17,6 @@ export type RevealColors = {
   background: string
   foreground: string
   blue: string
-}
-
-function cubicBezier(x1: number, y1: number, x2: number, y2: number, t: number): number {
-  if (t <= 0) return 0
-  if (t >= 1) return 1
-  let x = t
-  for (let i = 0; i < 8; i++) {
-    const currentX = 3 * (1 - x) * (1 - x) * x * x1 + 3 * (1 - x) * x * x * x2 + x * x * x
-    const dx = 3 * (1 - x) * (1 - x) * x1 + 6 * (1 - x) * x * (x2 - x1) + 3 * x * x * (1 - x1)
-    if (Math.abs(dx) < 1e-6) break
-    x -= (currentX - t) / dx
-    x = Math.max(0, Math.min(1, x))
-  }
-  return 3 * (1 - x) * (1 - x) * x * y1 + 3 * (1 - x) * x * x * y2 + x * x * x
 }
 
 function releaseCanvas(canvas: HTMLCanvasElement) {

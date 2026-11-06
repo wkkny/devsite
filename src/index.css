@@ -26,6 +26,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The theme wave drives its own clip on the new snapshot; turn off the default cross-fade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 /*
  * The site's one press language: colors settle on the expo-out curve, and a press dips the
  * control to 95% quickly (70ms) and lets it spring back on release (220ms).

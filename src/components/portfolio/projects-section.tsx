@@ -95,10 +95,12 @@ export function ProjectsSection() {
           ) : null}
         </div>
       </motion.div>
-      {/* Cards rise in one after another the first time the section is seen. */}
+      {/* Cards rise in one after another the first time the section is seen. In the list each row
+          carries its own top rule, so the dividers travel with the rows. */}
       <motion.div
         variants={reducedMotion ? revealFade : revealStagger}
-        className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col divide-y divide-border'}
+        data-view={visibleProjectView}
+        className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col [&>*+*>[data-slot=card]]:border-t [&>*+*>[data-slot=card]]:border-border'}
       >
         {projects.map((project) => (
           <motion.div key={project.name} variants={reducedMotion ? undefined : revealItem} className={visibleProjectView === 'grid' ? 'h-full' : undefined}>

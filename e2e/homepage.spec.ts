@@ -51,7 +51,7 @@ test('homepage loads and its main controls work', async ({ page }) => {
   await expect(page.locator('html')).toHaveClass(/dark/)
 
   await page.getByRole('button', { name: 'List view' }).click()
-  await expect(page.locator('#projects .flex.flex-col.divide-y')).toBeVisible()
+  await expect(page.locator('#projects [data-view="list"]')).toBeVisible()
 })
 
 test('calendar has one tab stop and supports keyboard navigation and selection', async ({ page }) => {

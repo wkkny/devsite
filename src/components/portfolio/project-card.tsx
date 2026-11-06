@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FiArrowUpRight } from 'react-icons/fi'
@@ -22,12 +22,14 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
   const layoutTransition = reducedMotion ? { duration: 0 } : LAYOUT_SWAP
 
   // The card, mark, title and link keep their shape between views, so they glide to their new places.
-  // The description and tags rewrap, so they fade in at their new width once the card lands.
+  // The description and tags rewrap, so the old copy fades out at once and the new copy fades in at
+  // its new width while the card is still gliding: the card is never empty.
   const swapIn = animateSwap
     ? {
-        initial: reducedMotion ? { opacity: 0 } : { opacity: 0, transform: 'translate3d(0, 6px, 0)' },
-        animate: reducedMotion ? { opacity: 1 } : { opacity: 1, transform: 'translate3d(0, 0, 0)' },
-        transition: reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.28, ease: EASE_OUT, delay: 0.22 },
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0, transition: { duration: 0.1, ease: EASE_OUT } },
+        transition: reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.24, ease: EASE_OUT, delay: 0.1 },
       }
     : { initial: false as const }
 
@@ -39,10 +41,11 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
       transition={{ layout: layoutTransition, borderRadius: layoutTransition }}
       className={
         isList
-          ? 'arrow-host gap-3 overflow-visible bg-transparent py-4 ring-0'
+          ? 'arrow-host gap-3 overflow-visible bg-transparent py-4 ring-0 transition-[background-color,box-shadow] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]'
           : // The card answers the cursor: a second ring layered on the first firms the edge as a soft shadow lifts it,
             // both in one box-shadow so they ease together, and its GitHub arrow slides out.
-            'arrow-host h-full transition-[box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)]'
+            // The frame's fill and ring dissolve over the same 400ms as the glide when the view changes.
+            'arrow-host h-full transition-[background-color,box-shadow] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] hover:duration-200 pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)]'
       }
     >
       <CardHeader className={isList ? 'gap-1.5 px-0' : 'gap-3'}>
@@ -76,24 +79,28 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
             <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3" />
           </motion.a>
         </div>
-        <motion.div layout="position" transition={{ layout: layoutTransition }}>
-          <motion.p key={view} {...swapIn} className="leading-6 text-pretty text-muted-foreground">
-            {project.description}
-          </motion.p>
+        <motion.div layout="position" transition={{ layout: layoutTransition }} className="relative">
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.p key={view} {...swapIn} className="leading-6 text-pretty text-muted-foreground">
+              {project.description}
+            </motion.p>
+          </AnimatePresence>
         </motion.div>
       </CardHeader>
       <CardContent className={isList ? 'px-0' : 'flex flex-1 flex-col'}>
-        <motion.div layout="position" transition={{ layout: layoutTransition }}>
-          <motion.ul
-            key={view}
-            {...swapIn}
-            aria-label={`${project.name} technologies`}
-            className={isList ? 'flex flex-wrap gap-1.5' : 'flex flex-wrap gap-1.5 pt-4'}
-          >
-            {project.stack.map((item) => (
-              <li key={item} className="rounded-[5px] bg-muted px-1.5 py-0.5 type-label text-muted-foreground">{item}</li>
-            ))}
-          </motion.ul>
+        <motion.div layout="position" transition={{ layout: layoutTransition }} className="relative">
+          <AnimatePresence initial={false} mode="popLayout">
+            <motion.ul
+              key={view}
+              {...swapIn}
+              aria-label={`${project.name} technologies`}
+              className={isList ? 'flex flex-wrap gap-1.5' : 'flex flex-wrap gap-1.5 pt-4'}
+            >
+              {project.stack.map((item) => (
+                <li key={item} className="rounded-[5px] bg-muted px-1.5 py-0.5 type-label text-muted-foreground">{item}</li>
+              ))}
+            </motion.ul>
+          </AnimatePresence>
         </motion.div>
       </CardContent>
     </MotionCard>

@@ -5,7 +5,8 @@ type Theme = 'light' | 'dark'
 type ThemeContextValue = {
   theme: Theme
   isTransitioning: boolean
-  toggleTheme: () => boolean
+  /** Starts the switch. `origin` is where the new theme grows from, in viewport px. */
+  toggleTheme: (origin?: { x: number; y: number }) => boolean
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
