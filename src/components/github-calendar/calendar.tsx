@@ -259,7 +259,10 @@ export function ContributionCalendar({
           aria-describedby={tipCell?.index === cell.index ? tooltipId : undefined}
           className={cx(
             // Data that lands after the pop-in washes the colors in along the same diagonal wave.
-            "block aspect-square w-full rounded-[3px] transition-[scale,opacity] duration-150 ease-out outline-none",
+            // Same feel as the site's other controls: up on the expo-out curve, a quick dip on press,
+            // and a springy release.
+            "block aspect-square w-full rounded-[3px] transition-[scale,opacity] duration-220 ease-[cubic-bezier(0.34,1.56,0.64,1)] outline-none",
+            "motion-safe:pointer-fine:hover:duration-180 motion-safe:pointer-fine:hover:ease-[cubic-bezier(0.16,1,0.3,1)] motion-safe:active:duration-70!",
             "motion-safe:in-data-wash:[transition:scale_150ms_ease-out,opacity_150ms_ease-out,background-color_520ms_cubic-bezier(0.16,1,0.3,1)_var(--wave)]",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
             "hover:relative hover:z-10 motion-safe:pointer-fine:hover:scale-125 motion-safe:active:scale-110!",

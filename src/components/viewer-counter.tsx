@@ -136,12 +136,13 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
       >
         <FiEye aria-hidden="true" className="size-3.5" />
         {viewers === null || !startAnimation ? (
-          <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">—</span>
+          <span aria-hidden="true" className="inline-flex h-[1.1em] min-w-[3ch] items-center justify-end leading-none tabular-nums">—</span>
         ) : (
           // The number rolls up into place as it starts counting.
           <motion.span
             aria-hidden="true"
-            className="inline-flex h-[1.1em] items-center leading-none tabular-nums"
+            // Holds three digits of room, so the controls beside it don't shift when the count lands.
+            className="inline-flex h-[1.1em] min-w-[3ch] items-center justify-end leading-none tabular-nums"
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4, filter: 'blur(2px)' }}
             animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
             transition={{ duration: 0.22, ease: EASE_OUT }}

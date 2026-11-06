@@ -102,19 +102,20 @@ export function ProjectsSection() {
         </div>
       </motion.div>
       {/* Cards rise in one after another the first time the section is seen. In the list each row
-          carries its own top rule, so the dividers travel with the rows. */}
+          carries its own top rule, so the dividers travel with the rows and draw in once they land. */}
       <motion.div
         variants={reducedMotion ? revealFade : revealStagger}
         data-view={visibleProjectView}
         onPointerLeave={() => setHighlightedProject(null)}
-        className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'isolate flex flex-col [&>*+*>[data-slot=card]]:border-t [&>*+*>[data-slot=card]]:border-border'}
+        className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'isolate flex flex-col'}
       >
-        {projects.map((project) => (
+        {projects.map((project, index) => (
           <motion.div key={project.name} variants={reducedMotion ? undefined : revealItem} className={visibleProjectView === 'grid' ? 'h-full' : undefined}>
             <ProjectCard
               project={project}
               view={visibleProjectView}
               animateSwap={hasSwitchedView}
+              divided={index > 0}
               highlighted={highlightedProject === project.name}
               onHighlight={() => setHighlightedProject(project.name)}
             />

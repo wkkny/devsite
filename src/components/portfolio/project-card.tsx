@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FiArrowUpRight } from 'react-icons/fi'
 import type { PortfolioProject } from '@/data'
 import { EASE_OUT, LAYOUT_SWAP } from '@/lib/ease'
+import { cn } from 'cn'
 
 export type ProjectView = 'grid' | 'list'
 
@@ -13,6 +14,8 @@ type ProjectCardProps = {
   view: ProjectView
   /** Fade the rewrapped text in after a view switch. Off for the first render. */
   animateSwap: boolean
+  /** List view: draw a rule above this row. */
+  divided?: boolean
   /** List view: this row holds the shared hover highlight. */
   highlighted?: boolean
   /** List view: the pointer moved onto this row. */
@@ -23,7 +26,7 @@ const MotionCard = motion.create(Card)
 
 const CARD_SPRING = { type: 'spring', stiffness: 520, damping: 34, mass: 0.6 } as const
 
-export function ProjectCard({ project, view, animateSwap, highlighted = false, onHighlight }: ProjectCardProps) {
+export function ProjectCard({ project, view, animateSwap, divided = false, highlighted = false, onHighlight }: ProjectCardProps) {
   const reducedMotion = useReducedMotion()
   const isList = view === 'list'
   const layoutTransition = reducedMotion ? { duration: 0 } : LAYOUT_SWAP
@@ -56,11 +59,17 @@ export function ProjectCard({ project, view, animateSwap, highlighted = false, o
       className={
         // The whole card is the link (see the title), so it takes the keyboard focus ring.
         isList
-          ? 'relative gap-3 overflow-visible bg-transparent py-4 ring-0 transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-4 has-[a:focus-visible]:ring-offset-background'
+          ? // The row rule is always there but transparent; it takes its color 250ms in, once the rows
+            // have nearly landed, so no line rides on a card that is still moving.
+            cn(
+              'relative gap-3 overflow-visible border-t border-transparent bg-transparent py-4 ring-0 transition-[background-color,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+              'has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-4 has-[a:focus-visible]:ring-offset-background',
+              divided && 'border-t-border [transition-delay:0ms,0ms,250ms]',
+            )
           : // The card answers the cursor: a second ring layered on the first firms the edge as a soft shadow lifts it,
             // both in one box-shadow so they ease together. The frame's fill and ring dissolve in 200ms when the
             // view changes, well inside the 400ms glide, so no ghost edge trails the moving card.
-            'relative h-full transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring'
+            'relative h-full border-t border-transparent transition-[background-color,box-shadow,border-color] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring'
       }
     >
       {/* List rows share one soft highlight that glides from row to row, like the tooltips do. It sits
