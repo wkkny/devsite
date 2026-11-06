@@ -95,6 +95,11 @@ function ThemeProvider({ children }: { children: ReactNode }) {
     const radius = waveRadius(origin)
     void transition.ready
       .then(() => {
+        // Pressed again before the wave could start: skip straight to the return wave.
+        if (current.queued) {
+          transition.skipTransition()
+          return
+        }
         clock.animation = document.documentElement.animate(
           { clipPath: [`circle(0px at ${origin.x}px ${origin.y}px)`, `circle(${radius}px at ${origin.x}px ${origin.y}px)`] },
           { duration: WAVE_DURATION, easing: `cubic-bezier(${WAVE_EASE.join(', ')})`, pseudoElement: '::view-transition-new(root)', fill: 'forwards' },

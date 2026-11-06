@@ -189,8 +189,18 @@ export function PixelReveal({ onCovered, onRevealComplete, colors, origin }: { o
     }
 
     begin()
+    // Laid out for this viewport: if it resizes mid-cover, finish the switch at once.
+    const land = () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+      covered()
+      releaseCanvas(canvas)
+      complete()
+    }
+    window.addEventListener('resize', land)
 
     return () => {
+      window.removeEventListener('resize', land)
       cancelled = true
       cancelAnimationFrame(rafId)
       releaseCanvas(canvas)

@@ -10,6 +10,8 @@ const HERO_SETTLED = 1.05
  * phones) waits for the hero to finish first; one revealed by scrolling goes straight away.
  */
 export function heroHold() {
+  // Reloaded or deep-linked further down the page: the hero isn't in view, so don't wait for it.
+  if (window.scrollY > 120) return 0
   return Math.max(0, HERO_SETTLED - performance.now() / 1000)
 }
 

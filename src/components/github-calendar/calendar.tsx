@@ -134,9 +134,15 @@ export function ContributionCalendar({
   // Squares print in when a new range mounts: a sweep from left to right in which each square
   // steps 0 -> 50% -> 100% at its Bayer threshold, so the grid fills in the banner's ordered-dither
   // pattern. Held until the grid is on screen; data arriving later does not replay it.
+  const revealedRef = useRef(false);
   useLayoutEffect(() => {
     const grid = gridRef.current;
-    if (!grid || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const reduceQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    revealedRef.current = false;
+    if (!grid || reduceQuery.matches) {
+      revealedRef.current = true;
+      return;
+    }
     const animations = Array.from(grid.querySelectorAll<HTMLElement>("[data-square]"), (square) => {
       const animation = square.animate([{ opacity: 0 }, { opacity: 0.5 }, { opacity: 1 }], {
         duration: 140,
@@ -144,27 +150,43 @@ export function ContributionCalendar({
         easing: "steps(3, jump-none)",
         fill: "backwards",
       });
+      // Once printed, drop the animation so 365 finished ones aren't kept on the squares.
+      animation.onfinish = () => animation.cancel();
       animation.pause();
       return animation;
     });
-    const play = () => animations.forEach((animation) => animation.play());
-    if (typeof IntersectionObserver === "undefined") {
-      play();
-      return () => animations.forEach((animation) => animation.cancel());
+    const cancelAll = () => animations.forEach((animation) => animation.cancel());
+    let observer: IntersectionObserver | null = null;
+    const play = () => {
+      if (revealedRef.current) return;
+      revealedRef.current = true;
+      observer?.disconnect();
+      animations.forEach((animation) => animation.play());
+    };
+    // Keyboard focus can reach the grid before it scrolls far enough in: never leave a focused
+    // square invisible. Turning on reduced motion mid-way shows everything at once.
+    const onFocus = () => {
+      if (revealedRef.current) return;
+      revealedRef.current = true;
+      observer?.disconnect();
+      cancelAll();
+    };
+    const onReduce = () => {
+      if (reduceQuery.matches) onFocus();
+    };
+    grid.addEventListener("focusin", onFocus);
+    reduceQuery.addEventListener("change", onReduce);
+    if (typeof IntersectionObserver === "undefined") play();
+    else {
+      observer = new IntersectionObserver((entries) => entries.some((entry) => entry.isIntersecting) && play(), { threshold: 0.35 });
+      // Watch the scroller: on phones the grid is wider than the screen and never shows 35% of itself.
+      observer.observe(scrollerRef.current ?? grid);
     }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        observer.disconnect();
-        play();
-      },
-      { threshold: 0.35 },
-    );
-    // Watch the scroller: on phones the grid is wider than the screen and never shows 35% of itself.
-    observer.observe(scrollerRef.current ?? grid);
     return () => {
-      observer.disconnect();
-      animations.forEach((animation) => animation.cancel());
+      observer?.disconnect();
+      grid.removeEventListener("focusin", onFocus);
+      reduceQuery.removeEventListener("change", onReduce);
+      cancelAll();
     };
   }, [startTime, endTime]);
 
@@ -174,6 +196,8 @@ export function ContributionCalendar({
     const grid = gridRef.current;
     if (!grid || hadDays.current || days.length === 0) return;
     hadDays.current = true;
+    // Data that lands before the grid prints in is simply printed in its colors; no wash needed.
+    if (!revealedRef.current) return;
     grid.dataset.wash = "";
     const timer = window.setTimeout(() => delete grid.dataset.wash, 1600);
     return () => window.clearTimeout(timer);

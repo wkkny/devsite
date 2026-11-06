@@ -85,20 +85,18 @@ function hash(x: number, y: number, z: number) {
 const smooth = (t: number) => t * t * (3 - 2 * t)
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
+// At module scope so the 2D fallback allocates nothing per pixel.
+function plane(ix: number, iy: number, iz: number, fx: number, fy: number) {
+  return lerp(lerp(hash(ix, iy, iz), hash(ix + 1, iy, iz), fx), lerp(hash(ix, iy + 1, iz), hash(ix + 1, iy + 1, iz), fx), fy)
+}
+
 function noise(x: number, y: number, z: number) {
   const ix = Math.floor(x)
   const iy = Math.floor(y)
   const iz = Math.floor(z)
   const fx = smooth(x - ix)
   const fy = smooth(y - iy)
-  const fz = smooth(z - iz)
-  const plane = (dz: number) =>
-    lerp(
-      lerp(hash(ix, iy, iz + dz), hash(ix + 1, iy, iz + dz), fx),
-      lerp(hash(ix, iy + 1, iz + dz), hash(ix + 1, iy + 1, iz + dz), fx),
-      fy,
-    )
-  return lerp(plane(0), plane(1), fz)
+  return lerp(plane(ix, iy, iz, fx, fy), plane(ix, iy, iz + 1, fx, fy), smooth(z - iz))
 }
 
 let probe: CanvasRenderingContext2D | null = null
@@ -174,6 +172,14 @@ export function DitherCanvas({
     })
     resizeObserver.observe(canvas)
     rendererRef.current ??= createDitherRenderer(canvas)
+    // Mobile browsers can drop the GPU context (e.g. on tab restore); rebuild it when it returns.
+    const onLost = (event: Event) => event.preventDefault()
+    const onRestored = () => {
+      rendererRef.current = createDitherRenderer(canvas)
+      lastDrawRef.current = -Infinity
+    }
+    canvas.addEventListener('webglcontextlost', onLost)
+    canvas.addEventListener('webglcontextrestored', onRestored)
     const visibilityObserver = new IntersectionObserver(([entry]) => {
       visibleRef.current = entry.isIntersecting
     })
@@ -185,6 +191,8 @@ export function DitherCanvas({
     })
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] })
     return () => {
+      canvas.removeEventListener('webglcontextlost', onLost)
+      canvas.removeEventListener('webglcontextrestored', onRestored)
       resizeObserver.disconnect()
       visibilityObserver.disconnect()
       themeObserver.disconnect()
