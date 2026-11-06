@@ -40,12 +40,13 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
       animate={{ borderRadius: isList ? 0 : 12 }}
       transition={{ layout: layoutTransition, borderRadius: layoutTransition }}
       className={
+        // The whole card is the link (see the title), so it takes the keyboard focus ring.
         isList
-          ? 'arrow-host gap-3 overflow-visible bg-transparent py-4 ring-0 transition-[background-color,box-shadow] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]'
+          ? 'relative gap-3 overflow-visible bg-transparent py-4 ring-0 transition-[background-color,box-shadow] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-4 has-[a:focus-visible]:ring-offset-background'
           : // The card answers the cursor: a second ring layered on the first firms the edge as a soft shadow lifts it,
-            // both in one box-shadow so they ease together, and its GitHub arrow slides out.
-            // The frame's fill and ring dissolve over the same 400ms as the glide when the view changes.
-            'arrow-host h-full transition-[background-color,box-shadow] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] hover:duration-200 pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)]'
+            // both in one box-shadow so they ease together. The frame's fill and ring dissolve over the same 400ms as
+            // the glide when the view changes.
+            'relative h-full transition-[background-color,box-shadow] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] hover:duration-200 pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring'
       }
     >
       <CardHeader className={isList ? 'gap-1.5 px-0' : 'gap-3'}>
@@ -72,20 +73,22 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
               )}
             </AnimatePresence>
             <motion.div layout="position" transition={{ layout: layoutTransition }}>
-              <CardTitle className="font-sans text-lg leading-snug font-medium tracking-[-0.015em]">{project.name}</CardTitle>
+              <CardTitle className="font-sans text-lg leading-snug font-medium tracking-[-0.015em]">
+                {/* The title is the card's one link; its ::after stretches over the whole card, so anywhere
+                    on it opens the repo. Hovering draws the title's underline and slides the arrow out. */}
+                <a
+                  className="project-link inline-flex items-center gap-1.5 outline-none after:absolute after:inset-0 after:z-10 after:rounded-[inherit] after:content-['']"
+                  href={project.href}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="project-link-label">{project.name}</span>
+                  <span className="sr-only"> on GitHub</span>
+                  <FiArrowUpRight aria-hidden="true" className="project-link-icon size-4 text-muted-foreground" />
+                </a>
+              </CardTitle>
             </motion.div>
           </div>
-          <motion.a
-            layout="position"
-            transition={{ layout: layoutTransition }}
-            className="animated-arrow-link inline-flex shrink-0 items-center gap-1 type-label text-muted-foreground"
-            href={project.href}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <span className="animated-arrow-link-label relative">GitHub</span>
-            <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3" />
-          </motion.a>
         </div>
         <motion.div layout="position" transition={{ layout: layoutTransition }} className="relative">
           <AnimatePresence initial={false} mode="popLayout">

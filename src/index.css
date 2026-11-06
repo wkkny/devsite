@@ -129,6 +129,59 @@ a[href],
   text-align: left;
 }
 
+/*
+ * Project cards: the whole card is the link. On hover (or keyboard focus) the title's underline
+ * draws in from the left and the arrow slides out along its own diagonal. Touch shows the arrow.
+ */
+.project-link-label {
+  background: linear-gradient(currentColor, currentColor) left bottom / 0% 1px no-repeat;
+  transition: background-size 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.project-link-icon {
+  opacity: 0;
+  transform: translate3d(-4px, 4px, 0);
+  transition:
+    opacity 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-slot="card"]:hover .project-link-label {
+    background-size: 100% 1px;
+  }
+
+  [data-slot="card"]:hover .project-link-icon {
+    opacity: 1;
+    transform: none;
+    color: var(--portfolio-blue);
+  }
+}
+
+.project-link:focus-visible .project-link-label {
+  background-size: 100% 1px;
+}
+
+.project-link:focus-visible .project-link-icon {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: none) {
+  .project-link-icon {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-link-label,
+  .project-link-icon {
+    transition: none;
+  }
+}
+
 .animated-arrow-link {
   transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -164,18 +217,15 @@ a[href],
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .animated-arrow-link:hover,
-  .arrow-host:hover .animated-arrow-link {
+  .animated-arrow-link:hover {
     color: var(--portfolio-blue);
   }
 
-  .animated-arrow-link:hover .animated-arrow-link-label::after,
-  .arrow-host:hover .animated-arrow-link-label::after {
+  .animated-arrow-link:hover .animated-arrow-link-label::after {
     clip-path: inset(0);
   }
 
-  .animated-arrow-link:hover .animated-arrow-link-icon,
-  .arrow-host:hover .animated-arrow-link-icon {
+  .animated-arrow-link:hover .animated-arrow-link-icon {
     opacity: 1;
     transform: translate3d(0, 0, 0);
   }
