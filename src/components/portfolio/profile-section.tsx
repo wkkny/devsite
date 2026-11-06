@@ -90,7 +90,7 @@ export function ProfileSection() {
             >
               <ViewerCounter startAnimation={profileContentEntered} />
               <span aria-hidden="true" className="h-5 w-px bg-border" />
-              <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} side="bottom">
+              <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} side="bottom" gap={6}>
                 <ThemeToggle />
               </Tooltip>
             </motion.div>

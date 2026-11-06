@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 
 import { Tooltip } from '@/components/tooltip'
+import { EASE_OUT } from '@/lib/ease'
 import { formatRelativeTime } from '@/lib/relative-time'
 import {
   isNowPlayingResponse,
@@ -175,6 +177,7 @@ export function SpotifyStatus() {
     }
   }, [updateNow])
 
+  const reducedMotion = useReducedMotion()
   const track = playback?.track ?? lastTrack
   const playing = playback?.status === 'playing'
   const imageUrl = track?.imageUrl
@@ -203,25 +206,35 @@ export function SpotifyStatus() {
           className={imageUrl ? 'p-2' : undefined}
         >
           <a
-            className="group flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
+            className="group relative flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
             href={track.spotifyUrl}
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span className="flex min-w-0 flex-1 items-baseline gap-1">
-              <span className="min-w-0 truncate text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
-                {track.title}
-              </span>
-              <span className="min-w-0 shrink-[2] overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
-                by {track.artist}
-              </span>
-              {!playing && track.playedAt !== undefined && (
-                <span className="shrink-0 text-nowrap tabular-nums">
-                  <span aria-hidden="true">· </span>
-                  {formatRelativeTime(track.playedAt, now)}
-                </span>
-              )}
-            </span>
+            {/* A new track rolls in from below while the last one lifts away. */}
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.span
+                key={`${track.title}\u0000${track.artist}`}
+                className="flex min-w-0 flex-1 items-baseline gap-1"
+                initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 6, filter: 'blur(3px)' }}
+                animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(3px)' }}
+                transition={{ duration: 0.26, ease: EASE_OUT }}
+              >
+                  <span className="min-w-0 truncate text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
+                    {track.title}
+                  </span>
+                  <span className="min-w-0 shrink-[2] overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
+                    by {track.artist}
+                  </span>
+                  {!playing && track.playedAt !== undefined && (
+                    <span className="shrink-0 text-nowrap tabular-nums">
+                      <span aria-hidden="true">· </span>
+                      {formatRelativeTime(track.playedAt, now)}
+                    </span>
+                  )}
+              </motion.span>
+            </AnimatePresence>
             {playing && (
               <span aria-hidden="true" className="now-playing-bars">
                 <span />

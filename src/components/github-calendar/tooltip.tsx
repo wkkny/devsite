@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 /** Space between the tooltip and its square, and between the tooltip and the viewport edge. */
@@ -30,6 +30,16 @@ export function CalendarTooltip({
   const [content, setContent] = useState<ReactNode>(children);
   if (open && content !== children) setContent(children);
   const visible = open && position !== null;
+  // Once open, it glides from square to square instead of jumping. Opening places it directly.
+  const [glide, setGlide] = useState(false);
+  useEffect(() => {
+    if (!visible || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const frame = requestAnimationFrame(() => setGlide(true));
+    return () => {
+      cancelAnimationFrame(frame);
+      setGlide(false);
+    };
+  }, [visible]);
 
   useLayoutEffect(() => {
     const anchor = getAnchor();
@@ -64,9 +74,10 @@ export function CalendarTooltip({
     <span
       className="pointer-events-none fixed z-50"
       style={{
-        top: position?.top ?? 0,
-        left: position?.left ?? 0,
-        transform: "translate(-50%, -100%)",
+        top: 0,
+        left: 0,
+        transform: `translate3d(${position?.left ?? 0}px, ${position?.top ?? 0}px, 0) translate(-50%, -100%)`,
+        transition: glide ? "transform 110ms cubic-bezier(0.16, 1, 0.3, 1)" : undefined,
         // its natural width, not the space left between `left` and the viewport edge
         width: "max-content",
         visibility: position ? undefined : "hidden",

@@ -122,9 +122,9 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
   }, [])
 
   return (
-    <Tooltip content="Visitors" side="bottom" gap={2} disabled={viewers === null || !startAnimation}>
+    <Tooltip content="Visitors" side="bottom" gap={6} disabled={viewers === null || !startAnimation}>
       <output
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 px-2 type-label leading-none text-muted-foreground"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 type-label leading-none text-muted-foreground transition-colors duration-150 hover:text-foreground"
         aria-label={
           viewers !== null
             ? `${viewers.toLocaleString()} visitors`
