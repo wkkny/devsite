@@ -39,8 +39,9 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
       transition={{ layout: layoutTransition, borderRadius: layoutTransition }}
       className={
         isList
-          ? 'gap-3 overflow-visible bg-transparent py-4 ring-0 transition-[background-color,box-shadow] duration-300'
-          : 'h-full transition-[background-color,box-shadow] duration-300'
+          ? 'arrow-host gap-3 overflow-visible bg-transparent py-4 ring-0'
+          : // The card answers the cursor: the ring firms up, a soft shadow lifts it, and its GitHub arrow turns.
+            'arrow-host h-full transition-[box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-fine:hover:shadow-[0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)] pointer-fine:hover:ring-foreground/20'
       }
     >
       <CardHeader className={isList ? 'gap-1.5 px-0' : 'gap-3'}>

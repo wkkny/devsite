@@ -8,7 +8,9 @@ import { Tooltip as TooltipRoot, TooltipContent, TooltipTrigger } from '@/compon
 const SITE_TOOLTIP = cn(
   'max-w-[calc(100vw-16px)] rounded-lg border border-border bg-background px-2.5 py-1 font-medium text-foreground shadow-lg',
   '[&>:last-child]:hidden',
-  'blur-in-[5px] blur-out-[3px] motion-reduce:animate-none!',
+  // 4px of travel and 150ms in, 100ms out: the same feel as the calendar's tooltip.
+  'data-[side=top]:slide-in-from-bottom-1 data-[side=bottom]:slide-in-from-top-1 duration-150 data-closed:duration-100',
+  'blur-in-[3px] blur-out-[2px] motion-reduce:animate-none!',
 )
 
 type TooltipProps = {

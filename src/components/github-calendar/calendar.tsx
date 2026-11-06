@@ -234,7 +234,7 @@ export function ContributionCalendar({
             "block aspect-square w-full rounded-[3px] transition-[scale,opacity] duration-150 ease-out outline-none",
             "motion-safe:in-data-wash:[transition:scale_150ms_ease-out,opacity_150ms_ease-out,background-color_520ms_cubic-bezier(0.16,1,0.3,1)_var(--wave)]",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-            "hover:relative hover:z-10 motion-safe:pointer-fine:hover:scale-125",
+            "hover:relative hover:z-10 motion-safe:pointer-fine:hover:scale-125 motion-safe:active:scale-110!",
             selected && "ring-2 ring-foreground ring-offset-1 ring-offset-background",
             dimmed && "opacity-25",
           )}

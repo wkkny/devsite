@@ -6,6 +6,7 @@ import { Tooltip } from '@/components/tooltip'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ProjectCard, type ProjectView } from '@/components/portfolio/project-card'
 import { portfolioOwner, projects } from '@/data'
+import { LAYOUT_SWAP } from '@/lib/ease'
 import { revealFade, revealItem, revealRise, revealStagger, revealViewport } from '@/lib/reveal'
 
 const desktopProjectsQuery = '(min-width: 768px)'
@@ -18,6 +19,21 @@ function subscribeToDesktopProjects(onChange: () => void) {
 
 function isDesktopProjectsWidth() {
   return window.matchMedia(desktopProjectsQuery).matches
+}
+
+// The pressed fill is drawn by ViewPill instead, so it can slide between the two buttons.
+const VIEW_ITEM = 'relative isolate aria-pressed:bg-transparent data-[pressed]:bg-transparent'
+
+// Slides to the chosen view on the same timing as the cards morphing below it.
+function ViewPill({ reducedMotion }: { reducedMotion: boolean | null }) {
+  return (
+    <motion.span
+      layoutId="project-view-pill"
+      aria-hidden="true"
+      className="absolute inset-0 -z-10 rounded-[inherit] bg-muted"
+      transition={reducedMotion ? { duration: 0 } : LAYOUT_SWAP}
+    />
+  )
 }
 
 export function ProjectsSection() {
@@ -64,12 +80,14 @@ export function ProjectsSection() {
               size="sm"
             >
               <Tooltip content="Grid view">
-                <ToggleGroupItem value="grid" aria-label="Grid view">
+                <ToggleGroupItem value="grid" aria-label="Grid view" className={VIEW_ITEM}>
+                  {projectView === 'grid' && <ViewPill reducedMotion={reducedMotion} />}
                   <FiGrid aria-hidden="true" />
                 </ToggleGroupItem>
               </Tooltip>
               <Tooltip content="List view">
-                <ToggleGroupItem value="list" aria-label="List view">
+                <ToggleGroupItem value="list" aria-label="List view" className={VIEW_ITEM}>
+                  {projectView === 'list' && <ViewPill reducedMotion={reducedMotion} />}
                   <FiList aria-hidden="true" />
                 </ToggleGroupItem>
               </Tooltip>
