@@ -4,6 +4,7 @@ import { flushSync } from 'react-dom'
 import { ThemeContext, type Theme } from '@/components/theme-context'
 import { PixelReveal, type RevealColors } from '@/components/pixel-reveal'
 import { ThemeWave } from '@/components/theme-wave'
+import { sendDitherPulse } from '@/lib/dither-pulse'
 import { WAVE_DURATION, WAVE_EASE, waveRadius, type WaveClock, type WaveOrigin } from '@/lib/theme-wave'
 
 // Matches --background in index.css, so the browser UI follows the site theme.
@@ -93,6 +94,9 @@ function ThemeProvider({ children }: { children: ReactNode }) {
         )
         // With a fringe, its frame loop steps the clip; without one the clip runs by itself.
         if (fringe) clock.animation.pause()
+        // The banner feels the wave pass: a ring leaves the toggle at the circle's pace and shoves
+        // the dither field outward as the new theme sweeps through it.
+        sendDitherPulse({ clientX: origin.x, clientY: origin.y, speed: radius / (WAVE_DURATION / 1000), strength: 10, boost: 0.4, duration: 0.9 })
       })
       .catch(() => undefined)
     void transition.finished.finally(() => {

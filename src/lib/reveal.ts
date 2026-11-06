@@ -32,10 +32,10 @@ export const revealStagger: Variants = {
   shown: () => ({ transition: { delayChildren: heroHold() + 0.1, staggerChildren: 0.07 } }),
 }
 
-/** One staggered child: a card or row. */
+/** One staggered child: a card or row. No blur here: blur is kept for the hero and headings. */
 export const revealItem: Variants = {
-  hidden: { opacity: 0, y: 16, filter: 'blur(4px)' },
-  shown: { opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' }, transition: { duration: 0.55, ease: EASE_OUT } },
+  hidden: { opacity: 0, y: 16 },
+  shown: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE_OUT } },
 }
 
 /** Reduced motion: a short fade, no movement. */

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ComponentProps } from 'react'
 import { useAnimationFrame, useSpring } from 'motion/react'
 
+import { DITHER_PULSE_EVENT, type DitherPulse } from '@/lib/dither-pulse'
 import { cn } from '@/lib/utils'
 
 export type DitherCanvasProps = Omit<ComponentProps<'canvas'>, 'width' | 'height'> & {
@@ -28,6 +29,8 @@ export type DitherCanvasProps = Omit<ComponentProps<'canvas'>, 'width' | 'height
   hoverDisplacement?: number
   /** Reach of the hover effect, in cells. */
   hoverRadius?: number
+  /** Extra fill under the cursor, on the same 0 to 1 scale as `density`. */
+  hoverBoost?: number
   /** Send a ring across the canvas when it is pressed. */
   shockwave?: boolean
   /** How fast the ring travels, in cells per second. */
@@ -42,7 +45,8 @@ export type DitherCanvasProps = Omit<ComponentProps<'canvas'>, 'width' | 'height
   shockwaveBoost?: number
 }
 
-type Wave = { x: number; y: number; start: number }
+type Wave = { x: number; y: number; start: number; speed: number; strength: number; boost: number; duration: number }
+
 
 const MAX_WAVES = 6
 const INTERACTIVE = 'a, button, input, textarea, select, summary, [role="button"], [role="link"]'
@@ -129,6 +133,7 @@ export function DitherCanvas({
   paused = false,
   hoverDisplacement = 4,
   hoverRadius = 28,
+  hoverBoost = 0,
   shockwave = true,
   shockwaveSpeed = 150,
   shockwaveWidth = 9,
@@ -236,26 +241,51 @@ export function DitherCanvas({
       if (event.target instanceof Element && event.target.closest(INTERACTIVE)) return
       const { inside, x, y } = locate(event)
       if (!inside) return
-      wavesRef.current = [...wavesRef.current.slice(1 - MAX_WAVES), { x, y, start: performance.now() }]
+      wavesRef.current = [
+        ...wavesRef.current.slice(1 - MAX_WAVES),
+        { x, y, start: performance.now(), speed: shockwaveSpeed, strength: shockwaveStrength, boost: shockwaveBoost, duration: shockwaveDuration },
+      ]
+      lastDrawRef.current = -Infinity
+    }
+
+    const handlePulse = (event: Event) => {
+      if (!shockwave || !(event instanceof CustomEvent) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      const pulse = event.detail as DitherPulse
+      const rect = canvas.getBoundingClientRect()
+      const cellsPerPx = canvas.width / rect.width
+      wavesRef.current = [
+        ...wavesRef.current.slice(1 - MAX_WAVES),
+        {
+          x: (pulse.clientX - rect.left) * cellsPerPx,
+          y: (pulse.clientY - rect.top) * cellsPerPx,
+          start: performance.now(),
+          speed: pulse.speed === undefined ? shockwaveSpeed : pulse.speed * cellsPerPx,
+          strength: pulse.strength ?? shockwaveStrength,
+          boost: pulse.boost ?? shockwaveBoost,
+          duration: pulse.duration ?? shockwaveDuration,
+        },
+      ]
       lastDrawRef.current = -Infinity
     }
 
     window.addEventListener('pointermove', handleMove)
     window.addEventListener('pointerout', handleLeave)
     window.addEventListener('pointerdown', handleDown)
+    window.addEventListener(DITHER_PULSE_EVENT, handlePulse)
     return () => {
+      window.removeEventListener(DITHER_PULSE_EVENT, handlePulse)
       window.removeEventListener('pointermove', handleMove)
       window.removeEventListener('pointerout', handleLeave)
       window.removeEventListener('pointerdown', handleDown)
     }
-  }, [shockwave, hoverDisplacement, hoverX, hoverY, hoverStrength])
+  }, [shockwave, shockwaveSpeed, shockwaveStrength, shockwaveBoost, shockwaveDuration, hoverDisplacement, hoverX, hoverY, hoverStrength])
 
   useAnimationFrame((time) => {
     const canvas = canvasRef.current
     if (!canvas || !visibleRef.current) return
 
     const now = performance.now()
-    wavesRef.current = wavesRef.current.filter((wave) => now - wave.start < shockwaveDuration * 1000)
+    wavesRef.current = wavesRef.current.filter((wave) => now - wave.start < wave.duration * 1000)
     const waves = wavesRef.current
     const hover = hoverDisplacement === 0 ? 0 : hoverStrength.get()
     const interacting = hover > 0.003 || waves.length > 0
@@ -302,8 +332,8 @@ export function DitherCanvas({
     const reach2 = hoverRadius * hoverRadius * 4
     const rings = waves.map((wave) => {
       const age = (now - wave.start) / 1000
-      const life = 1 - age / shockwaveDuration
-      return { x: wave.x, y: wave.y, radius: age * shockwaveSpeed, fade: life * life }
+      const life = 1 - age / wave.duration
+      return { x: wave.x, y: wave.y, radius: age * wave.speed, fade: life * life, strength: wave.strength, boost: wave.boost }
     })
 
     for (let y = 0; y < height; y++) {
@@ -317,9 +347,12 @@ export function DitherCanvas({
           const dy = y - cursorY
           const d2 = dx * dx + dy * dy
           if (d2 < reach2) {
-            const pull = Math.exp(-d2 / (hoverRadius * hoverRadius)) * hover * (hoverDisplacement / hoverRadius)
+            const falloff = Math.exp(-d2 / (hoverRadius * hoverRadius)) * hover
+            const pull = falloff * (hoverDisplacement / hoverRadius)
             sx -= dx * pull
             sy -= dy * pull
+            // The cursor also thickens the field a little, like a lens, so the pull is easy to see.
+            boost += falloff * hoverBoost
           }
         }
 
@@ -330,9 +363,9 @@ export function DitherCanvas({
           const offset = (d - ring.radius) / shockwaveWidth
           if (offset > -3 && offset < 3 && d > 0) {
             const strength = Math.exp(-offset * offset) * ring.fade
-            sx -= (dx / d) * strength * shockwaveStrength
-            sy -= (dy / d) * strength * shockwaveStrength
-            boost += strength * shockwaveBoost
+            sx -= (dx / d) * strength * ring.strength
+            sy -= (dy / d) * strength * ring.strength
+            boost += strength * ring.boost
           }
         }
 

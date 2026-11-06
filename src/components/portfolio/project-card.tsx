@@ -59,9 +59,9 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
                   key="mark"
                   layout="position"
                   transition={{ layout: layoutTransition, duration: 0.2, ease: EASE_OUT }}
-                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85, filter: 'blur(3px)' }}
-                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
-                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85, filter: 'blur(3px)' }}
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
+                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
                 >
                   <Avatar size="lg" className="rounded-lg after:rounded-lg">
                     <AvatarFallback className="rounded-lg bg-muted font-mono text-xs font-medium tracking-tight text-muted-foreground">

@@ -1,10 +1,12 @@
 import { useLayoutEffect, useRef } from 'react'
 
 import type { RevealColors } from '@/components/pixel-reveal'
+import { bayer4 } from '@/lib/bayer'
 import { cubicBezier } from '@/lib/ease'
 import { WAVE_BAND as BAND, WAVE_DURATION, WAVE_EASE, waveRadius, type WaveClock, type WaveOrigin } from '@/lib/theme-wave'
 
-const CELL = 14
+// Three banner cells wide, so the fringe sits on the same grid as the dither it passes over.
+const CELL = 12
 const GLYPHS = ['@', '8', '#', '%', '*', '+', '=', '-', '.']
 
 /**
@@ -39,8 +41,9 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
       for (let c = 0; c < cols; c++) {
         const i = r * cols + c
         distance[i] = Math.hypot(c * CELL + CELL / 2 - origin.x, r * CELL + CELL / 2 - origin.y)
-        // Each cell lets go at its own depth behind the edge, so the fringe is ragged.
-        depth[i] = Math.random() ** 1.6 * BAND
+        // Each cell lets go at the depth its Bayer threshold sets, so the edge breaks up in the
+        // banner's own ordered pattern, with a touch of jitter to keep it from looking stamped.
+        depth[i] = Math.min(1, 0.12 + 0.88 * bayer4(c, r) + (Math.random() - 0.5) * 0.08) * BAND
         glyph[i] = Math.floor(Math.random() * GLYPHS.length)
       }
 

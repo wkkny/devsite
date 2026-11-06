@@ -4,7 +4,7 @@ import { type CSSProperties, useCallback, useEffect, useId, useLayoutEffect, use
 import { buildCalendar, type Cell, moveFocus, rangeTotal } from "./model";
 import { CalendarTooltip } from "./tooltip";
 import type { CalendarSelection, CalendarUnit, ContributionCalendarProps } from "./types";
-import { cx, formatDate, formatDay } from "./utils";
+import { bayer4, cx, formatDate, formatDay } from "./utils";
 
 const LEVELS = [0, 1, 2, 3, 4];
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -27,6 +27,9 @@ function unitFor(unit: CalendarUnit, count: number) {
 function fill(level: number, color: string) {
   return level === 0 ? EMPTY_FILL : `color-mix(in srgb, ${color} ${LEVEL_STRENGTH[level]}%, transparent)`;
 }
+
+/** When a square prints in or takes its color, in ms: a left-to-right sweep broken up by Bayer order. */
+const waveDelay = (week: number, weekday: number) => Math.round(week * 8 + bayer4(week, weekday) * 180);
 
 /** Selected cell indexes. `end` is the second day picked, which may come before `start`. */
 type Selection = { start: number; end?: number } | null;
@@ -128,16 +131,17 @@ export function ContributionCalendar({
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [selection, legendLock, onSelectionChange]);
 
-  // Squares pop in as a diagonal wave when a new range mounts, held until the grid is on screen
-  // so the wave isn't spent below the fold. Data arriving later does not replay it.
+  // Squares print in when a new range mounts: a sweep from left to right in which each square
+  // steps 0 -> 50% -> 100% at its Bayer threshold, so the grid fills in the banner's ordered-dither
+  // pattern. Held until the grid is on screen; data arriving later does not replay it.
   useLayoutEffect(() => {
     const grid = gridRef.current;
     if (!grid || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const animations = Array.from(grid.querySelectorAll<HTMLElement>("[data-square]"), (square) => {
-      const animation = square.animate([{ opacity: 0, transform: "scale(0.5)" }, { opacity: 1, transform: "none" }], {
-        duration: 460,
-        delay: 120 + Number(square.dataset.week) * 10 + Number(square.dataset.weekday) * 16,
-        easing: "cubic-bezier(0.34, 1.4, 0.64, 1)",
+      const animation = square.animate([{ opacity: 0 }, { opacity: 0.5 }, { opacity: 1 }], {
+        duration: 140,
+        delay: 120 + waveDelay(Number(square.dataset.week), Number(square.dataset.weekday)),
+        easing: "steps(3, jump-none)",
         fill: "backwards",
       });
       animation.pause();
@@ -238,7 +242,7 @@ export function ContributionCalendar({
             selected && "ring-2 ring-foreground ring-offset-1 ring-offset-background",
             dimmed && "opacity-25",
           )}
-          style={{ backgroundColor: fill(cell.level, color), "--wave": `${cell.week * 10 + cell.weekday * 16}ms` } as CSSProperties}
+          style={{ backgroundColor: fill(cell.level, color), "--wave": `${waveDelay(cell.week, cell.weekday)}ms` } as CSSProperties}
         />
       </span>
     );

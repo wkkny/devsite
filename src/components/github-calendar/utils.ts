@@ -36,3 +36,7 @@ export const formatDay = new Intl.DateTimeFormat("en-US", {
 export const formatDate = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
 
 export const formatMonth = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short" });
+
+/** A 4x4 ordered-dither (Bayer) threshold, 0 to 1, for column `x` and row `y`. */
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+export const bayer4 = (x: number, y: number) => (BAYER4[(y % 4) * 4 + (x % 4)] + 0.5) / 16;

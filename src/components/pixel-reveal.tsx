@@ -8,7 +8,7 @@ const POOL: [string, number][] = [
   ['=', 0.14], ['-', 0.09], ['.', 0.05],
 ]
 
-const EASING = { duration: 650, x1: 0.2, y1: 0.35, x2: 0.3, y2: 1, bias: 0.65, brightness: 0.9, cycle: 210, variance: 0.4, smooth: 5, cluster: 3, cell: 15 }
+const EASING = { duration: 650, x1: 0.2, y1: 0.35, x2: 0.3, y2: 1, bias: 0.65, brightness: 0.9, cycle: 210, variance: 0.4, smooth: 5, cluster: 3, cell: 12 }
 const COVER_DURATION = 160
 const MAX_DPR = 1.5
 const REDUCED_WORK_QUERY = '(pointer: coarse), (max-width: 768px)'
