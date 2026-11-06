@@ -56,6 +56,8 @@ export default function ProfileBanner() {
         shockwaveSpeed={170}
         shockwaveWidth={7}
         shockwaveDuration={1.25}
+        shockwaveStrength={10}
+        shockwaveBoost={0.35}
       />
     </motion.div>
   )

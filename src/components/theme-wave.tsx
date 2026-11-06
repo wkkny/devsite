@@ -80,7 +80,7 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
         ctx.fillStyle = oldColors.background
         ctx.fillRect(x, y, CELL, CELL)
         // Glyphs burn brightest right at the edge and cool as it moves on.
-        ctx.globalAlpha = (1 - t) * 0.7
+        ctx.globalAlpha = (1 - t) * 0.55
         ctx.fillStyle = oldColors.blue
         ctx.fillText(GLYPHS[(glyph[i] + Math.floor(t * 6)) % GLYPHS.length], x + CELL / 2, y + CELL / 2)
       }
