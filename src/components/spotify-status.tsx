@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 
 import { Tooltip } from '@/components/tooltip'
+import { EASE_OUT } from '@/lib/ease'
 import { formatRelativeTime } from '@/lib/relative-time'
 import {
   isNowPlayingResponse,
@@ -175,6 +177,8 @@ export function SpotifyStatus() {
     }
   }, [updateNow])
 
+  const reducedMotion = useReducedMotion()
+  const barsRef = useRef<HTMLSpanElement>(null)
   const track = playback?.track ?? lastTrack
   const playing = playback?.status === 'playing'
   const imageUrl = track?.imageUrl
@@ -186,6 +190,19 @@ export function SpotifyStatus() {
     image.referrerPolicy = 'no-referrer'
     image.src = imageUrl
   }, [imageUrl])
+
+  const showBars = Boolean(track) && playback?.status === 'playing'
+  // The equalizer loops forever, so it rests while scrolled out of view.
+  useEffect(() => {
+    const bars = barsRef.current
+    if (!showBars || !bars || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) delete bars.dataset.offscreen
+      else bars.dataset.offscreen = ''
+    })
+    observer.observe(bars)
+    return () => observer.disconnect()
+  }, [showBars])
 
   if (!track) return null
 
@@ -203,32 +220,54 @@ export function SpotifyStatus() {
           className={imageUrl ? 'p-2' : undefined}
         >
           <a
-            className="group flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
+            className="group relative flex w-fit min-w-0 max-w-full items-center gap-2 text-muted-foreground"
             href={track.spotifyUrl}
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span className="flex min-w-0 flex-1 items-baseline gap-1">
-              <span className="min-w-0 truncate text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
-                {track.title}
-              </span>
-              <span className="min-w-0 shrink-[2] overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
-                by {track.artist}
-              </span>
-              {!playing && track.playedAt !== undefined && (
-                <span className="shrink-0 text-nowrap tabular-nums">
-                  <span aria-hidden="true">· </span>
-                  {formatRelativeTime(track.playedAt, now)}
-                </span>
+            {/* A new track rolls in from below while the last one lifts away. */}
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.span
+                key={`${track.title}\u0000${track.artist}`}
+                className="flex min-w-0 flex-1 items-baseline gap-1"
+                initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 6, filter: 'blur(3px)' }}
+                animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(3px)' }}
+                transition={{ duration: 0.26, ease: EASE_OUT }}
+              >
+                  <span className="min-w-0 truncate text-foreground underline decoration-transparent underline-offset-4 transition-colors group-hover:decoration-current group-focus-visible:decoration-current sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
+                    {track.title}
+                  </span>
+                  <span className="min-w-0 shrink-[2] overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-none sm:shrink-0 sm:overflow-visible sm:text-clip sm:whitespace-nowrap">
+                    by {track.artist}
+                  </span>
+                  {!playing && track.playedAt !== undefined && (
+                    <span className="shrink-0 text-nowrap tabular-nums">
+                      <span aria-hidden="true">· </span>
+                      {formatRelativeTime(track.playedAt, now)}
+                    </span>
+                  )}
+              </motion.span>
+            </AnimatePresence>
+            {/* The equalizer scales in and out with the track change instead of popping. */}
+            <AnimatePresence initial={false}>
+              {playing && (
+                <motion.span
+                  key="bars"
+                  ref={barsRef}
+                  aria-hidden="true"
+                  className="now-playing-bars"
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+                  transition={{ duration: 0.18, ease: EASE_OUT }}
+                >
+                  <span />
+                  <span />
+                  <span />
+                </motion.span>
               )}
-            </span>
-            {playing && (
-              <span aria-hidden="true" className="now-playing-bars">
-                <span />
-                <span />
-                <span />
-              </span>
-            )}
+            </AnimatePresence>
           </a>
         </Tooltip>
       </p>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { animate, useReducedMotion } from 'motion/react'
+import { animate, motion, useReducedMotion } from 'motion/react'
 import { FiEye } from 'react-icons/fi'
 
 import { Tooltip } from '@/components/tooltip'
@@ -35,7 +35,7 @@ function CountUp({ value }: { value: number }) {
       show(value)
       return
     }
-    const controls = animate(0, value, { duration: 0.8, ease: EASE_OUT, onUpdate: show })
+    const controls = animate(0, value, { duration: 0.38, ease: EASE_OUT, delay: 0.32, onUpdate: show })
     return () => controls.stop()
   }, [value, reduce])
 
@@ -45,6 +45,7 @@ function CountUp({ value }: { value: number }) {
 export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
   const [viewers, setViewers] = useState<number | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
+  const reduce = useReducedMotion()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -122,9 +123,9 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
   }, [])
 
   return (
-    <Tooltip content="Visitors" side="bottom" gap={2} disabled={viewers === null || !startAnimation}>
+    <Tooltip content="Visitors" side="bottom" gap={6} disabled={viewers === null || !startAnimation}>
       <output
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 px-2 type-label leading-none text-muted-foreground"
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 type-label leading-none text-muted-foreground transition-colors duration-150 hover:text-foreground"
         aria-label={
           viewers !== null
             ? `${viewers.toLocaleString()} visitors`
@@ -135,11 +136,19 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
       >
         <FiEye aria-hidden="true" className="size-3.5" />
         {viewers === null || !startAnimation ? (
-          <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">—</span>
+          <span aria-hidden="true" className="inline-flex h-[1.1em] min-w-[3ch] items-center justify-end leading-none tabular-nums">—</span>
         ) : (
-          <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">
+          // The number rolls up into place as it starts counting.
+          <motion.span
+            aria-hidden="true"
+            // Holds three digits of room, so the controls beside it don't shift when the count lands.
+            className="inline-flex h-[1.1em] min-w-[3ch] items-center justify-end leading-none tabular-nums"
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4, filter: 'blur(2px)' }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.22, ease: EASE_OUT }}
+          >
             <CountUp value={viewers} />
-          </span>
+          </motion.span>
         )}
       </output>
     </Tooltip>

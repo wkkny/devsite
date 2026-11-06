@@ -51,7 +51,7 @@ test('homepage loads and its main controls work', async ({ page }) => {
   await expect(page.locator('html')).toHaveClass(/dark/)
 
   await page.getByRole('button', { name: 'List view' }).click()
-  await expect(page.locator('#projects .flex.flex-col.divide-y')).toBeVisible()
+  await expect(page.locator('#projects [data-view="list"]')).toBeVisible()
 })
 
 test('calendar has one tab stop and supports keyboard navigation and selection', async ({ page }) => {
@@ -88,9 +88,9 @@ test('calendar has one tab stop and supports keyboard navigation and selection',
   await expect(page.getByText('Jan 1 – Oct 1')).toBeVisible()
   await expect(tabStop).toHaveCount(1)
   await expect(today).toHaveAttribute('tabindex', '0')
-  // the year picker is the stop before the grid
-  await page.getByRole('button', { name: 'Show 2026 activity' }).focus()
-  await page.keyboard.press('Tab')
+  // a single year hides the picker, so the grid's one tab stop is focused directly
+  await expect(page.getByRole('group', { name: 'Contribution year' })).toHaveCount(0)
+  await tabStop.focus()
   await expect(today).toBeFocused()
 
   await page.keyboard.press('Home')

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FaXTwitter } from 'react-icons/fa6'
 import { FiCheck, FiGithub, FiMail } from 'react-icons/fi'
 
-import { Tooltip } from '@/components/tooltip'
+import { Tooltip, TooltipGroup } from '@/components/tooltip'
 import { portfolioOwner, socialLinks } from '@/data'
 import { EASE_OUT, SPRING_SWAP } from '@/lib/ease'
 
@@ -14,7 +14,20 @@ const socialIcons = {
 
 export function SocialLinks() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
+  // Counts successful copies, so pressing again re-pops the check and is announced again.
+  const [copyCount, setCopyCount] = useState(0)
+  const [announcement, setAnnouncement] = useState('')
   const copyStatusTimeout = useRef<number | null>(null)
+  // The pill eases to the width of whichever label is showing, measured off a hidden copy.
+  const labelMeasureRef = useRef<HTMLSpanElement>(null)
+  const [labelWidth, setLabelWidth] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const measure = labelMeasureRef.current
+    if (!measure) return
+    const observer = new ResizeObserver(() => setLabelWidth(measure.offsetWidth))
+    observer.observe(measure)
+    return () => observer.disconnect()
+  }, [])
   const reducedMotion = useReducedMotion()
 
   function clearCopyStatusTimeout() {
@@ -33,6 +46,10 @@ export function SocialLinks() {
     try {
       await navigator.clipboard.writeText(portfolioOwner.email)
       setCopyStatus('copied')
+      setCopyCount((count) => count + 1)
+      // Clear, then set on the next frame, so a repeat copy is announced instead of ignored.
+      setAnnouncement('')
+      requestAnimationFrame(() => setAnnouncement('Email address copied to clipboard.'))
       copyStatusTimeout.current = window.setTimeout(() => {
         copyStatusTimeout.current = null
         setCopyStatus('idle')
@@ -40,6 +57,7 @@ export function SocialLinks() {
     } catch {
       clearCopyStatusTimeout()
       setCopyStatus('error')
+      setAnnouncement('Could not copy email address. Use the email link to open your mail app.')
     }
   }
 
@@ -49,24 +67,39 @@ export function SocialLinks() {
       ? 'Could not copy email'
       : 'Click to copy email'
 
+  const labelContent = copyStatus === 'copied' ? (
+    <span className="text-foreground">Copied<span className="hidden sm:inline"> to clipboard</span></span>
+  ) : (
+    <>
+      <span className="sm:hidden">Email</span>
+      <span className="hidden sm:inline">{portfolioOwner.email}</span>
+    </>
+  )
+
   const emailLabel = copyStatus === 'copied'
     ? 'Email copied to clipboard'
     : copyStatus === 'error'
       ? 'Retry copying email address'
       : 'Copy email address'
+  // The label rolls: the old text lifts away, the new one rises from just below under a soft blur.
   const copyMotionInitial = reducedMotion
     ? { opacity: 0 }
-    : { opacity: 0, transform: 'translate3d(0, 2px, 0) scale(0.95)' }
+    : { opacity: 0, y: 6, filter: 'blur(2px)' }
   const copyMotionAnimate = reducedMotion
     ? { opacity: 1 }
-    : { opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }
+    : { opacity: 1, y: 0, filter: 'blur(0px)' }
   const copyMotionExit = reducedMotion
     ? { opacity: 0 }
-    : { opacity: 0, transform: 'translate3d(0, -2px, 0) scale(0.95)' }
+    : { opacity: 0, y: -6, filter: 'blur(2px)' }
+  // The check pops in with a small twist; the envelope shrinks away.
+  const copyIconInitial = reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.5, rotate: -20 }
+  const copyIconAnimate = reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, rotate: 0 }
+  const copyIconExit = reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.5, rotate: 20 }
   const copyMotionTransition = reducedMotion ? { duration: 0.12, ease: EASE_OUT } : SPRING_SWAP
 
   return (
     <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <TooltipGroup side="top">
       {socialLinks.map((link) => {
         const Icon = socialIcons[link.platform]
 
@@ -74,7 +107,7 @@ export function SocialLinks() {
           <Tooltip key={link.platform} content={link.label}>
             <a
               aria-label={'ariaLabel' in link ? link.ariaLabel : undefined}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 font-medium transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 font-medium press hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               href={link.href}
               target="_blank"
               rel="noreferrer"
@@ -85,21 +118,22 @@ export function SocialLinks() {
           </Tooltip>
         )
       })}
-      <Tooltip content={emailTooltip} side="top">
+      {/* While the pill says "Copied", the tooltip steps aside instead of repeating it. */}
+      <Tooltip content={emailTooltip} side="top" disabled={copyStatus === 'copied'}>
         <button
           aria-label={emailLabel}
-          className="email-trigger inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 leading-none font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="email-trigger inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 leading-none font-medium text-muted-foreground press hover:bg-muted hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={copyEmail}
           type="button"
         >
-          <span aria-hidden="true" className="relative size-4 shrink-0 sm:hidden">
-            <AnimatePresence initial={false} mode="wait">
+          <span aria-hidden="true" className="relative size-4 shrink-0">
+            <AnimatePresence initial={false} mode="popLayout">
               <motion.span
-                key={copyStatus === 'copied' ? 'copied-icon' : 'email-icon'}
-                animate={copyMotionAnimate}
+                key={copyStatus === 'copied' ? `copied-icon-${copyCount}` : 'email-icon'}
+                animate={copyIconAnimate}
                 className="absolute inset-0 flex items-center justify-center"
-                exit={copyMotionExit}
-                initial={copyMotionInitial}
+                exit={copyIconExit}
+                initial={copyIconInitial}
                 transition={copyMotionTransition}
               >
                 {copyStatus === 'copied' ? (
@@ -110,9 +144,16 @@ export function SocialLinks() {
               </motion.span>
             </AnimatePresence>
           </span>
-          <FiMail aria-hidden="true" className="hidden size-4 shrink-0 sm:inline-block" />
-          <span className="inline-grid min-w-[2.875rem] place-items-center sm:hidden">
-            <AnimatePresence initial={false} mode="wait">
+          <span ref={labelMeasureRef} aria-hidden="true" className="invisible absolute whitespace-nowrap">
+            {labelContent}
+          </span>
+          <motion.span
+            className="inline-grid min-w-[2.875rem] place-items-center overflow-hidden sm:place-items-start"
+            initial={false}
+            animate={labelWidth === null ? undefined : { width: labelWidth }}
+            transition={reducedMotion ? { duration: 0 } : { duration: 0.24, ease: EASE_OUT }}
+          >
+            <AnimatePresence initial={false} mode="popLayout">
               <motion.span
                 key={copyStatus === 'copied' ? 'copied-label' : 'email-label'}
                 animate={copyMotionAnimate}
@@ -121,23 +162,29 @@ export function SocialLinks() {
                 initial={copyMotionInitial}
                 transition={copyMotionTransition}
               >
-                {copyStatus === 'copied' ? 'Copied' : 'Email'}
+                {labelContent}
               </motion.span>
             </AnimatePresence>
-          </span>
-          <span className="hidden sm:inline">{portfolioOwner.email}</span>
+          </motion.span>
         </button>
       </Tooltip>
-      {copyStatus === 'error' && (
-        <a
-          className="max-w-full break-all text-foreground underline underline-offset-4"
-          href={`mailto:${portfolioOwner.email}`}
-        >
-          {portfolioOwner.email}
-        </a>
-      )}
+      </TooltipGroup>
+      <AnimatePresence initial={false}>
+        {copyStatus === 'error' && (
+          <motion.a
+            className="max-w-full break-all text-foreground underline underline-offset-4"
+            href={`mailto:${portfolioOwner.email}`}
+            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -4 }}
+            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: EASE_OUT }}
+          >
+            {portfolioOwner.email}
+          </motion.a>
+        )}
+      </AnimatePresence>
       <span aria-live="polite" className="sr-only">
-        {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address. Use the email link to open your mail app.' : ''}
+        {announcement}
       </span>
     </nav>
   )

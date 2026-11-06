@@ -4,7 +4,7 @@ import { type CSSProperties, useCallback, useEffect, useId, useLayoutEffect, use
 import { buildCalendar, type Cell, moveFocus, rangeTotal } from "./model";
 import { CalendarTooltip } from "./tooltip";
 import type { CalendarSelection, CalendarUnit, ContributionCalendarProps } from "./types";
-import { cx, formatDate, formatDay } from "./utils";
+import { bayer4, cx, formatDate, formatDay } from "./utils";
 
 const LEVELS = [0, 1, 2, 3, 4];
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -27,6 +27,9 @@ function unitFor(unit: CalendarUnit, count: number) {
 function fill(level: number, color: string) {
   return level === 0 ? EMPTY_FILL : `color-mix(in srgb, ${color} ${LEVEL_STRENGTH[level]}%, transparent)`;
 }
+
+/** When a square prints in or takes its color, in ms: a left-to-right sweep broken up by Bayer order. */
+const waveDelay = (week: number, weekday: number) => Math.round(week * 8 + bayer4(week, weekday) * 180);
 
 /** Selected cell indexes. `end` is the second day picked, which may come before `start`. */
 type Selection = { start: number; end?: number } | null;
@@ -128,20 +131,77 @@ export function ContributionCalendar({
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [selection, legendLock, onSelectionChange]);
 
-  // Squares pop in week by week when a new range mounts. Data arriving later does not replay it.
+  // Squares print in when a new range mounts: a sweep from left to right in which each square
+  // steps 0 -> 50% -> 100% at its Bayer threshold, so the grid fills in the banner's ordered-dither
+  // pattern. Held until the grid is on screen; data arriving later does not replay it.
+  const revealedRef = useRef(false);
   useLayoutEffect(() => {
     const grid = gridRef.current;
-    if (!grid || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const animations = Array.from(grid.querySelectorAll<HTMLElement>("[data-square]"), (square) =>
-      square.animate([{ opacity: 0, transform: "scale(0.4)" }, { opacity: 1, transform: "none" }], {
-        duration: 420,
-        delay: Number(square.dataset.week) * 9 + Number(square.dataset.weekday) * 14,
-        easing: "cubic-bezier(0.34, 1.4, 0.64, 1)",
+    const reduceQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    revealedRef.current = false;
+    if (!grid || reduceQuery.matches) {
+      revealedRef.current = true;
+      return;
+    }
+    const animations = Array.from(grid.querySelectorAll<HTMLElement>("[data-square]"), (square) => {
+      const animation = square.animate([{ opacity: 0 }, { opacity: 0.5 }, { opacity: 1 }], {
+        duration: 140,
+        delay: 120 + waveDelay(Number(square.dataset.week), Number(square.dataset.weekday)),
+        easing: "steps(3, jump-none)",
         fill: "backwards",
-      }),
-    );
-    return () => animations.forEach((animation) => animation.cancel());
+      });
+      // Once printed, drop the animation so 365 finished ones aren't kept on the squares.
+      animation.onfinish = () => animation.cancel();
+      animation.pause();
+      return animation;
+    });
+    const cancelAll = () => animations.forEach((animation) => animation.cancel());
+    let observer: IntersectionObserver | null = null;
+    const play = () => {
+      if (revealedRef.current) return;
+      revealedRef.current = true;
+      observer?.disconnect();
+      animations.forEach((animation) => animation.play());
+    };
+    // Keyboard focus can reach the grid before it scrolls far enough in: never leave a focused
+    // square invisible. Turning on reduced motion mid-way shows everything at once.
+    const onFocus = () => {
+      if (revealedRef.current) return;
+      revealedRef.current = true;
+      observer?.disconnect();
+      cancelAll();
+    };
+    const onReduce = () => {
+      if (reduceQuery.matches) onFocus();
+    };
+    grid.addEventListener("focusin", onFocus);
+    reduceQuery.addEventListener("change", onReduce);
+    if (typeof IntersectionObserver === "undefined") play();
+    else {
+      observer = new IntersectionObserver((entries) => entries.some((entry) => entry.isIntersecting) && play(), { threshold: 0.35 });
+      // Watch the scroller: on phones the grid is wider than the screen and never shows 35% of itself.
+      observer.observe(scrollerRef.current ?? grid);
+    }
+    return () => {
+      observer?.disconnect();
+      grid.removeEventListener("focusin", onFocus);
+      reduceQuery.removeEventListener("change", onReduce);
+      cancelAll();
+    };
   }, [startTime, endTime]);
+
+  // Marks the grid while fresh data washes in, so only that color change animates, not a theme switch.
+  const hadDays = useRef(days.length > 0);
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || hadDays.current || days.length === 0) return;
+    hadDays.current = true;
+    // Data that lands before the grid prints in is simply printed in its colors; no wash needed.
+    if (!revealedRef.current) return;
+    grid.dataset.wash = "";
+    const timer = window.setTimeout(() => delete grid.dataset.wash, 1600);
+    return () => window.clearTimeout(timer);
+  }, [days]);
 
   // When the grid is wider than its container, open it scrolled to the entry day (usually today).
   useLayoutEffect(() => {
@@ -198,13 +258,18 @@ export function ContributionCalendar({
           aria-pressed={selected}
           aria-describedby={tipCell?.index === cell.index ? tooltipId : undefined}
           className={cx(
-            "block aspect-square w-full rounded-[3px] transition-[scale,opacity] duration-150 ease-out outline-none",
+            // Data that lands after the pop-in washes the colors in along the same diagonal wave.
+            // Same feel as the site's other controls: up on the expo-out curve, a quick dip on press,
+            // and a springy release.
+            "block aspect-square w-full rounded-[3px] transition-[scale,opacity] duration-220 ease-[cubic-bezier(0.34,1.56,0.64,1)] outline-none",
+            "motion-safe:pointer-fine:hover:duration-180 motion-safe:pointer-fine:hover:ease-[cubic-bezier(0.16,1,0.3,1)] motion-safe:active:duration-70!",
+            "motion-safe:in-data-wash:[transition:scale_150ms_ease-out,opacity_150ms_ease-out,background-color_520ms_cubic-bezier(0.16,1,0.3,1)_var(--wave)]",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-            "hover:relative hover:z-10 motion-safe:pointer-fine:hover:scale-125",
+            "hover:relative hover:z-10 motion-safe:pointer-fine:hover:scale-125 motion-safe:active:scale-110!",
             selected && "ring-2 ring-foreground ring-offset-1 ring-offset-background",
             dimmed && "opacity-25",
           )}
-          style={{ background: fill(cell.level, color) }}
+          style={{ backgroundColor: fill(cell.level, color), "--wave": `${waveDelay(cell.week, cell.weekday)}ms` } as CSSProperties}
         />
       </span>
     );
@@ -310,7 +375,7 @@ export function ContributionCalendar({
                 onFocus={() => setLegendPreview(level)}
                 onBlur={() => setLegendPreview(null)}
                 onClick={() => setLegendLock((current) => (current === level ? null : level))}
-                className="size-3 rounded-[3px] outline-none transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:data-active:scale-125"
+                className="size-3 rounded-[3px] outline-none transition-[scale] duration-150 motion-safe:active:scale-90! focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:data-active:scale-125"
                 style={{ background: fill(level, color) }}
               />
             ))}

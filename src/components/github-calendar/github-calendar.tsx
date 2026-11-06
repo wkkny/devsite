@@ -15,7 +15,7 @@ const DEFAULT_LABELS: GitHubCalendarLabels = {
 };
 
 const YEAR_BUTTON =
-  "inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-input bg-transparent px-2.5 type-label whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-muted";
+  "inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-input bg-transparent px-2.5 type-label whitespace-nowrap press outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-muted";
 
 const NO_DAYS: ContributionDay[] = [];
 
@@ -132,7 +132,7 @@ export function GitHubCalendar({
   }, [ready, key, username, year, attempt, isLoaded, timeoutMs]);
 
   return (
-    <div ref={sectionRef} className={cx("w-full", className)} aria-busy={isLoading}>
+    <div ref={sectionRef} className={cx("relative w-full", className)} aria-busy={isLoading}>
       {showProfileLink && (
         <a
           className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -187,7 +187,8 @@ export function GitHubCalendar({
         showLegend={showLegend}
         onSelectionChange={onSelectionChange}
       />
-      {isLoading && <p role="status" className="mt-3 text-sm text-muted-foreground">{text.loading}</p>}
+      {/* Overlaid below the grid rather than in the flow, so the page doesn't jump when it goes. */}
+      {isLoading && <p role="status" className="pointer-events-none absolute inset-x-0 top-full mt-3 text-sm text-muted-foreground">{text.loading}</p>}
       {hasError && (
         <p role="status" className="mt-3 text-sm text-muted-foreground">
           {text.error}

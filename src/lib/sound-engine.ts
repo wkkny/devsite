@@ -25,6 +25,14 @@ export async function decodeAudioData(dataUri: string): Promise<AudioBuffer> {
   return audioBuffer;
 }
 
+/**
+ * Creates the audio context and decodes a sound ahead of time. Both are slow the first time, so
+ * doing them on hover or focus keeps the press itself (and the animation it starts) free of them.
+ */
+export function warmSound(dataUri: string) {
+  void decodeAudioData(dataUri).catch(() => undefined);
+}
+
 export interface PlaySoundOptions {
   volume?: number;
   playbackRate?: number;

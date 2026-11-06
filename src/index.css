@@ -26,6 +26,38 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Held for the frame the theme swaps in, so no control fades over from the old palette. */
+[data-theme-switching] *,
+[data-theme-switching] *::before,
+[data-theme-switching] *::after {
+  transition-property: none !important;
+}
+
+/* The theme wave drives its own clip on the new snapshot; turn off the default cross-fade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/*
+ * The site's one press language: colors settle on the expo-out curve, and a press dips the
+ * control to 95% quickly (70ms) and lets it spring back on release (220ms).
+ */
+@utility press {
+  transition-property: color, background-color, border-color, box-shadow, opacity, scale;
+  transition-duration: 180ms, 180ms, 180ms, 180ms, 180ms, 220ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  @media (prefers-reduced-motion: no-preference) {
+    &:active:not(:disabled, [aria-disabled="true"]) {
+      scale: 0.95;
+      transition-duration: 70ms;
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  }
+}
+
 .now-playing-bars {
   display: inline-flex;
   flex-shrink: 0;
@@ -43,15 +75,22 @@
   animation: now-playing-bar 1s ease-in-out infinite;
 }
 
+.now-playing-bars[data-offscreen] > span {
+  animation-play-state: paused;
+}
+
 .now-playing-bars > span:nth-child(1) {
+  animation-duration: 0.82s;
   animation-delay: -0.2s;
 }
 
 .now-playing-bars > span:nth-child(2) {
+  animation-duration: 1.08s;
   animation-delay: -0.5s;
 }
 
 .now-playing-bars > span:nth-child(3) {
+  animation-duration: 0.94s;
   animation-delay: -0.8s;
 }
 
@@ -90,16 +129,92 @@ a[href],
   text-align: left;
 }
 
+/*
+ * Project cards: the whole card is the link. On hover (or keyboard focus) the title's underline
+ * draws in from the left and the arrow slides out along its own diagonal. Touch shows the arrow.
+ */
+.project-dither {
+  background-image: repeating-conic-gradient(var(--portfolio-blue) 0 25%, transparent 0 50%);
+  background-size: 8px 8px;
+  /* A soft spot of dither under the cursor (--mx/--my are set on pointer move; top right until then). */
+  -webkit-mask-image: radial-gradient(circle 130px at var(--mx, 100%) var(--my, 0%), #000 0, transparent 100%);
+  mask-image: radial-gradient(circle 130px at var(--mx, 100%) var(--my, 0%), #000 0, transparent 100%);
+  opacity: 0;
+  /* Three steps, like the calendar printing in. */
+  transition: opacity 180ms steps(3, jump-none);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-slot="card"]:hover .project-dither {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-dither {
+    transition: none;
+  }
+}
+
+.project-link-label {
+  background: linear-gradient(currentColor, currentColor) left bottom / 0% 1px no-repeat;
+  transition: background-size 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.project-link-icon {
+  opacity: 0;
+  transform: translate3d(-4px, 4px, 0);
+  transition:
+    opacity 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-slot="card"]:hover .project-link-label {
+    background-size: 100% 1px;
+  }
+
+  [data-slot="card"]:hover .project-link-icon {
+    opacity: 1;
+    transform: none;
+    color: var(--portfolio-blue);
+  }
+}
+
+.project-link:focus-visible .project-link-label {
+  background-size: 100% 1px;
+}
+
+.project-link:focus-visible .project-link-icon {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: none) {
+  .project-link-icon {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-link-label,
+  .project-link-icon {
+    transition: none;
+  }
+}
+
 .animated-arrow-link {
   transition: color 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .animated-arrow-link-icon {
   opacity: 0;
-  transform: rotate(0deg);
+  transform: translate3d(-3px, 3px, 0);
   transition:
-    opacity 120ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .animated-arrow-link-label::after {
@@ -135,8 +250,7 @@ a[href],
 
   .animated-arrow-link:hover .animated-arrow-link-icon {
     opacity: 1;
-    transform: rotate(45deg);
-    transition-delay: 0ms, 90ms;
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -150,8 +264,7 @@ a[href],
 
 .animated-arrow-link:focus-visible .animated-arrow-link-icon {
   opacity: 1;
-  transform: rotate(45deg);
-  transition-delay: 0ms, 90ms;
+  transform: translate3d(0, 0, 0);
 }
 
 @media (hover: none), (max-width: 639px) {
@@ -159,7 +272,7 @@ a[href],
   .animated-arrow-link:hover .animated-arrow-link-icon,
   .animated-arrow-link:focus-visible .animated-arrow-link-icon {
     opacity: 1;
-    transform: rotate(0deg);
+    transform: none;
   }
 }
 

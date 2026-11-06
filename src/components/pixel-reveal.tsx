@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 
-import { EASE_IN_OUT } from '@/lib/ease'
+import { cubicBezier, EASE_IN_OUT } from '@/lib/ease'
 
 const POOL: [string, number][] = [
   ['@', 1], ['8', 0.97], ['0', 0.94], ['#', 0.85], ['4', 0.78],
@@ -8,7 +8,7 @@ const POOL: [string, number][] = [
   ['=', 0.14], ['-', 0.09], ['.', 0.05],
 ]
 
-const EASING = { duration: 650, x1: 0.2, y1: 0.35, x2: 0.3, y2: 1, bias: 0.65, brightness: 0.9, cycle: 210, variance: 0.4, smooth: 5, cluster: 3, cell: 15 }
+const EASING = { duration: 650, x1: 0.2, y1: 0.35, x2: 0.3, y2: 1, bias: 0.65, brightness: 0.9, cycle: 210, variance: 0.4, smooth: 5, cluster: 3, cell: 12 }
 const COVER_DURATION = 160
 const MAX_DPR = 1.5
 const REDUCED_WORK_QUERY = '(pointer: coarse), (max-width: 768px)'
@@ -19,27 +19,13 @@ export type RevealColors = {
   blue: string
 }
 
-function cubicBezier(x1: number, y1: number, x2: number, y2: number, t: number): number {
-  if (t <= 0) return 0
-  if (t >= 1) return 1
-  let x = t
-  for (let i = 0; i < 8; i++) {
-    const currentX = 3 * (1 - x) * (1 - x) * x * x1 + 3 * (1 - x) * x * x * x2 + x * x * x
-    const dx = 3 * (1 - x) * (1 - x) * x1 + 6 * (1 - x) * x * (x2 - x1) + 3 * x * x * (1 - x1)
-    if (Math.abs(dx) < 1e-6) break
-    x -= (currentX - t) / dx
-    x = Math.max(0, Math.min(1, x))
-  }
-  return 3 * (1 - x) * (1 - x) * x * y1 + 3 * (1 - x) * x * x * y2 + x * x * x
-}
-
 function releaseCanvas(canvas: HTMLCanvasElement) {
   canvas.width = 0
   canvas.height = 0
   canvas.hidden = true
 }
 
-export function PixelReveal({ onCovered, onRevealComplete, colors }: { onCovered: () => void; onRevealComplete: () => void; colors: RevealColors }) {
+export function PixelReveal({ onCovered, onRevealComplete, colors, origin }: { onCovered: () => void; onRevealComplete: () => void; colors: RevealColors; origin: { x: number; y: number } }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const coveredRef = useRef(onCovered)
   const completeRef = useRef(onRevealComplete)
@@ -95,10 +81,12 @@ export function PixelReveal({ onCovered, onRevealComplete, colors }: { onCovered
     const count = cols * rows
     const poolLen = POOL.length
 
+    // Cells clear outward from the toggle, like the view-transition wave this stands in for.
+    const reach = Math.hypot(Math.max(origin.x, w - origin.x), Math.max(origin.y, h - origin.y)) || 1
     const thresholds = new Float32Array(count)
     for (let r = 0; r < rows; r++)
       for (let c = 0; c < cols; c++)
-        thresholds[r * cols + c] = (r / Math.max(rows - 1, 1)) * bias + Math.random() * (1 - bias)
+        thresholds[r * cols + c] = (Math.hypot(c * cell - origin.x, r * cell - origin.y) / reach) * bias + Math.random() * (1 - bias)
 
     const cycles = new Float32Array(count)
     for (let i = 0; i < count; i++)
@@ -193,20 +181,31 @@ export function PixelReveal({ onCovered, onRevealComplete, colors }: { onCovered
           complete()
           return
         }
-        drawFrame(eased, eased)
+        // Glyphs cycle on elapsed milliseconds; the eased progress alone moves too little to change them.
+        drawFrame(eased, elapsed)
         rafId = requestAnimationFrame(tick)
       }
       rafId = requestAnimationFrame(tick)
     }
 
     begin()
+    // Laid out for this viewport: if it resizes mid-cover, finish the switch at once.
+    const land = () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+      covered()
+      releaseCanvas(canvas)
+      complete()
+    }
+    window.addEventListener('resize', land)
 
     return () => {
+      window.removeEventListener('resize', land)
       cancelled = true
       cancelAnimationFrame(rafId)
       releaseCanvas(canvas)
     }
-  }, [colors])
+  }, [colors, origin])
 
   return (
     <canvas
