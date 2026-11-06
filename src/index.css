@@ -193,15 +193,15 @@ a[href],
   }
 }
 
-::view-transition-group(project-workbench),
-::view-transition-group(project-digilicense) {
+::view-transition-group(project-elegant),
+::view-transition-group(project-workbench) {
   animation-duration: 200ms;
   animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(project-workbench),
-  ::view-transition-group(project-digilicense) {
+  ::view-transition-group(project-elegant),
+  ::view-transition-group(project-workbench) {
     animation-duration: 100ms;
     animation-timing-function: ease-out;
   }
