@@ -35,7 +35,7 @@ function CountUp({ value }: { value: number }) {
       show(value)
       return
     }
-    const controls = animate(0, value, { duration: 0.8, ease: EASE_OUT, onUpdate: show })
+    const controls = animate(0, value, { duration: 0.65, ease: EASE_OUT, onUpdate: show })
     return () => controls.stop()
   }, [value, reduce])
 

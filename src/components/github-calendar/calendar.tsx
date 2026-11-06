@@ -164,6 +164,17 @@ export function ContributionCalendar({
     };
   }, [startTime, endTime]);
 
+  // Marks the grid while fresh data washes in, so only that color change animates, not a theme switch.
+  const hadDays = useRef(days.length > 0);
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!grid || hadDays.current || days.length === 0) return;
+    hadDays.current = true;
+    grid.dataset.wash = "";
+    const timer = window.setTimeout(() => delete grid.dataset.wash, 1600);
+    return () => window.clearTimeout(timer);
+  }, [days]);
+
   // When the grid is wider than its container, open it scrolled to the entry day (usually today).
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
@@ -219,13 +230,15 @@ export function ContributionCalendar({
           aria-pressed={selected}
           aria-describedby={tipCell?.index === cell.index ? tooltipId : undefined}
           className={cx(
+            // Data that lands after the pop-in washes the colors in along the same diagonal wave.
             "block aspect-square w-full rounded-[3px] transition-[scale,opacity] duration-150 ease-out outline-none",
+            "motion-safe:in-data-wash:[transition:scale_150ms_ease-out,opacity_150ms_ease-out,background-color_520ms_cubic-bezier(0.16,1,0.3,1)_var(--wave)]",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
             "hover:relative hover:z-10 motion-safe:pointer-fine:hover:scale-125",
             selected && "ring-2 ring-foreground ring-offset-1 ring-offset-background",
             dimmed && "opacity-25",
           )}
-          style={{ background: fill(cell.level, color) }}
+          style={{ backgroundColor: fill(cell.level, color), "--wave": `${cell.week * 10 + cell.weekday * 16}ms` } as CSSProperties}
         />
       </span>
     );
