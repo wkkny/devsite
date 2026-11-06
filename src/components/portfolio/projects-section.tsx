@@ -1,9 +1,7 @@
 import { useState, useSyncExternalStore } from 'react'
-import { flushSync } from 'react-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { FiArrowUpRight, FiGrid, FiList } from 'react-icons/fi'
 
-import { ProjectStatus } from '@/components/project-status'
 import { Tooltip } from '@/components/tooltip'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ProjectCard, type ProjectView } from '@/components/portfolio/project-card'
@@ -26,20 +24,15 @@ export function ProjectsSection() {
   const reducedMotion = useReducedMotion()
   const desktopProjects = useSyncExternalStore(subscribeToDesktopProjects, isDesktopProjectsWidth, () => false)
   const [projectView, setProjectView] = useState<ProjectView>('grid')
+  const [hasSwitchedView, setHasSwitchedView] = useState(false)
   const visibleProjectView: ProjectView = desktopProjects ? projectView : 'grid'
 
   function changeProjectView(nextView: string) {
     if (nextView !== 'grid' && nextView !== 'list') return
     if (nextView === projectView) return
 
-    if (typeof document.startViewTransition !== 'function') {
-      setProjectView(nextView)
-      return
-    }
-
-    document.startViewTransition(() => {
-      flushSync(() => setProjectView(nextView))
-    })
+    setHasSwitchedView(true)
+    setProjectView(nextView)
   }
 
   return (
@@ -87,10 +80,9 @@ export function ProjectsSection() {
       </div>
       <div className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col divide-y divide-border'}>
         {projects.map((project) => (
-          <ProjectCard key={project.name} project={project} view={visibleProjectView} />
+          <ProjectCard key={project.name} project={project} view={visibleProjectView} animateSwap={hasSwitchedView} />
         ))}
       </div>
-      <ProjectStatus />
     </motion.section>
   )
 }

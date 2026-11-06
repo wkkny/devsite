@@ -26,22 +26,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.project-status-loader {
-  animation: project-status-spin 1.4s linear infinite;
-}
-
-@keyframes project-status-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .project-status-loader {
-    animation: none;
-  }
-}
-
 .now-playing-bars {
   display: inline-flex;
   flex-shrink: 0;
@@ -190,20 +174,6 @@ a[href],
 
   .animated-arrow-link-icon {
     transition: none;
-  }
-}
-
-::view-transition-group(project-elegant),
-::view-transition-group(project-workbench) {
-  animation-duration: 200ms;
-  animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(project-elegant),
-  ::view-transition-group(project-workbench) {
-    animation-duration: 100ms;
-    animation-timing-function: ease-out;
   }
 }
 
