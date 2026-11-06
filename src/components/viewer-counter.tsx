@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { animate, useReducedMotion } from 'motion/react'
+import { animate, motion, useReducedMotion } from 'motion/react'
 import { FiEye } from 'react-icons/fi'
 
 import { Tooltip } from '@/components/tooltip'
@@ -45,6 +45,7 @@ function CountUp({ value }: { value: number }) {
 export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
   const [viewers, setViewers] = useState<number | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
+  const reduce = useReducedMotion()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -137,9 +138,16 @@ export function ViewerCounter({ startAnimation }: { startAnimation: boolean }) {
         {viewers === null || !startAnimation ? (
           <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">—</span>
         ) : (
-          <span aria-hidden="true" className="inline-flex h-[1.1em] items-center leading-none tabular-nums">
+          // The number rolls up into place as it starts counting.
+          <motion.span
+            aria-hidden="true"
+            className="inline-flex h-[1.1em] items-center leading-none tabular-nums"
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 4, filter: 'blur(2px)' }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.22, ease: EASE_OUT }}
+          >
             <CountUp value={viewers} />
-          </span>
+          </motion.span>
         )}
       </output>
     </Tooltip>

@@ -28,7 +28,7 @@
 
 /*
  * The site's one press language: colors settle on the expo-out curve, and a press dips the
- * control to 96% quickly (70ms) and lets it spring back on release (220ms).
+ * control to 95% quickly (70ms) and lets it spring back on release (220ms).
  */
 @utility press {
   transition-property: color, background-color, border-color, box-shadow, opacity, scale;
@@ -37,7 +37,7 @@
 
   @media (prefers-reduced-motion: no-preference) {
     &:active:not(:disabled, [aria-disabled="true"]) {
-      scale: var(--press-scale, 0.96);
+      scale: 0.95;
       transition-duration: 70ms;
       transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
     }

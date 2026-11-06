@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FaXTwitter } from 'react-icons/fa6'
 import { FiCheck, FiGithub, FiMail } from 'react-icons/fi'
@@ -15,6 +15,16 @@ const socialIcons = {
 export function SocialLinks() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
   const copyStatusTimeout = useRef<number | null>(null)
+  // The pill eases to the width of whichever label is showing, measured off a hidden copy.
+  const labelMeasureRef = useRef<HTMLSpanElement>(null)
+  const [labelWidth, setLabelWidth] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const measure = labelMeasureRef.current
+    if (!measure) return
+    const observer = new ResizeObserver(() => setLabelWidth(measure.offsetWidth))
+    observer.observe(measure)
+    return () => observer.disconnect()
+  }, [])
   const reducedMotion = useReducedMotion()
 
   function clearCopyStatusTimeout() {
@@ -48,6 +58,15 @@ export function SocialLinks() {
     : copyStatus === 'error'
       ? 'Could not copy email'
       : 'Click to copy email'
+
+  const labelContent = copyStatus === 'copied' ? (
+    <span className="text-foreground">Copied<span className="hidden sm:inline"> to clipboard</span></span>
+  ) : (
+    <>
+      <span className="sm:hidden">Email</span>
+      <span className="hidden sm:inline">{portfolioOwner.email}</span>
+    </>
+  )
 
   const emailLabel = copyStatus === 'copied'
     ? 'Email copied to clipboard'
@@ -90,7 +109,8 @@ export function SocialLinks() {
           </Tooltip>
         )
       })}
-      <Tooltip content={emailTooltip} side="top">
+      {/* While the pill says "Copied", the tooltip steps aside instead of repeating it. */}
+      <Tooltip content={emailTooltip} side="top" disabled={copyStatus === 'copied'}>
         <button
           aria-label={emailLabel}
           className="email-trigger inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 leading-none font-medium text-muted-foreground press hover:bg-muted hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -115,11 +135,15 @@ export function SocialLinks() {
               </motion.span>
             </AnimatePresence>
           </span>
-          {/* The hidden sizer holds the label at its widest, so "Copied" swaps in without the pill resizing. */}
-          <span className="inline-grid min-w-[2.875rem] place-items-center sm:place-items-start">
-            <span aria-hidden="true" className="invisible col-start-1 row-start-1 hidden whitespace-nowrap sm:inline">
-              {portfolioOwner.email}
-            </span>
+          <span ref={labelMeasureRef} aria-hidden="true" className="invisible absolute whitespace-nowrap">
+            {labelContent}
+          </span>
+          <motion.span
+            className="inline-grid min-w-[2.875rem] place-items-center overflow-hidden sm:place-items-start"
+            initial={false}
+            animate={labelWidth === null ? undefined : { width: labelWidth }}
+            transition={reducedMotion ? { duration: 0 } : { duration: 0.24, ease: EASE_OUT }}
+          >
             <AnimatePresence initial={false} mode="popLayout">
               <motion.span
                 key={copyStatus === 'copied' ? 'copied-label' : 'email-label'}
@@ -129,17 +153,10 @@ export function SocialLinks() {
                 initial={copyMotionInitial}
                 transition={copyMotionTransition}
               >
-                {copyStatus === 'copied' ? (
-                  <span className="text-foreground">Copied<span className="hidden sm:inline"> to clipboard</span></span>
-                ) : (
-                  <>
-                    <span className="sm:hidden">Email</span>
-                    <span className="hidden sm:inline">{portfolioOwner.email}</span>
-                  </>
-                )}
+                {labelContent}
               </motion.span>
             </AnimatePresence>
-          </span>
+          </motion.span>
         </button>
       </Tooltip>
       <AnimatePresence initial={false}>

@@ -40,8 +40,9 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
       className={
         isList
           ? 'arrow-host gap-3 overflow-visible bg-transparent py-4 ring-0'
-          : // The card answers the cursor: the ring firms up, a soft shadow lifts it, and its GitHub arrow turns.
-            'arrow-host h-full transition-[box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-fine:hover:shadow-[0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)] pointer-fine:hover:ring-foreground/20'
+          : // The card answers the cursor: a second ring layered on the first firms the edge as a soft shadow lifts it,
+            // both in one box-shadow so they ease together, and its GitHub arrow slides out.
+            'arrow-host h-full transition-[box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)]'
       }
     >
       <CardHeader className={isList ? 'gap-1.5 px-0' : 'gap-3'}>

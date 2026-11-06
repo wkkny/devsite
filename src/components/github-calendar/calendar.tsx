@@ -344,7 +344,7 @@ export function ContributionCalendar({
                 onFocus={() => setLegendPreview(level)}
                 onBlur={() => setLegendPreview(null)}
                 onClick={() => setLegendLock((current) => (current === level ? null : level))}
-                className="size-3 rounded-[3px] outline-none transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:data-active:scale-125"
+                className="size-3 rounded-[3px] outline-none transition-[scale] duration-150 motion-safe:active:scale-90! focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:data-active:scale-125"
                 style={{ background: fill(level, color) }}
               />
             ))}
