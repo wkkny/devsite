@@ -5,9 +5,9 @@ import { FiMapPin } from 'react-icons/fi'
 import { SpotifyStatus } from '@/components/spotify-status'
 import { Tooltip } from '@/components/tooltip'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useTheme } from '@/components/theme-context'
 import { ViewerCounter } from '@/components/viewer-counter'
 import { SocialLinks } from '@/components/portfolio/social-links'
-import { useTheme } from '@/components/theme-context'
 import { EASE_OUT } from '@/lib/ease'
 import { portfolioOwner } from '@/data'
 
@@ -21,8 +21,18 @@ const bannerTransition = { duration: 0.95, ease: [0.3, 0, 0.1, 1], delay: 0.04 }
 const COPY_DELAY = 0.38
 const COPY_STAGGER = 0.055
 
-export function ProfileSection() {
+// Reads the theme here rather than in ProfileSection, so a theme switch re-renders only the
+// toggle and its label, not the whole hero, inside the view transition's frozen frame.
+function ThemeToggleWithTooltip() {
   const { theme } = useTheme()
+  return (
+    <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} side="bottom" gap={6}>
+      <ThemeToggle />
+    </Tooltip>
+  )
+}
+
+export function ProfileSection() {
   const reducedMotion = useReducedMotion()
   const [profileContentEntered, setProfileContentEntered] = useState(false)
 
@@ -92,9 +102,7 @@ export function ProfileSection() {
             >
               <ViewerCounter startAnimation={profileContentEntered} />
               <span aria-hidden="true" className="h-5 w-px bg-border" />
-              <Tooltip content={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} side="bottom" gap={6}>
-                <ThemeToggle />
-              </Tooltip>
+              <ThemeToggleWithTooltip />
             </motion.div>
           </div>
           <motion.div {...rise(1)} className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 type-label text-muted-foreground">

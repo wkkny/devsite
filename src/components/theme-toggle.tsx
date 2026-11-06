@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useTheme } from '@/components/theme-context'
 import { click8bitSound } from '@/lib/click-8bit'
 import { SPRING_SWAP } from '@/lib/ease'
-import { playSound } from '@/lib/sound-engine'
+import { playSound, warmSound } from '@/lib/sound-engine'
 
 // Spreads the rest of its props so a wrapper such as Tooltip can attach its handlers.
 function ThemeToggle({
@@ -40,6 +40,14 @@ function ThemeToggle({
       aria-busy={isTransitioning || undefined}
       aria-label={`Switch to ${nextTheme} mode`}
       onClick={handleToggle}
+      onPointerEnter={(event) => {
+        props.onPointerEnter?.(event)
+        warmSound(click8bitSound.dataUri)
+      }}
+      onFocus={(event) => {
+        props.onFocus?.(event)
+        warmSound(click8bitSound.dataUri)
+      }}
       className={className}
     >
       {/* The sun and moon trade places with a quarter turn. */}

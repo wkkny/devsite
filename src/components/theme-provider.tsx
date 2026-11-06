@@ -12,8 +12,6 @@ const THEME_COLORS: Record<Theme, string> = { light: '#ffffff', dark: '#060606' 
 const SKIP_THEME_REVEAL_QUERY = '(prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 768px)'
 // The view-transition wave is cheap enough for phones too; only reduced motion skips it.
 const SKIP_THEME_WAVE_QUERY = '(prefers-reduced-motion: reduce)'
-// The dithered fringe is the expensive part, so small touch screens get the clean circle.
-const PLAIN_WAVE_QUERY = '(pointer: coarse) and (max-width: 768px)'
 
 function readColors(): RevealColors {
   const styles = getComputedStyle(document.documentElement)
@@ -78,7 +76,6 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   const waveTheme = (nextTheme: Theme, origin: WaveOrigin) => {
     transitioning.current = true
     const oldColors = readColors()
-    const fringe = !window.matchMedia(PLAIN_WAVE_QUERY).matches
     const id = ++nextRevealId.current
     const clock: WaveClock = { animation: null }
     const current = { clock, queued: null as WaveOrigin | null }
@@ -89,7 +86,6 @@ function ThemeProvider({ children }: { children: ReactNode }) {
       applyTheme(nextTheme)
       // The browser bar follows once the wave is a third of the way across, not before it starts.
       if (oldMeta) meta?.setAttribute('content', oldMeta)
-      if (fringe) flushSync(() => setWave({ id, origin, oldColors, clock }))
     })
     const metaTimer = window.setTimeout(() => meta?.setAttribute('content', THEME_COLORS[nextTheme]), WAVE_DURATION / 3)
     const radius = waveRadius(origin)
@@ -100,12 +96,15 @@ function ThemeProvider({ children }: { children: ReactNode }) {
           transition.skipTransition()
           return
         }
+        // Mounted now rather than inside the update callback, so the frozen frame only swaps the
+        // theme. The new view is live, so the fringe still draws inside the circle.
+        setWave({ id, origin, oldColors, clock })
         clock.animation = document.documentElement.animate(
           { clipPath: [`circle(0px at ${origin.x}px ${origin.y}px)`, `circle(${radius}px at ${origin.x}px ${origin.y}px)`] },
           { duration: WAVE_DURATION, easing: `cubic-bezier(${WAVE_EASE.join(', ')})`, pseudoElement: '::view-transition-new(root)', fill: 'forwards' },
         )
-        // With a fringe, its frame loop steps the clip; without one the clip runs by itself.
-        if (fringe) clock.animation.pause()
+        // The fringe's frame loop steps the clip from here on.
+        clock.animation.pause()
         // The banner feels the wave pass: a ring leaves the toggle at the circle's pace and shoves
         // the dither field outward as the new theme sweeps through it.
         sendDitherPulse({ clientX: origin.x, clientY: origin.y, speed: radius / (WAVE_DURATION / 1000), strength: 10, boost: 0.4, duration: 0.9 })

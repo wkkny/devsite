@@ -21,10 +21,15 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx) return
+    // Without a canvas to draw on, let the clip run by itself instead of waiting to be stepped.
+    if (!canvas || !ctx) {
+      clock.animation?.play()
+      return
+    }
     const w = window.innerWidth
     const h = window.innerHeight
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+    // Phones draw the fringe at 1x: its cells are 12px squares, so extra resolution buys nothing.
+    const dpr = Math.min(window.devicePixelRatio || 1, window.matchMedia('(pointer: coarse)').matches ? 1 : 1.5)
     canvas.width = Math.ceil(w * dpr)
     canvas.height = Math.ceil(h * dpr)
     ctx.scale(dpr, dpr)
