@@ -21,16 +21,11 @@ const fade: Variants = {
 export function MaskReveal({ children }: { children: ReactNode }) {
   const reducedMotion = useReducedMotion()
   return (
-    <span className="block overflow-hidden pb-[0.08em]">
-      <motion.span
-        className="inline-block"
-        variants={reducedMotion ? fade : slide}
-        initial="hidden"
-        whileInView="shown"
-        viewport={{ once: true, amount: 0.6 }}
-      >
+    // The line itself is watched: the text starts clipped below it, so it never counts as visible.
+    <motion.span className="block overflow-hidden pb-[0.08em]" initial="hidden" whileInView="shown" viewport={{ once: true, amount: 0.6 }}>
+      <motion.span className="inline-block" variants={reducedMotion ? fade : slide}>
         {children}
       </motion.span>
-    </span>
+    </motion.span>
   )
 }

@@ -84,6 +84,8 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
         ctx.clearRect(0, 0, w, h)
         return
       }
+      // Take the clip back if a previous mount handed it off to run by itself.
+      if (clock.animation.playState === 'running') clock.animation.pause()
       start ??= now
       const elapsed = Math.min(WAVE_DURATION, now - start)
       clock.animation.currentTime = elapsed
@@ -124,8 +126,10 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
     return () => {
       window.removeEventListener('resize', land)
       cancelAnimationFrame(frame)
-      // Never leave the paused clip holding the view transition open.
-      clock.animation?.finish()
+      // Hand the clip back to run by itself rather than finishing it: a paused clip would hold the
+      // view transition open, and finishing it here would end the wave the moment StrictMode
+      // remounts this component in development.
+      if (clock.animation?.playState === 'paused') clock.animation.play()
     }
   }, [origin, oldColors, clock])
 
