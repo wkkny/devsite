@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 
 import { ThemeContext, type Theme } from '@/components/theme-context'
@@ -49,6 +49,9 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   // The wave in flight, so a second press can cut it short and send the next one back.
   const activeWave = useRef<{ clock: WaveClock; queued: WaveOrigin | null } | null>(null)
   const themeRef = useRef(theme)
+  const queuedReveal = useRef<WaveOrigin | null>(null)
+  // Read by the toggle after the fallback cover clears, so it always sees the latest closure.
+  const toggleRef = useRef<(origin?: WaveOrigin) => boolean>(() => false)
 
   // Later changes go through applyTheme, which also times the browser bar color with the wave.
   useEffect(() => {
@@ -56,6 +59,10 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const applyTheme = (nextTheme: Theme) => {
+    // Color transitions would trail the old palette behind the cut, so hold them for the swap.
+    const root = document.documentElement
+    root.dataset.themeSwitching = ''
+    requestAnimationFrame(() => requestAnimationFrame(() => delete root.dataset.themeSwitching))
     applyThemeToDocument(nextTheme)
     try {
       window.localStorage.setItem('theme', nextTheme)
@@ -117,8 +124,13 @@ function ThemeProvider({ children }: { children: ReactNode }) {
       activeWave.current.clock.animation?.finish()
       return true
     }
-    if (transitioning.current) return false
-    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    // The fallback cover queues one press the same way, and plays it once the cover clears.
+    if (transitioning.current) {
+      if (queuedReveal.current) return false
+      queuedReveal.current = origin ?? { x: window.innerWidth, y: 0 }
+      return true
+    }
+    const nextTheme = themeRef.current === 'dark' ? 'light' : 'dark'
     if (typeof document.startViewTransition === 'function' && !window.matchMedia(SKIP_THEME_WAVE_QUERY).matches) {
       waveTheme(nextTheme, origin ?? { x: window.innerWidth, y: 0 })
       return true
@@ -133,8 +145,17 @@ function ThemeProvider({ children }: { children: ReactNode }) {
     return true
   }
 
+  useLayoutEffect(() => {
+    toggleRef.current = toggleTheme
+  })
+  const stableToggle = useCallback((origin?: WaveOrigin) => toggleRef.current(origin), [])
+  // A stable value, so the flushSync inside the frozen view-transition frame re-renders only
+  // the components that read the theme.
+  const isTransitioning = reveal !== null || wave !== null
+  const value = useMemo(() => ({ theme, isTransitioning, toggleTheme: stableToggle }), [theme, isTransitioning, stableToggle])
+
   return (
-    <ThemeContext.Provider value={{ theme, isTransitioning: reveal !== null, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
       {wave && <ThemeWave key={wave.id} origin={wave.origin} oldColors={wave.oldColors} clock={wave.clock} />}
       {reveal && (
@@ -146,6 +167,9 @@ function ThemeProvider({ children }: { children: ReactNode }) {
           onRevealComplete={() => {
             transitioning.current = false
             setReveal((current) => current?.id === reveal.id ? null : current)
+            const queued = queuedReveal.current
+            queuedReveal.current = null
+            if (queued) toggleRef.current(queued)
           }}
         />
       )}

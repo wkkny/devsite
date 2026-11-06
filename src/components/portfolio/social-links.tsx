@@ -14,6 +14,9 @@ const socialIcons = {
 
 export function SocialLinks() {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
+  // Counts successful copies, so pressing again re-pops the check and is announced again.
+  const [copyCount, setCopyCount] = useState(0)
+  const [announcement, setAnnouncement] = useState('')
   const copyStatusTimeout = useRef<number | null>(null)
   // The pill eases to the width of whichever label is showing, measured off a hidden copy.
   const labelMeasureRef = useRef<HTMLSpanElement>(null)
@@ -43,6 +46,10 @@ export function SocialLinks() {
     try {
       await navigator.clipboard.writeText(portfolioOwner.email)
       setCopyStatus('copied')
+      setCopyCount((count) => count + 1)
+      // Clear, then set on the next frame, so a repeat copy is announced instead of ignored.
+      setAnnouncement('')
+      requestAnimationFrame(() => setAnnouncement('Email address copied to clipboard.'))
       copyStatusTimeout.current = window.setTimeout(() => {
         copyStatusTimeout.current = null
         setCopyStatus('idle')
@@ -50,6 +57,7 @@ export function SocialLinks() {
     } catch {
       clearCopyStatusTimeout()
       setCopyStatus('error')
+      setAnnouncement('Could not copy email address. Use the email link to open your mail app.')
     }
   }
 
@@ -120,7 +128,7 @@ export function SocialLinks() {
           <span aria-hidden="true" className="relative size-4 shrink-0">
             <AnimatePresence initial={false} mode="popLayout">
               <motion.span
-                key={copyStatus === 'copied' ? 'copied-icon' : 'email-icon'}
+                key={copyStatus === 'copied' ? `copied-icon-${copyCount}` : 'email-icon'}
                 animate={copyIconAnimate}
                 className="absolute inset-0 flex items-center justify-center"
                 exit={copyIconExit}
@@ -174,7 +182,7 @@ export function SocialLinks() {
         )}
       </AnimatePresence>
       <span aria-live="polite" className="sr-only">
-        {copyStatus === 'copied' ? 'Email address copied to clipboard.' : copyStatus === 'error' ? 'Could not copy email address. Use the email link to open your mail app.' : ''}
+        {announcement}
       </span>
     </nav>
   )

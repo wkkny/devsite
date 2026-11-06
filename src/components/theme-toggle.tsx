@@ -36,8 +36,8 @@ function ThemeToggle({
       type="button"
       variant="ghost"
       size="icon"
-      // Not `disabled`: the button stays at full strength while the cover plays; presses are ignored.
-      aria-disabled={isTransitioning || undefined}
+      // Busy, not disabled: a press during the switch is queued and sends the theme straight back.
+      aria-busy={isTransitioning || undefined}
       aria-label={`Switch to ${nextTheme} mode`}
       onClick={handleToggle}
       className={className}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ComponentProps } from 'react'
 import { useAnimationFrame, useSpring } from 'motion/react'
 
+import { createDitherRenderer, type DitherRenderer } from '@/lib/dither-gl'
 import { DITHER_PULSE_EVENT, type DitherPulse } from '@/lib/dither-pulse'
 import { cn } from '@/lib/utils'
 
@@ -150,6 +151,8 @@ export function DitherCanvas({
   const colorRef = useRef<{ css: string; rgb: Rgb }>({ css: '', rgb: [0, 0, 0] })
   const colorDirtyRef = useRef(true)
   const imageRef = useRef<ImageData | null>(null)
+  // The GPU renderer when WebGL2 is available; otherwise null and the 2D loop below draws.
+  const rendererRef = useRef<DitherRenderer | null | undefined>(undefined)
   const wavesRef = useRef<Wave[]>([])
   const insideRef = useRef(false)
   const hoverX = useSpring(0, { stiffness: 260, damping: 32, mass: 0.6 })
@@ -170,6 +173,7 @@ export function DitherCanvas({
       lastDrawRef.current = -Infinity
     })
     resizeObserver.observe(canvas)
+    rendererRef.current ??= createDitherRenderer(canvas)
     const visibilityObserver = new IntersectionObserver(([entry]) => {
       visibleRef.current = entry.isIntersecting
     })
@@ -186,6 +190,14 @@ export function DitherCanvas({
       themeObserver.disconnect()
     }
   }, [cellSize])
+
+  useEffect(
+    () => () => {
+      rendererRef.current?.dispose()
+      rendererRef.current = undefined
+    },
+    [],
+  )
 
   // Listen on the window so the effects work even when the canvas sits under non-interactive overlays.
   useEffect(() => {
@@ -297,8 +309,9 @@ export function DitherCanvas({
     // Interaction redraws at display rate so the cursor and ring feel immediate.
     const interval = moving ? 0 : 1000 / fps
     if (!needsRedraw && time - lastDrawRef.current < interval) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    const renderer = rendererRef.current
+    const ctx = renderer ? null : canvas.getContext('2d')
+    if (!renderer && !ctx) return
 
     const elapsed = lastTimeRef.current === null ? 0 : Math.min(time - lastTimeRef.current, 100)
     lastTimeRef.current = time
@@ -314,6 +327,24 @@ export function DitherCanvas({
     const [r, g, b] = colorRef.current.rgb
 
     const { width, height } = canvas
+    const angle = (rotation * Math.PI) / 180
+    const z = (noiseTimeRef.current / 1000) * speed
+    const ringsNow = waves.map((wave) => {
+      const age = (now - wave.start) / 1000
+      const life = 1 - age / wave.duration
+      return { x: wave.x, y: wave.y, radius: age * wave.speed, fade: life * life, width: shockwaveWidth, strength: wave.strength, boost: wave.boost }
+    })
+
+    if (renderer) {
+      renderer.draw({
+        width, height, scale, cos: Math.cos(angle), sin: Math.sin(angle), z, density, contrast, detail, rgb: [r, g, b], matrixSize,
+        hover: { x: hoverX.get(), y: hoverY.get(), strength: hover, displacement: hoverDisplacement, radius: hoverRadius, boost: hoverBoost },
+        rings: ringsNow,
+      })
+      return
+    }
+    if (!ctx) return
+
     let image = imageRef.current
     if (!image || image.width !== width || image.height !== height) {
       image = ctx.createImageData(width, height)
@@ -322,19 +353,13 @@ export function DitherCanvas({
       image.data.fill(0)
     }
     const matrix = bayer(matrixSize)
-    const angle = (rotation * Math.PI) / 180
     const cos = Math.cos(angle)
     const sin = Math.sin(angle)
-    const z = (noiseTimeRef.current / 1000) * speed
 
     const cursorX = hoverX.get()
     const cursorY = hoverY.get()
     const reach2 = hoverRadius * hoverRadius * 4
-    const rings = waves.map((wave) => {
-      const age = (now - wave.start) / 1000
-      const life = 1 - age / wave.duration
-      return { x: wave.x, y: wave.y, radius: age * wave.speed, fade: life * life, strength: wave.strength, boost: wave.boost }
-    })
+    const rings = ringsNow
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {

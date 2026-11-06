@@ -47,6 +47,20 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
         glyph[i] = Math.floor(Math.random() * GLYPHS.length)
       }
 
+    // Cells sorted by distance from the origin, so each frame visits only the band near the edge.
+    const order = Uint32Array.from(distance.keys()).sort((a, b) => distance[a] - distance[b])
+    const sorted = Float32Array.from(order, (i) => distance[i])
+    const firstAtLeast = (value: number) => {
+      let lo = 0
+      let hi = sorted.length
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1
+        if (sorted[mid] < value) lo = mid + 1
+        else hi = mid
+      }
+      return lo
+    }
+
     const radius = waveRadius(origin)
     const [x1, y1, x2, y2] = WAVE_EASE
     let frame = 0
@@ -69,7 +83,9 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
       const linear = elapsed / WAVE_DURATION
       const edge = cubicBezier(x1, y1, x2, y2, linear) * radius
       ctx.clearRect(0, 0, w, h)
-      for (let i = 0; i < distance.length; i++) {
+      const end = firstAtLeast(edge + CELL + 1)
+      for (let k = firstAtLeast(edge - BAND); k < end; k++) {
+        const i = order[k]
         const behind = edge - distance[i]
         // Cells straddling the edge are drawn too, so no sliver of the smooth circle shows between them.
         if (behind < -CELL || behind > depth[i]) continue

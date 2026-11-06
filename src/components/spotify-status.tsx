@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 
 import { Tooltip } from '@/components/tooltip'
@@ -178,6 +178,7 @@ export function SpotifyStatus() {
   }, [updateNow])
 
   const reducedMotion = useReducedMotion()
+  const barsRef = useRef<HTMLSpanElement>(null)
   const track = playback?.track ?? lastTrack
   const playing = playback?.status === 'playing'
   const imageUrl = track?.imageUrl
@@ -189,6 +190,19 @@ export function SpotifyStatus() {
     image.referrerPolicy = 'no-referrer'
     image.src = imageUrl
   }, [imageUrl])
+
+  const showBars = Boolean(track) && playback?.status === 'playing'
+  // The equalizer loops forever, so it rests while scrolled out of view.
+  useEffect(() => {
+    const bars = barsRef.current
+    if (!showBars || !bars || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) delete bars.dataset.offscreen
+      else bars.dataset.offscreen = ''
+    })
+    observer.observe(bars)
+    return () => observer.disconnect()
+  }, [showBars])
 
   if (!track) return null
 
@@ -236,7 +250,7 @@ export function SpotifyStatus() {
               </motion.span>
             </AnimatePresence>
             {playing && (
-              <span aria-hidden="true" className="now-playing-bars">
+              <span ref={barsRef} aria-hidden="true" className="now-playing-bars">
                 <span />
                 <span />
                 <span />

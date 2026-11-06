@@ -26,6 +26,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Held for the frame the theme swaps in, so no control fades over from the old palette. */
+[data-theme-switching] *,
+[data-theme-switching] *::before,
+[data-theme-switching] *::after {
+  transition-property: none !important;
+}
+
 /* The theme wave drives its own clip on the new snapshot; turn off the default cross-fade. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -66,6 +73,10 @@
   background: #1db954;
   transform-origin: bottom;
   animation: now-playing-bar 1s ease-in-out infinite;
+}
+
+.now-playing-bars[data-offscreen] > span {
+  animation-play-state: paused;
 }
 
 .now-playing-bars > span:nth-child(1) {
