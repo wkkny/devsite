@@ -9,9 +9,12 @@ import { WAVE_DURATION, WAVE_EASE, waveRadius, type WaveClock, type WaveOrigin }
 
 // Matches --background in index.css, so the browser UI follows the site theme.
 const THEME_COLORS: Record<Theme, string> = { light: '#ffffff', dark: '#060606' }
-const SKIP_THEME_REVEAL_QUERY = '(prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 768px)'
-// The view-transition wave is cheap enough for phones too; only reduced motion skips it.
+// The view-transition wave is the theme switch everywhere, phones included; only reduced motion
+// skips it.
 const SKIP_THEME_WAVE_QUERY = '(prefers-reduced-motion: reduce)'
+// Fallback only, for browsers without View Transitions: the full-screen pixel cover is too heavy
+// for phones, so they switch instantly there instead.
+const SKIP_FALLBACK_COVER_QUERY = '(prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 768px)'
 
 function readColors(): RevealColors {
   const styles = getComputedStyle(document.documentElement)
@@ -139,7 +142,7 @@ function ThemeProvider({ children }: { children: ReactNode }) {
       waveTheme(nextTheme, origin ?? { x: window.innerWidth, y: 0 })
       return true
     }
-    if (window.matchMedia(SKIP_THEME_REVEAL_QUERY).matches) {
+    if (window.matchMedia(SKIP_FALLBACK_COVER_QUERY).matches) {
       applyTheme(nextTheme)
       return true
     }
