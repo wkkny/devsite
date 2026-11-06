@@ -16,6 +16,8 @@ type ProjectCardProps = {
 
 const MotionCard = motion.create(Card)
 
+const CARD_SPRING = { type: 'spring', stiffness: 520, damping: 34, mass: 0.6 } as const
+
 export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
   const reducedMotion = useReducedMotion()
   const isList = view === 'list'
@@ -23,30 +25,36 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
 
   // The card, mark, title and link keep their shape between views, so they glide to their new places.
   // The description and tags rewrap, so the old copy fades out at once and the new copy fades in at
-  // its new width while the card is still gliding: the card is never empty.
+  // its new width while the card is still gliding, overlapping the old so the card is never empty.
   const swapIn = animateSwap
     ? {
-        initial: { opacity: 0 },
-        animate: { opacity: 1 },
-        exit: { opacity: 0, transition: { duration: 0.1, ease: EASE_OUT } },
-        transition: reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.24, ease: EASE_OUT, delay: 0.1 },
+        initial: reducedMotion ? { opacity: 0 } : { opacity: 0, y: 3 },
+        animate: reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 },
+        exit: { opacity: 0, transition: { duration: 0.07, ease: EASE_OUT } },
+        transition: reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.22, ease: EASE_OUT, delay: 0.045 },
       }
     : { initial: false as const }
+
+  // A whole-card link gets a whole-card response: a 2px lift on hover and a slight dip on press,
+  // on a stiff spring so it answers at once. Grid only; list rows stay flat.
+  const lift = !isList && !reducedMotion
+    ? { whileHover: { y: -2 }, whileTap: { scale: 0.985 }, transition: { layout: layoutTransition, borderRadius: layoutTransition, default: CARD_SPRING } }
+    : { transition: { layout: layoutTransition, borderRadius: layoutTransition } }
 
   return (
     <MotionCard
       layout
       initial={false}
       animate={{ borderRadius: isList ? 0 : 12 }}
-      transition={{ layout: layoutTransition, borderRadius: layoutTransition }}
+      {...lift}
       className={
         // The whole card is the link (see the title), so it takes the keyboard focus ring.
         isList
-          ? 'relative gap-3 overflow-visible bg-transparent py-4 ring-0 transition-[background-color,box-shadow] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-4 has-[a:focus-visible]:ring-offset-background'
+          ? 'relative gap-3 overflow-visible bg-transparent py-4 ring-0 transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-4 has-[a:focus-visible]:ring-offset-background'
           : // The card answers the cursor: a second ring layered on the first firms the edge as a soft shadow lifts it,
-            // both in one box-shadow so they ease together. The frame's fill and ring dissolve over the same 400ms as
-            // the glide when the view changes.
-            'relative h-full transition-[background-color,box-shadow] duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] hover:duration-200 pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring'
+            // both in one box-shadow so they ease together. The frame's fill and ring dissolve in 200ms when the
+            // view changes, well inside the 400ms glide, so no ghost edge trails the moving card.
+            'relative h-full transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring'
       }
     >
       <CardHeader className={isList ? 'gap-1.5 px-0' : 'gap-3'}>
@@ -99,16 +107,17 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
         </motion.div>
       </CardHeader>
       <CardContent className={isList ? 'px-0' : 'flex flex-1 flex-col'}>
-        {/* The tags keep their identity across views: each pill slides to its new place in the reflow. */}
+        {/* The tags keep their identity across views: each pill slides to its new place in the reflow,
+            all together, so none trails behind the card. */}
         <motion.ul
           aria-label={`${project.name} technologies`}
           className={isList ? 'flex flex-wrap gap-1.5' : 'flex flex-wrap gap-1.5 pt-4'}
         >
-          {project.stack.map((item, index) => (
+          {project.stack.map((item) => (
             <motion.li
               key={item}
               layout="position"
-              transition={{ layout: reducedMotion ? { duration: 0 } : { ...LAYOUT_SWAP, delay: index * 0.015 } }}
+              transition={{ layout: layoutTransition }}
               className="rounded-[5px] bg-muted px-1.5 py-0.5 type-label text-muted-foreground"
             >
               {item}

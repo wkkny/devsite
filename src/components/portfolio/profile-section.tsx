@@ -11,16 +11,21 @@ import { SocialLinks } from '@/components/portfolio/social-links'
 import { EASE_OUT } from '@/lib/ease'
 import { portfolioOwner } from '@/data'
 
-// The optional banner chunk loads on first render, and only when motion is allowed.
-const ProfileBanner = lazy<ComponentType>(() => import('./profile-banner').catch(() => ({ default: () => null })))
+// The optional banner chunk is only needed when motion is allowed. It starts downloading as soon as
+// this module runs, not at first render, so the live field is usually ready before the blade
+// reaches it.
+const loadBanner = () => import('./profile-banner').catch(() => ({ default: () => null }))
+const bannerChunk =
+  typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? loadBanner() : null
+const ProfileBanner = lazy<ComponentType>(() => bannerChunk ?? loadBanner())
 
 // Moves on the first frame, then takes a long settle, so there's no blank beat before the blade.
-// The hero is done by about 1s.
-const bannerTransition = { duration: 0.9, ease: [0.2, 0, 0.1, 1] } as const
+// The hero is done by about 0.9s.
+const bannerTransition = { duration: 0.8, ease: [0.2, 0, 0.1, 1] } as const
 
-// The hero copy rises line by line from under a soft blur, 55ms apart, while the avatar lands.
-const COPY_DELAY = 0.38
-const COPY_STAGGER = 0.055
+// The hero copy rises line by line from under a soft blur, 45ms apart, while the avatar lands.
+const COPY_DELAY = 0.3
+const COPY_STAGGER = 0.045
 
 // Reads the theme here rather than in ProfileSection, so a theme switch re-renders only the
 // toggle and its label, not the whole hero, inside the view transition's frozen frame.
@@ -45,7 +50,7 @@ export function ProfileSection() {
     return {
       initial: { opacity: 0, y: 10, filter: 'blur(4px)' },
       animate: { opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } },
-      transition: { duration: 0.5, ease: EASE_OUT, delay: COPY_DELAY + step * COPY_STAGGER },
+      transition: { duration: 0.45, ease: EASE_OUT, delay: COPY_DELAY + step * COPY_STAGGER },
     }
   }
 
@@ -79,7 +84,7 @@ export function ProfileSection() {
           height={448}
           initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.96, filter: 'blur(6px)' }}
           animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
-          transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.55, ease: EASE_OUT, delay: 0.24 }}
+          transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.5, ease: EASE_OUT, delay: 0.18 }}
         />
         <div>
           <div className="relative flex min-w-0 items-center justify-between gap-2">

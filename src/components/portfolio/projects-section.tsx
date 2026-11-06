@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { FiArrowUpRight, FiGrid, FiList } from 'react-icons/fi'
 
 import { MaskReveal } from '@/components/mask-reveal'
-import { Tooltip } from '@/components/tooltip'
+import { Tooltip, TooltipGroup } from '@/components/tooltip'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ProjectCard, type ProjectView } from '@/components/portfolio/project-card'
 import { portfolioOwner, projects } from '@/data'
@@ -73,26 +73,29 @@ export function ProjectsSection() {
             <FiArrowUpRight aria-hidden="true" className="animated-arrow-link-icon size-3" />
           </a>
           {desktopProjects ? (
-            <ToggleGroup
-              aria-label="Project view"
-              value={[projectView]}
-              onValueChange={(values) => changeProjectView(values[0])}
-              variant="outline"
-              size="sm"
-            >
-              <Tooltip content="Grid view">
-                <ToggleGroupItem value="grid" aria-label="Grid view" className={VIEW_ITEM}>
-                  {projectView === 'grid' && <ViewPill reducedMotion={reducedMotion} />}
-                  <FiGrid aria-hidden="true" />
-                </ToggleGroupItem>
-              </Tooltip>
-              <Tooltip content="List view">
-                <ToggleGroupItem value="list" aria-label="List view" className={VIEW_ITEM}>
-                  {projectView === 'list' && <ViewPill reducedMotion={reducedMotion} />}
-                  <FiList aria-hidden="true" />
-                </ToggleGroupItem>
-              </Tooltip>
-            </ToggleGroup>
+            <TooltipGroup side="top">
+              {/* One label slides between the two buttons, like every other row of controls. */}
+              <ToggleGroup
+                aria-label="Project view"
+                value={[projectView]}
+                onValueChange={(values) => changeProjectView(values[0])}
+                variant="outline"
+                size="sm"
+              >
+                <Tooltip content="Grid view">
+                  <ToggleGroupItem value="grid" aria-label="Grid view" className={VIEW_ITEM}>
+                    {projectView === 'grid' && <ViewPill reducedMotion={reducedMotion} />}
+                    <FiGrid aria-hidden="true" />
+                  </ToggleGroupItem>
+                </Tooltip>
+                <Tooltip content="List view">
+                  <ToggleGroupItem value="list" aria-label="List view" className={VIEW_ITEM}>
+                    {projectView === 'list' && <ViewPill reducedMotion={reducedMotion} />}
+                    <FiList aria-hidden="true" />
+                  </ToggleGroupItem>
+                </Tooltip>
+              </ToggleGroup>
+            </TooltipGroup>
           ) : null}
         </div>
       </motion.div>

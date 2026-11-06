@@ -3,7 +3,7 @@ import type { Variants } from 'motion/react'
 import { EASE_OUT } from '@/lib/ease'
 
 /** When the hero has finished entering, in seconds after navigation start. */
-const HERO_SETTLED = 1.05
+const HERO_SETTLED = 0.9
 
 /**
  * Seconds a section should wait before revealing. A section already on screen at load (tall
@@ -32,10 +32,18 @@ export const revealStagger: Variants = {
   shown: () => ({ transition: { delayChildren: heroHold() + 0.1, staggerChildren: 0.07 } }),
 }
 
-/** One staggered child: a card or row. No blur here: blur is kept for the hero and headings. */
+// Opacity in three steps (0, 50%, 100%), like the calendar squares printing in: the dither language
+// carried below the hero.
+const printIn = (t: number) => (t < 1 / 3 ? 0 : t < 2 / 3 ? 0.5 : 1)
+
+/** One staggered child: a card or row. It rises into place while it prints in. No blur here. */
 export const revealItem: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  shown: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE_OUT } },
+  hidden: { opacity: 0, y: 12 },
+  shown: {
+    opacity: 1,
+    y: 0,
+    transition: { y: { duration: 0.5, ease: EASE_OUT }, opacity: { duration: 0.21, ease: printIn } },
+  },
 }
 
 /** Reduced motion: a short fade, no movement. */
