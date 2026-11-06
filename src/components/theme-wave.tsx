@@ -55,6 +55,11 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
         frame = requestAnimationFrame(tick)
         return
       }
+      // A second press finished the wave early: stop stepping, or the clip would rewind.
+      if (clock.animation.playState === 'finished') {
+        ctx.clearRect(0, 0, w, h)
+        return
+      }
       start ??= now
       const elapsed = Math.min(WAVE_DURATION, now - start)
       clock.animation.currentTime = elapsed

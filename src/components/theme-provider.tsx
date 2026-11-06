@@ -41,15 +41,18 @@ function getInitialTheme(): Theme {
 
 function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
-  const [reveal, setReveal] = useState<{ id: number; nextTheme: Theme; colors: RevealColors } | null>(null)
+  const [reveal, setReveal] = useState<{ id: number; nextTheme: Theme; colors: RevealColors; origin: WaveOrigin } | null>(null)
   const [wave, setWave] = useState<{ id: number; origin: WaveOrigin; oldColors: RevealColors; clock: WaveClock } | null>(null)
-  const [waving, setWaving] = useState(false)
   const nextRevealId = useRef(0)
   const transitioning = useRef(false)
+  // The wave in flight, so a second press can cut it short and send the next one back.
+  const activeWave = useRef<{ clock: WaveClock; queued: WaveOrigin | null } | null>(null)
+  const themeRef = useRef(theme)
 
+  // Later changes go through applyTheme, which also times the browser bar color with the wave.
   useEffect(() => {
-    applyThemeToDocument(theme)
-  }, [theme])
+    applyThemeToDocument(themeRef.current)
+  }, [])
 
   const applyTheme = (nextTheme: Theme) => {
     applyThemeToDocument(nextTheme)
@@ -58,6 +61,7 @@ function ThemeProvider({ children }: { children: ReactNode }) {
     } catch {
       // The visual toggle still works when storage is unavailable.
     }
+    themeRef.current = nextTheme
     flushSync(() => setTheme(nextTheme))
   }
 
@@ -65,15 +69,21 @@ function ThemeProvider({ children }: { children: ReactNode }) {
   // live new one is revealed through an expanding circle, with a dithered fringe on its edge.
   const waveTheme = (nextTheme: Theme, origin: WaveOrigin) => {
     transitioning.current = true
-    setWaving(true)
     const oldColors = readColors()
     const fringe = !window.matchMedia(PLAIN_WAVE_QUERY).matches
     const id = ++nextRevealId.current
     const clock: WaveClock = { animation: null }
+    const current = { clock, queued: null as WaveOrigin | null }
+    activeWave.current = current
+    const meta = document.querySelector('meta[name="theme-color"]')
+    const oldMeta = meta?.getAttribute('content')
     const transition = document.startViewTransition(() => {
       applyTheme(nextTheme)
+      // The browser bar follows once the wave is a third of the way across, not before it starts.
+      if (oldMeta) meta?.setAttribute('content', oldMeta)
       if (fringe) flushSync(() => setWave({ id, origin, oldColors, clock }))
     })
+    const metaTimer = window.setTimeout(() => meta?.setAttribute('content', THEME_COLORS[nextTheme]), WAVE_DURATION / 3)
     const radius = waveRadius(origin)
     void transition.ready
       .then(() => {
@@ -86,13 +96,23 @@ function ThemeProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => undefined)
     void transition.finished.finally(() => {
+      window.clearTimeout(metaTimer)
+      meta?.setAttribute('content', THEME_COLORS[themeRef.current])
       transitioning.current = false
-      setWaving(false)
-      setWave((current) => (current?.id === id ? null : current))
+      activeWave.current = null
+      setWave((shown) => (shown?.id === id ? null : shown))
+      if (current.queued) waveTheme(themeRef.current === 'dark' ? 'light' : 'dark', current.queued)
     })
   }
 
   const toggleTheme = (origin?: WaveOrigin) => {
+    // A press mid-wave lands the current wave at once and sends the next one straight back.
+    if (activeWave.current) {
+      if (activeWave.current.queued) return false
+      activeWave.current.queued = origin ?? { x: window.innerWidth, y: 0 }
+      activeWave.current.clock.animation?.finish()
+      return true
+    }
     if (transitioning.current) return false
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
     if (typeof document.startViewTransition === 'function' && !window.matchMedia(SKIP_THEME_WAVE_QUERY).matches) {
@@ -105,18 +125,19 @@ function ThemeProvider({ children }: { children: ReactNode }) {
     }
 
     transitioning.current = true
-    setReveal({ id: ++nextRevealId.current, nextTheme, colors: readColors() })
+    setReveal({ id: ++nextRevealId.current, nextTheme, colors: readColors(), origin: origin ?? { x: window.innerWidth, y: 0 } })
     return true
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, isTransitioning: reveal !== null || waving, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, isTransitioning: reveal !== null, toggleTheme }}>
       {children}
       {wave && <ThemeWave key={wave.id} origin={wave.origin} oldColors={wave.oldColors} clock={wave.clock} />}
       {reveal && (
         <PixelReveal
           key={reveal.id}
           colors={reveal.colors}
+          origin={reveal.origin}
           onCovered={() => applyTheme(reveal.nextTheme)}
           onRevealComplete={() => {
             transitioning.current = false

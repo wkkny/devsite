@@ -25,7 +25,7 @@ function releaseCanvas(canvas: HTMLCanvasElement) {
   canvas.hidden = true
 }
 
-export function PixelReveal({ onCovered, onRevealComplete, colors }: { onCovered: () => void; onRevealComplete: () => void; colors: RevealColors }) {
+export function PixelReveal({ onCovered, onRevealComplete, colors, origin }: { onCovered: () => void; onRevealComplete: () => void; colors: RevealColors; origin: { x: number; y: number } }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const coveredRef = useRef(onCovered)
   const completeRef = useRef(onRevealComplete)
@@ -81,10 +81,12 @@ export function PixelReveal({ onCovered, onRevealComplete, colors }: { onCovered
     const count = cols * rows
     const poolLen = POOL.length
 
+    // Cells clear outward from the toggle, like the view-transition wave this stands in for.
+    const reach = Math.hypot(Math.max(origin.x, w - origin.x), Math.max(origin.y, h - origin.y)) || 1
     const thresholds = new Float32Array(count)
     for (let r = 0; r < rows; r++)
       for (let c = 0; c < cols; c++)
-        thresholds[r * cols + c] = (r / Math.max(rows - 1, 1)) * bias + Math.random() * (1 - bias)
+        thresholds[r * cols + c] = (Math.hypot(c * cell - origin.x, r * cell - origin.y) / reach) * bias + Math.random() * (1 - bias)
 
     const cycles = new Float32Array(count)
     for (let i = 0; i < count; i++)
@@ -193,7 +195,7 @@ export function PixelReveal({ onCovered, onRevealComplete, colors }: { onCovered
       cancelAnimationFrame(rafId)
       releaseCanvas(canvas)
     }
-  }, [colors])
+  }, [colors, origin])
 
   return (
     <canvas
