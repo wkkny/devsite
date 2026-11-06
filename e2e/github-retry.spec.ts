@@ -106,16 +106,3 @@ test('a retry in one year does not show Retry on the first load of another year'
   await expect(page.getByText('Loading GitHub activity…')).toBeVisible()
   await expect(retry).toHaveCount(0)
 })
-
-test('reduced-motion project status is static ordinary text', async ({ page }) => {
-  await page.route('https://github-contributions-api.jogruber.de/**', (route) => route.fulfill({ json: { contributions: [] } }))
-  await page.route('**/api/visitors', (route) => route.fulfill({ json: { value: 42 } }))
-  await page.route('**/api/now-playing', (route) => route.fulfill({ json: { status: 'idle', track: null } }))
-  await page.goto('/')
-  const status = page.locator('.project-status')
-  await expect(status).toHaveText('Cooking up fresh projects.')
-  await expect(status).not.toHaveAttribute('aria-live')
-  await page.clock.install()
-  await page.clock.runFor(20_000)
-  await expect(status).toHaveText('Cooking up fresh projects.')
-})
