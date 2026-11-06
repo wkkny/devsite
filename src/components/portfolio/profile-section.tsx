@@ -31,9 +31,10 @@ const avatarTransition = {
   default: { type: 'spring', stiffness: 380, damping: 32, mass: 0.7, delay: 0.18 },
 } as const
 
-// The hero copy rises line by line from under a soft blur, 45ms apart, while the avatar lands.
+// The hero copy rises line by line from under a soft blur, 65ms apart, while the avatar lands:
+// far enough apart to read as a cascade rather than one block fading in.
 const COPY_DELAY = 0.3
-const COPY_STAGGER = 0.045
+const COPY_STAGGER = 0.065
 
 // Reads the theme here rather than in ProfileSection, so a theme switch re-renders only the
 // toggle and its label, not the whole hero, inside the view transition's frozen frame.
@@ -56,9 +57,9 @@ export function ProfileSection() {
       return { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.2, ease: EASE_OUT } }
     }
     return {
-      initial: { opacity: 0, y: 10, filter: 'blur(4px)' },
+      initial: { opacity: 0, y: 12, filter: 'blur(5px)' },
       animate: { opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } },
-      transition: { duration: 0.45, ease: EASE_OUT, delay: COPY_DELAY + step * COPY_STAGGER },
+      transition: { duration: 0.5, ease: EASE_OUT, delay: COPY_DELAY + step * COPY_STAGGER },
     }
   }
 
@@ -72,9 +73,11 @@ export function ProfileSection() {
           animate={reducedMotion ? { opacity: 1 } : { clipPath: 'polygon(0 0, 116% 0, 100% 100%, 0 100%)' }}
           transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : bannerTransition}
         >
-          {/* Holds the banner until the dither chunk loads: a checkerboard of the same 4px cells, so
-              nothing changes shape when the live field takes over. */}
-          <div className="absolute inset-0" style={{ backgroundImage: 'repeating-conic-gradient(var(--portfolio-blue) 0 25%, transparent 0 50%)', backgroundSize: '8px 8px', opacity: 0.16 }} />
+          {/* With motion, the live field prints itself in behind the blade. Reduced motion gets a still
+              checkerboard of the same 4px cells instead of the animated field. */}
+          {reducedMotion && (
+            <div className="absolute inset-0" style={{ backgroundImage: 'repeating-conic-gradient(var(--portfolio-blue) 0 25%, transparent 0 50%)', backgroundSize: '8px 8px', opacity: 0.16 }} />
+          )}
           {!reducedMotion && (
             <Suspense fallback={null}>
               <ProfileBanner />
@@ -112,7 +115,9 @@ export function ProfileSection() {
               aria-label="Site controls"
               className="inline-flex h-10 shrink-0 items-center gap-1 rounded-xl p-1 sm:absolute sm:-top-[7.5rem] sm:right-0"
               {...rise(0)}
-              onAnimationComplete={() => setProfileContentEntered(true)}
+              // The count starts as the controls begin to rise, so it lands with the copy rather than
+              // ticking in the corner after everything else has settled.
+              onAnimationStart={() => setProfileContentEntered(true)}
             >
               {/* One label slides between the counter and the toggle. */}
               <TooltipGroup side="bottom" gap={6}>

@@ -56,6 +56,15 @@ export function ProjectCard({ project, view, animateSwap, divided = false, highl
       animate={{ borderRadius: isList ? 0 : 12 }}
       {...lift}
       onPointerEnter={isList ? (event: PointerEvent) => event.pointerType === 'mouse' && onHighlight?.() : undefined}
+      onPointerMove={
+        isList
+          ? undefined
+          : (event: PointerEvent<HTMLDivElement>) => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              event.currentTarget.style.setProperty('--mx', `${event.clientX - rect.left}px`)
+              event.currentTarget.style.setProperty('--my', `${event.clientY - rect.top}px`)
+            }
+      }
       className={
         // The whole card is the link (see the title), so it takes the keyboard focus ring.
         isList
@@ -87,8 +96,9 @@ export function ProjectCard({ project, view, animateSwap, divided = false, highl
           />
         )}
       </AnimatePresence>
-      {/* Grid cards: a corner of the banner's dither prints in on hover, stepped like the calendar. */}
-      {!isList && <span aria-hidden="true" className="project-dither pointer-events-none absolute top-0 right-0 size-16" />}
+      {/* Grid cards: a patch of the banner's dither prints in under the cursor and follows it, so the
+          card answers like a small piece of the banner. */}
+      {!isList && <span aria-hidden="true" className="project-dither pointer-events-none absolute inset-0" />}
       <CardHeader className={isList ? 'gap-1.5 px-0' : 'gap-3'}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">

@@ -136,8 +136,9 @@ a[href],
 .project-dither {
   background-image: repeating-conic-gradient(var(--portfolio-blue) 0 25%, transparent 0 50%);
   background-size: 8px 8px;
-  -webkit-mask-image: radial-gradient(circle at 100% 0, #000 0, transparent 70%);
-  mask-image: radial-gradient(circle at 100% 0, #000 0, transparent 70%);
+  /* A soft spot of dither under the cursor (--mx/--my are set on pointer move; top right until then). */
+  -webkit-mask-image: radial-gradient(circle 130px at var(--mx, 100%) var(--my, 0%), #000 0, transparent 100%);
+  mask-image: radial-gradient(circle 130px at var(--mx, 100%) var(--my, 0%), #000 0, transparent 100%);
   opacity: 0;
   /* Three steps, like the calendar printing in. */
   transition: opacity 180ms steps(3, jump-none);
@@ -145,7 +146,7 @@ a[href],
 
 @media (hover: hover) and (pointer: fine) {
   [data-slot="card"]:hover .project-dither {
-    opacity: 0.22;
+    opacity: 0.3;
   }
 }
 

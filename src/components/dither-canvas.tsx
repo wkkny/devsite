@@ -26,6 +26,10 @@ export type DitherCanvasProps = Omit<ComponentProps<'canvas'>, 'width' | 'height
   fps?: number
   /** Draw a single still frame instead of animating. */
   paused?: boolean
+  /** Print the field in from the left over this many ms when it first draws, in three Bayer steps. 0 shows it at once. */
+  printIn?: number
+  /** How far the overall fill breathes, up and down, on a slow 8s cycle. 0 keeps it steady. */
+  breathe?: number
   /** How far, in cells, the noise bends around a hovering cursor at most. 0 turns hover off. */
   hoverDisplacement?: number
   /** Reach of the hover effect, in cells. */
@@ -130,6 +134,8 @@ export function DitherCanvas({
   detail = 0.3,
   fps = 30,
   paused = false,
+  printIn = 0,
+  breathe = 0,
   hoverDisplacement = 4,
   hoverRadius = 28,
   hoverBoost = 0,
@@ -151,6 +157,7 @@ export function DitherCanvas({
   const imageRef = useRef<ImageData | null>(null)
   // The GPU renderer when WebGL2 is available; otherwise null and the 2D loop below draws.
   const rendererRef = useRef<DitherRenderer | null | undefined>(undefined)
+  const printStartRef = useRef<number | null>(null)
   const wavesRef = useRef<Wave[]>([])
   const insideRef = useRef(false)
   const hoverX = useSpring(0, { stiffness: 260, damping: 32, mass: 0.6 })
@@ -310,7 +317,10 @@ export function DitherCanvas({
     const hover = hoverDisplacement === 0 ? 0 : hoverStrength.get()
     const interacting = hover > 0.003 || waves.length > 0
     // Only moving springs and rings need display rate; a resting cursor keeps the fps cap.
-    const moving = waves.length > 0 || hoverStrength.isAnimating() || hoverX.isAnimating() || hoverY.isAnimating()
+    printStartRef.current ??= now
+    const printProgress = printIn > 0 ? Math.min(1, (now - printStartRef.current) / printIn) : 1
+    const printing = printProgress < 1
+    const moving = printing || waves.length > 0 || hoverStrength.isAnimating() || hoverX.isAnimating() || hoverY.isAnimating()
 
     const needsRedraw = lastDrawRef.current === -Infinity
     if (paused && !interacting && !needsRedraw) return
@@ -337,6 +347,9 @@ export function DitherCanvas({
     const { width, height } = canvas
     const angle = (rotation * Math.PI) / 180
     const z = (noiseTimeRef.current / 1000) * speed
+    // A slow breath in the overall fill, so the field reads as a living material even at rest.
+    const breathing = density + breathe * Math.sin((noiseTimeRef.current / 8000) * Math.PI * 2)
+    const printSpan = Math.max(8, width * 0.12)
     const ringsNow = waves.map((wave) => {
       const age = (now - wave.start) / 1000
       const life = 1 - age / wave.duration
@@ -345,7 +358,11 @@ export function DitherCanvas({
 
     if (renderer) {
       renderer.draw({
-        width, height, scale, cos: Math.cos(angle), sin: Math.sin(angle), z, density, contrast, detail, rgb: [r, g, b], matrixSize,
+        width, height, scale, cos: Math.cos(angle), sin: Math.sin(angle), z, contrast, detail, rgb: [r, g, b], matrixSize,
+        density: breathing,
+        // The front runs a little past both edges, so the first and last columns step in too.
+        printFront: printing ? -printSpan + printProgress * (width + printSpan * 2) : width + printSpan * 4,
+        printSpan,
         hover: { x: hoverX.get(), y: hoverY.get(), strength: hover, displacement: hoverDisplacement, radius: hoverRadius, boost: hoverBoost },
         rings: ringsNow,
       })
@@ -405,7 +422,7 @@ export function DitherCanvas({
         const u = (sx * cos - sy * sin) * scale
         const v = (sx * sin + sy * cos) * scale
         const n = noise(u, v, z) * (1 - detail) + noise(u * 2.1 + 31.4, v * 2.1, z * 1.6) * detail
-        const value = (n - 0.5) * contrast + density + boost
+        const value = (n - 0.5) * contrast + breathing + boost
         if (value > matrix[(y % matrixSize) * matrixSize + (x % matrixSize)]) {
           const i = (y * width + x) * 4
           image.data[i] = r

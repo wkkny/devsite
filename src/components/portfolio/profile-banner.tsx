@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { motion } from 'motion/react'
 
 import { DitherCanvas } from '@/components/dither-canvas'
 import { useTheme } from '@/components/theme-context'
@@ -36,13 +35,7 @@ export default function ProfileBanner() {
   }, [])
 
   return (
-    <motion.div
-      className="absolute inset-0"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      // Lands with the wipe so the blade edge stays crisp.
-      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-    >
+    <div className="absolute inset-0">
       <DitherCanvas
         className="bg-background text-portfolio-blue"
         rotation={70}
@@ -58,7 +51,12 @@ export default function ProfileBanner() {
         shockwaveDuration={1.25}
         shockwaveStrength={10}
         shockwaveBoost={0.35}
+        // The field prints itself in behind the blade in three Bayer steps, rather than fading in over
+        // a placeholder, and then drifts and breathes slowly so it reads as alive at rest.
+        printIn={720}
+        breathe={0.025}
+        speed={0.24}
       />
-    </motion.div>
+    </div>
   )
 }

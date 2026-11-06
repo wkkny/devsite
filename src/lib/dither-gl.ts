@@ -23,6 +23,8 @@ uniform vec3 color;
 uniform int matrixBits;
 uniform vec4 hover;      // x, y, strength, displacement / radius
 uniform vec2 hoverShape; // radius, boost
+uniform float printFront; // print-in front in cells along x; large once printed
+uniform float printSpan;  // cells over which a cell steps 0 -> 50% -> 100%
 uniform int ringCount;
 uniform vec4 rings[${MAX_RINGS}];      // x, y, radius, fade
 uniform vec3 ringShape[${MAX_RINGS}];  // width, strength, boost
@@ -99,7 +101,13 @@ void main() {
   float v = (s.x * rotation.y + s.y * rotation.x) * scale;
   float n = noise(vec3(u, v, z)) * (1.0 - detail) + noise(vec3(u * 2.1 + 31.4, v * 2.1, z * 1.6)) * detail;
   float value = (n - 0.5) * contrast + density + boost;
-  if (value <= bayer(ivec2(cell))) discard;
+  float threshold = bayer(ivec2(cell));
+  if (value <= threshold) discard;
+  // Printing in: behind the front a cell shows in full, just behind it only half the dots (the
+  // lower Bayer thresholds), and ahead of it nothing, so the field prints in three steps.
+  float printed = clamp((printFront - cell.x) / printSpan, 0.0, 1.0);
+  if (printed < 1.0 / 3.0) discard;
+  if (printed < 2.0 / 3.0 && threshold > 0.5) discard;
   outColor = vec4(color, 1.0);
 }`
 
@@ -114,6 +122,9 @@ export type DitherFrame = {
   contrast: number
   detail: number
   rgb: [number, number, number]
+  /** Print-in front in cells along x; anything past the canvas width means fully printed. */
+  printFront: number
+  printSpan: number
   matrixSize: 2 | 4 | 8
   hover: { x: number; y: number; strength: number; displacement: number; radius: number; boost: number }
   rings: { x: number; y: number; radius: number; fade: number; width: number; strength: number; boost: number }[]
@@ -159,6 +170,7 @@ export function createDitherRenderer(canvas: HTMLCanvasElement): DitherRenderer 
     size: at('size'), scale: at('scale'), rotation: at('rotation'), z: at('z'), density: at('density'),
     contrast: at('contrast'), detail: at('detail'), color: at('color'), matrixBits: at('matrixBits'),
     hover: at('hover'), hoverShape: at('hoverShape'), ringCount: at('ringCount'), rings: at('rings'), ringShape: at('ringShape'),
+    printFront: at('printFront'), printSpan: at('printSpan'),
   }
   const rings = new Float32Array(MAX_RINGS * 4)
   const ringShape = new Float32Array(MAX_RINGS * 3)
@@ -177,6 +189,8 @@ export function createDitherRenderer(canvas: HTMLCanvasElement): DitherRenderer 
       gl.uniform1f(u.detail, frame.detail)
       gl.uniform3f(u.color, frame.rgb[0] / 255, frame.rgb[1] / 255, frame.rgb[2] / 255)
       gl.uniform1i(u.matrixBits, Math.log2(frame.matrixSize))
+      gl.uniform1f(u.printFront, frame.printFront)
+      gl.uniform1f(u.printSpan, Math.max(1, frame.printSpan))
       const { hover } = frame
       gl.uniform4f(u.hover, hover.x, hover.y, hover.strength, hover.displacement / hover.radius)
       gl.uniform2f(u.hoverShape, hover.radius, hover.boost)
