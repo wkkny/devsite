@@ -65,6 +65,7 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
     const [x1, y1, x2, y2] = WAVE_EASE
     let frame = 0
     let start: number | null = null
+    let landed = false
     // Steps the (paused) clip animation from this loop, so the circle and its fringe always draw
     // the same frame, even when the main thread stalls.
     const tick = (now: number) => {
@@ -72,7 +73,8 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
         frame = requestAnimationFrame(tick)
         return
       }
-      // A second press finished the wave early: stop stepping, or the clip would rewind.
+      if (landed) clock.animation.finish()
+      // A second press (or a resize) finished the wave early: stop stepping, or the clip would rewind.
       if (clock.animation.playState === 'finished') {
         ctx.clearRect(0, 0, w, h)
         return
@@ -108,11 +110,10 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
       clock.animation.finish()
     }
     frame = requestAnimationFrame(tick)
-    // The fringe is laid out for this viewport; if it resizes mid-wave, land the wave at once.
+    // The fringe is laid out for this viewport; if it resizes mid-wave, the loop lands the wave
+    // on its next frame (the clip may not exist yet, so it can't be finished here).
     const land = () => {
-      cancelAnimationFrame(frame)
-      ctx.clearRect(0, 0, w, h)
-      clock.animation?.finish()
+      landed = true
     }
     window.addEventListener('resize', land)
     return () => {
