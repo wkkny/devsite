@@ -23,7 +23,7 @@ function isDesktopProjectsWidth() {
 }
 
 // The pressed fill is drawn by ViewPill instead, so it can slide between the two buttons.
-const VIEW_ITEM = 'relative isolate aria-pressed:bg-transparent data-[pressed]:bg-transparent'
+const VIEW_ITEM = 'relative isolate hover:bg-muted/40 aria-pressed:bg-transparent data-[pressed]:bg-transparent data-[pressed]:hover:bg-transparent'
 
 // Slides to the chosen view on the same timing as the cards morphing below it.
 function ViewPill({ reducedMotion }: { reducedMotion: boolean | null }) {

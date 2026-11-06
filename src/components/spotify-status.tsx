@@ -249,13 +249,25 @@ export function SpotifyStatus() {
                   )}
               </motion.span>
             </AnimatePresence>
-            {playing && (
-              <span ref={barsRef} aria-hidden="true" className="now-playing-bars">
-                <span />
-                <span />
-                <span />
-              </span>
-            )}
+            {/* The equalizer scales in and out with the track change instead of popping. */}
+            <AnimatePresence initial={false}>
+              {playing && (
+                <motion.span
+                  key="bars"
+                  ref={barsRef}
+                  aria-hidden="true"
+                  className="now-playing-bars"
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+                  transition={{ duration: 0.18, ease: EASE_OUT }}
+                >
+                  <span />
+                  <span />
+                  <span />
+                </motion.span>
+              )}
+            </AnimatePresence>
           </a>
         </Tooltip>
       </p>

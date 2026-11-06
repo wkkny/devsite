@@ -84,15 +84,16 @@ export function ProjectCard({ project, view, animateSwap, divided = false, highl
       {/* List rows share one soft highlight that glides from row to row, like the tooltips do. It sits
           behind every row (the list is its stacking context), so it never covers a neighbour mid-glide. */}
       <AnimatePresence>
-        {isList && highlighted && !reducedMotion && (
+        {isList && highlighted && (
           <motion.span
-            layoutId="project-row-highlight"
+            // Reduced motion keeps the highlight but drops its travel between rows.
+            layoutId={reducedMotion ? undefined : 'project-row-highlight'}
             aria-hidden="true"
             className="pointer-events-none absolute -inset-x-3 inset-y-1 -z-10 rounded-lg bg-muted/70"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 520, damping: 40, mass: 0.6, opacity: { duration: 0.15 } }}
+            transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 40, mass: 0.6, opacity: { duration: 0.15 } }}
           />
         )}
       </AnimatePresence>
