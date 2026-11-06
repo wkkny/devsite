@@ -1,6 +1,7 @@
 import { LayoutGroup, motion, useReducedMotion } from 'motion/react'
 
 import { GitHubCalendar } from '@/components/github-calendar'
+import { MaskReveal } from '@/components/mask-reveal'
 import { ProfileSection } from '@/components/portfolio/profile-section'
 import { ProjectsSection } from '@/components/portfolio/projects-section'
 import { SiteFooter } from '@/components/portfolio/site-footer'
@@ -26,11 +27,10 @@ function App() {
               viewport={revealViewport}
             >
               <GitHubCalendar
-                heading={<h2 id="activity-heading" className="font-heading text-3xl leading-[1.05] tracking-[-0.01em] sm:text-4xl">Activity</h2>}
+                heading={<h2 id="activity-heading" className="font-heading text-3xl leading-[1.05] tracking-[-0.01em] sm:text-4xl"><MaskReveal>Activity</MaskReveal></h2>}
                 username={portfolioOwner.githubUsername}
                 fromYear={2026}
                 color="var(--portfolio-blue)"
-                showYearPicker
                 showProfileLink={false}
               />
             </motion.section>

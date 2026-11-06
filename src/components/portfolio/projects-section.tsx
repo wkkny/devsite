@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { FiArrowUpRight, FiGrid, FiList } from 'react-icons/fi'
 
+import { MaskReveal } from '@/components/mask-reveal'
 import { Tooltip } from '@/components/tooltip'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ProjectCard, type ProjectView } from '@/components/portfolio/project-card'
@@ -60,7 +61,7 @@ export function ProjectsSection() {
       viewport={{ ...revealViewport, amount: 0.15 }}
     >
       <motion.div variants={reducedMotion ? revealFade : revealRise} className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <h2 id="projects-heading" className="font-heading text-3xl leading-[1.05] tracking-[-0.01em] sm:text-4xl">Projects</h2>
+        <h2 id="projects-heading" className="font-heading text-3xl leading-[1.05] tracking-[-0.01em] sm:text-4xl"><MaskReveal>Projects</MaskReveal></h2>
         <div className="flex flex-wrap items-center gap-3 sm:gap-6">
           <a
             className="animated-arrow-link inline-flex items-center gap-1 type-label text-muted-foreground"

@@ -15,15 +15,13 @@ export function heroHold() {
   return Math.max(0, HERO_SETTLED - performance.now() / 1000)
 }
 
-/** A section heading or row that rises into place once, the first time it scrolls into view. */
+/** A section or row that rises into place once, the first time it scrolls into view. No blur:
+ * that belongs to the hero copy, and headings inside get their own mask reveal. */
 export const revealRise: Variants = {
-  hidden: { opacity: 0, y: 14, filter: 'blur(4px)' },
+  hidden: { opacity: 0, y: 14 },
   shown: () => ({
     opacity: 1,
     y: 0,
-    filter: 'blur(0px)',
-    // A leftover filter keeps a compositing layer and clips hover shadows, so clear it once settled.
-    transitionEnd: { filter: 'none' },
     transition: { duration: 0.55, ease: EASE_OUT, delay: heroHold() },
   }),
 }

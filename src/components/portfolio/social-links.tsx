@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FaXTwitter } from 'react-icons/fa6'
 import { FiCheck, FiGithub, FiMail } from 'react-icons/fi'
 
-import { Tooltip } from '@/components/tooltip'
+import { Tooltip, TooltipGroup } from '@/components/tooltip'
 import { portfolioOwner, socialLinks } from '@/data'
 import { EASE_OUT, SPRING_SWAP } from '@/lib/ease'
 
@@ -99,6 +99,7 @@ export function SocialLinks() {
 
   return (
     <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <TooltipGroup side="top">
       {socialLinks.map((link) => {
         const Icon = socialIcons[link.platform]
 
@@ -167,6 +168,7 @@ export function SocialLinks() {
           </motion.span>
         </button>
       </Tooltip>
+      </TooltipGroup>
       <AnimatePresence initial={false}>
         {copyStatus === 'error' && (
           <motion.a
