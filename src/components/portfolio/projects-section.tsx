@@ -6,7 +6,7 @@ import { Tooltip } from '@/components/tooltip'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ProjectCard, type ProjectView } from '@/components/portfolio/project-card'
 import { portfolioOwner, projects } from '@/data'
-import { EASE_OUT } from '@/lib/ease'
+import { revealFade, revealItem, revealRise, revealStagger, revealViewport } from '@/lib/reveal'
 
 const desktopProjectsQuery = '(min-width: 768px)'
 
@@ -39,12 +39,11 @@ export function ProjectsSection() {
     <motion.section
       id="projects"
       aria-labelledby="projects-heading"
-      initial={reducedMotion ? false : { opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true, amount: 0.15 }}
-      transition={reducedMotion ? { duration: 0 } : { duration: 0.4, ease: EASE_OUT }}
+      initial="hidden"
+      whileInView="shown"
+      viewport={{ ...revealViewport, amount: 0.15 }}
     >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+      <motion.div variants={reducedMotion ? revealFade : revealRise} className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <h2 id="projects-heading" className="font-heading text-3xl leading-[1.05] tracking-[-0.01em] sm:text-4xl">Projects</h2>
         <div className="flex flex-wrap items-center gap-3 sm:gap-6">
           <a
@@ -77,12 +76,18 @@ export function ProjectsSection() {
             </ToggleGroup>
           ) : null}
         </div>
-      </div>
-      <div className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col divide-y divide-border'}>
+      </motion.div>
+      {/* Cards rise in one after another the first time the section is seen. */}
+      <motion.div
+        variants={reducedMotion ? revealFade : revealStagger}
+        className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col divide-y divide-border'}
+      >
         {projects.map((project) => (
-          <ProjectCard key={project.name} project={project} view={visibleProjectView} animateSwap={hasSwitchedView} />
+          <motion.div key={project.name} variants={reducedMotion ? undefined : revealItem} className={visibleProjectView === 'grid' ? 'h-full' : undefined}>
+            <ProjectCard project={project} view={visibleProjectView} animateSwap={hasSwitchedView} />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </motion.section>
   )
 }

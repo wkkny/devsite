@@ -128,19 +128,40 @@ export function ContributionCalendar({
     return () => window.removeEventListener("pointerdown", onPointerDown, true);
   }, [selection, legendLock, onSelectionChange]);
 
-  // Squares pop in week by week when a new range mounts. Data arriving later does not replay it.
+  // Squares pop in as a diagonal wave when a new range mounts, held until the grid is on screen
+  // so the wave isn't spent below the fold. Data arriving later does not replay it.
   useLayoutEffect(() => {
     const grid = gridRef.current;
     if (!grid || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const animations = Array.from(grid.querySelectorAll<HTMLElement>("[data-square]"), (square) =>
-      square.animate([{ opacity: 0, transform: "scale(0.4)" }, { opacity: 1, transform: "none" }], {
-        duration: 420,
-        delay: Number(square.dataset.week) * 9 + Number(square.dataset.weekday) * 14,
+    const animations = Array.from(grid.querySelectorAll<HTMLElement>("[data-square]"), (square) => {
+      const animation = square.animate([{ opacity: 0, transform: "scale(0.5)" }, { opacity: 1, transform: "none" }], {
+        duration: 460,
+        delay: 120 + Number(square.dataset.week) * 10 + Number(square.dataset.weekday) * 16,
         easing: "cubic-bezier(0.34, 1.4, 0.64, 1)",
         fill: "backwards",
-      }),
+      });
+      animation.pause();
+      return animation;
+    });
+    const play = () => animations.forEach((animation) => animation.play());
+    if (typeof IntersectionObserver === "undefined") {
+      play();
+      return () => animations.forEach((animation) => animation.cancel());
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        play();
+      },
+      { threshold: 0.35 },
     );
-    return () => animations.forEach((animation) => animation.cancel());
+    // Watch the scroller: on phones the grid is wider than the screen and never shows 35% of itself.
+    observer.observe(scrollerRef.current ?? grid);
+    return () => {
+      observer.disconnect();
+      animations.forEach((animation) => animation.cancel());
+    };
   }, [startTime, endTime]);
 
   // When the grid is wider than its container, open it scrolled to the entry day (usually today).

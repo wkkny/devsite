@@ -10,7 +10,8 @@ export default function ProfileBanner() {
       className="absolute inset-0"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.9, ease: 'easeOut', delay: 0.1 }}
+      // Lands with the wipe so the blade edge stays crisp.
+      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
     >
       <DitherCanvas className="bg-background text-portfolio-blue" rotation={70} density={0.38} />
     </motion.div>
