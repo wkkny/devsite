@@ -108,7 +108,15 @@ export function ThemeWave({ origin, oldColors, clock }: { origin: WaveOrigin; ol
       clock.animation.finish()
     }
     frame = requestAnimationFrame(tick)
+    // The fringe is laid out for this viewport; if it resizes mid-wave, land the wave at once.
+    const land = () => {
+      cancelAnimationFrame(frame)
+      ctx.clearRect(0, 0, w, h)
+      clock.animation?.finish()
+    }
+    window.addEventListener('resize', land)
     return () => {
+      window.removeEventListener('resize', land)
       cancelAnimationFrame(frame)
       // Never leave the paused clip holding the view transition open.
       clock.animation?.finish()
