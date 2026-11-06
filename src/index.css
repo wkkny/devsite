@@ -133,6 +133,28 @@ a[href],
  * Project cards: the whole card is the link. On hover (or keyboard focus) the title's underline
  * draws in from the left and the arrow slides out along its own diagonal. Touch shows the arrow.
  */
+.project-dither {
+  background-image: repeating-conic-gradient(var(--portfolio-blue) 0 25%, transparent 0 50%);
+  background-size: 8px 8px;
+  -webkit-mask-image: radial-gradient(circle at 100% 0, #000 0, transparent 70%);
+  mask-image: radial-gradient(circle at 100% 0, #000 0, transparent 70%);
+  opacity: 0;
+  /* Three steps, like the calendar printing in. */
+  transition: opacity 180ms steps(3, jump-none);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-slot="card"]:hover .project-dither {
+    opacity: 0.22;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-dither {
+    transition: none;
+  }
+}
+
 .project-link-label {
   background: linear-gradient(currentColor, currentColor) left bottom / 0% 1px no-repeat;
   transition: background-size 320ms cubic-bezier(0.16, 1, 0.3, 1);

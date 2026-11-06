@@ -1,3 +1,4 @@
+import type { PointerEvent } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,13 +13,17 @@ type ProjectCardProps = {
   view: ProjectView
   /** Fade the rewrapped text in after a view switch. Off for the first render. */
   animateSwap: boolean
+  /** List view: this row holds the shared hover highlight. */
+  highlighted?: boolean
+  /** List view: the pointer moved onto this row. */
+  onHighlight?: () => void
 }
 
 const MotionCard = motion.create(Card)
 
 const CARD_SPRING = { type: 'spring', stiffness: 520, damping: 34, mass: 0.6 } as const
 
-export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
+export function ProjectCard({ project, view, animateSwap, highlighted = false, onHighlight }: ProjectCardProps) {
   const reducedMotion = useReducedMotion()
   const isList = view === 'list'
   const layoutTransition = reducedMotion ? { duration: 0 } : LAYOUT_SWAP
@@ -47,6 +52,7 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
       initial={false}
       animate={{ borderRadius: isList ? 0 : 12 }}
       {...lift}
+      onPointerEnter={isList ? (event: PointerEvent) => event.pointerType === 'mouse' && onHighlight?.() : undefined}
       className={
         // The whole card is the link (see the title), so it takes the keyboard focus ring.
         isList
@@ -57,6 +63,23 @@ export function ProjectCard({ project, view, animateSwap }: ProjectCardProps) {
             'relative h-full transition-[background-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-fine:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent),0_10px_30px_-14px_color-mix(in_srgb,var(--foreground)_28%,transparent)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring'
       }
     >
+      {/* List rows share one soft highlight that glides from row to row, like the tooltips do. It sits
+          behind every row (the list is its stacking context), so it never covers a neighbour mid-glide. */}
+      <AnimatePresence>
+        {isList && highlighted && !reducedMotion && (
+          <motion.span
+            layoutId="project-row-highlight"
+            aria-hidden="true"
+            className="pointer-events-none absolute -inset-x-3 inset-y-1 -z-10 rounded-lg bg-muted/70"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 40, mass: 0.6, opacity: { duration: 0.15 } }}
+          />
+        )}
+      </AnimatePresence>
+      {/* Grid cards: a corner of the banner's dither prints in on hover, stepped like the calendar. */}
+      {!isList && <span aria-hidden="true" className="project-dither pointer-events-none absolute top-0 right-0 size-16" />}
       <CardHeader className={isList ? 'gap-1.5 px-0' : 'gap-3'}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">

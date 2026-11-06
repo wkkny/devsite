@@ -42,6 +42,8 @@ export function ProjectsSection() {
   const desktopProjects = useSyncExternalStore(subscribeToDesktopProjects, isDesktopProjectsWidth, () => false)
   const [projectView, setProjectView] = useState<ProjectView>('grid')
   const [hasSwitchedView, setHasSwitchedView] = useState(false)
+  // The list row under the pointer, which holds the shared hover highlight.
+  const [highlightedProject, setHighlightedProject] = useState<string | null>(null)
   const visibleProjectView: ProjectView = desktopProjects ? projectView : 'grid'
 
   function changeProjectView(nextView: string) {
@@ -104,11 +106,18 @@ export function ProjectsSection() {
       <motion.div
         variants={reducedMotion ? revealFade : revealStagger}
         data-view={visibleProjectView}
-        className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'flex flex-col [&>*+*>[data-slot=card]]:border-t [&>*+*>[data-slot=card]]:border-border'}
+        onPointerLeave={() => setHighlightedProject(null)}
+        className={visibleProjectView === 'grid' ? 'grid gap-5 md:grid-cols-2' : 'isolate flex flex-col [&>*+*>[data-slot=card]]:border-t [&>*+*>[data-slot=card]]:border-border'}
       >
         {projects.map((project) => (
           <motion.div key={project.name} variants={reducedMotion ? undefined : revealItem} className={visibleProjectView === 'grid' ? 'h-full' : undefined}>
-            <ProjectCard project={project} view={visibleProjectView} animateSwap={hasSwitchedView} />
+            <ProjectCard
+              project={project}
+              view={visibleProjectView}
+              animateSwap={hasSwitchedView}
+              highlighted={highlightedProject === project.name}
+              onHighlight={() => setHighlightedProject(project.name)}
+            />
           </motion.div>
         ))}
       </motion.div>

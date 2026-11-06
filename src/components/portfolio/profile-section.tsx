@@ -19,9 +19,17 @@ const bannerChunk =
   typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? loadBanner() : null
 const ProfileBanner = lazy<ComponentType>(() => bannerChunk ?? loadBanner())
 
-// Moves on the first frame, then takes a long settle, so there's no blank beat before the blade.
-// The hero is done by about 0.9s.
-const bannerTransition = { duration: 0.8, ease: [0.2, 0, 0.1, 1] } as const
+// A sliver of blade is already there at first paint, and the expo-out curve puts about 40% of the
+// wipe into the first 150ms, so there's no blank beat. The hero is done by about 0.9s.
+const bannerTransition = { duration: 0.72, ease: EASE_OUT } as const
+
+// The avatar prints in like the calendar squares (0, 50%, 100% opacity) instead of under a blur,
+// which reads as a loading artifact on an illustration, and lands on a soft spring.
+const printIn = (t: number) => (t < 1 / 3 ? 0 : t < 2 / 3 ? 0.5 : 1)
+const avatarTransition = {
+  opacity: { duration: 0.21, ease: printIn, delay: 0.18 },
+  default: { type: 'spring', stiffness: 380, damping: 32, mass: 0.7, delay: 0.18 },
+} as const
 
 // The hero copy rises line by line from under a soft blur, 45ms apart, while the avatar lands.
 const COPY_DELAY = 0.3
@@ -60,7 +68,7 @@ export function ProfileSection() {
         <motion.div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
-          initial={reducedMotion ? { opacity: 0 } : { clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)' }}
+          initial={reducedMotion ? { opacity: 0 } : { clipPath: 'polygon(0 0, 8% 0, 0 100%, 0 100%)' }}
           animate={reducedMotion ? { opacity: 1 } : { clipPath: 'polygon(0 0, 116% 0, 100% 100%, 0 100%)' }}
           transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : bannerTransition}
         >
@@ -82,9 +90,9 @@ export function ProfileSection() {
           fetchPriority="high"
           width={448}
           height={448}
-          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.96, filter: 'blur(6px)' }}
-          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
-          transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : { duration: 0.5, ease: EASE_OUT, delay: 0.18 }}
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.96 }}
+          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+          transition={reducedMotion ? { duration: 0.2, ease: EASE_OUT } : avatarTransition}
         />
         <div>
           <div className="relative flex min-w-0 items-center justify-between gap-2">
