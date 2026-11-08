@@ -299,6 +299,8 @@ a[href],
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   --portfolio-blue: #0095ff;
+  /* The banner's soft dots: a cooler, lighter blue that sits behind the main one. */
+  --portfolio-tint: #00b4f0;
   --background: #ffffff;
   --foreground: #0a0a0a;
   --card: #ffffff;
@@ -335,6 +337,7 @@ a[href],
 
 .dark {
   color-scheme: dark;
+  --portfolio-tint: #6ccfff;
   --background: #060606;
   --foreground: #fafafa;
   --card: #0f0f0f;

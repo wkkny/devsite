@@ -28,6 +28,18 @@ export type DitherCanvasProps = Omit<ComponentProps<'canvas'>, 'width' | 'height
   paused?: boolean
   /** Print the field in from the left over this many ms when it first draws, in three Bayer steps. 0 shows it at once. */
   printIn?: number
+  /** How far a slower noise layer bends the field, so features flow instead of sitting on the grid. 0 turns it off. */
+  warp?: number
+  /** Fraction of the height, from the bottom, over which the field dissolves into whatever is behind it. 0 keeps a hard edge. */
+  fade?: number
+  /** Dots within this much of their threshold are drawn at `toneAlpha`, giving the field a second, softer tone. 0 turns it off. */
+  tone?: number
+  /** Opacity of the softer tone, from 0 to 1. Its color is the `--dither-tone` CSS property, or the dot color without one. */
+  toneAlpha?: number
+  /** How fully the soft dots light up to the main color near the cursor, from 0 to 1. */
+  hoverGlow?: number
+  /** A soft clearing centred at x, y with this radius, in CSS pixels from the canvas's top left. */
+  calm?: { x: number; y: number; radius: number; strength?: number }
   /** How far the overall fill breathes, up and down, on a slow 8s cycle. 0 keeps it steady. */
   breathe?: number
   /** How far, in cells, the noise bends around a hovering cursor at most. 0 turns hover off. */
@@ -136,6 +148,12 @@ export function DitherCanvas({
   paused = false,
   printIn = 0,
   breathe = 0,
+  warp = 0,
+  fade = 0,
+  tone = 0,
+  toneAlpha = 0.45,
+  hoverGlow = 0,
+  calm,
   hoverDisplacement = 4,
   hoverRadius = 28,
   hoverBoost = 0,
@@ -153,6 +171,7 @@ export function DitherCanvas({
   const lastTimeRef = useRef<number | null>(null)
   const noiseTimeRef = useRef(0)
   const colorRef = useRef<{ css: string; rgb: Rgb }>({ css: '', rgb: [0, 0, 0] })
+  const toneRef = useRef<{ css: string; rgb: Rgb }>({ css: '', rgb: [0, 0, 0] })
   const colorDirtyRef = useRef(true)
   const imageRef = useRef<ImageData | null>(null)
   // The GPU renderer when WebGL2 is available; otherwise null and the 2D loop below draws.
@@ -166,7 +185,7 @@ export function DitherCanvas({
 
   useEffect(() => {
     lastDrawRef.current = -Infinity
-  }, [cellSize, matrixSize, scale, rotation, density, contrast, detail, paused])
+  }, [cellSize, matrixSize, scale, rotation, density, contrast, detail, warp, fade, tone, toneAlpha, calm?.x, calm?.y, calm?.radius, calm?.strength, paused])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -341,8 +360,14 @@ export function DitherCanvas({
       colorDirtyRef.current = false
       const css = getComputedStyle(canvas).color
       if (css !== colorRef.current.css) colorRef.current = { css, rgb: toRgb(css) }
+      const toneCss = getComputedStyle(canvas).getPropertyValue('--dither-tone').trim() || css
+      if (toneCss !== toneRef.current.css) toneRef.current = { css: toneCss, rgb: toRgb(toneCss) }
     }
     const [r, g, b] = colorRef.current.rgb
+    const [tr, tg, tb] = toneRef.current.rgb
+    const calmCells: [number, number, number, number] = calm
+      ? [calm.x / cellSize, calm.y / cellSize, Math.max(1, calm.radius / cellSize), calm.strength ?? 0.6]
+      : [0, 0, 1, 0]
 
     const { width, height } = canvas
     const angle = (rotation * Math.PI) / 180
@@ -363,6 +388,12 @@ export function DitherCanvas({
         // The front runs a little past both edges, so the first and last columns step in too.
         printFront: printing ? -printSpan + printProgress * (width + printSpan * 2) : width + printSpan * 4,
         printSpan,
+        warp,
+        fade,
+        tone: [tone, toneAlpha],
+        toneRgb: [tr, tg, tb],
+        hoverGlow,
+        calm: calmCells,
         hover: { x: hoverX.get(), y: hoverY.get(), strength: hover, displacement: hoverDisplacement, radius: hoverRadius, boost: hoverBoost },
         rings: ringsNow,
       })
@@ -384,6 +415,8 @@ export function DitherCanvas({
     const cursorX = hoverX.get()
     const cursorY = hoverY.get()
     const reach2 = hoverRadius * hoverRadius * 4
+    const glowRadius2 = (hoverRadius * 1.6) ** 2
+    const [calmX, calmY, calmRadius, calmStrength] = calmCells
     const rings = ringsNow
 
     for (let y = 0; y < height; y++) {
@@ -419,16 +452,31 @@ export function DitherCanvas({
           }
         }
 
-        const u = (sx * cos - sy * sin) * scale
-        const v = (sx * sin + sy * cos) * scale
+        let u = (sx * cos - sy * sin) * scale
+        let v = (sx * sin + sy * cos) * scale
+        if (warp > 0) {
+          u += (noise(u * 0.45 + 17, v * 0.45, z * 0.6) - 0.5) * warp
+          v += (noise(u * 0.45, v * 0.45 + 43, z * 0.6) - 0.5) * warp
+        }
         const n = noise(u, v, z) * (1 - detail) + noise(u * 2.1 + 31.4, v * 2.1, z * 1.6) * detail
-        const value = (n - 0.5) * contrast + breathing + boost
-        if (value > matrix[(y % matrixSize) * matrixSize + (x % matrixSize)]) {
+        let value = (n - 0.5) * contrast + breathing + boost
+        if (fade > 0) value -= smooth(Math.min(1, Math.max(0, (y / height - (1 - fade)) / fade))) * (breathing + 0.25)
+        if (calmStrength > 0) value -= Math.exp(-((x - calmX) ** 2 + (y - calmY) ** 2) / (calmRadius * calmRadius)) * calmStrength
+        const threshold = matrix[(y % matrixSize) * matrixSize + (x % matrixSize)]
+        if (value > threshold) {
           const i = (y * width + x) * 4
-          image.data[i] = r
-          image.data[i + 1] = g
-          image.data[i + 2] = b
-          image.data[i + 3] = 255
+          if (value - threshold < tone) {
+            const lit = hoverGlow > 0 && hover > 0.003 ? Math.exp(-((x - cursorX) ** 2 + (y - cursorY) ** 2) / glowRadius2) * hover * hoverGlow : 0
+            image.data[i] = lerp(tr, r, lit)
+            image.data[i + 1] = lerp(tg, g, lit)
+            image.data[i + 2] = lerp(tb, b, lit)
+            image.data[i + 3] = Math.round(lerp(toneAlpha, 1, lit) * 255)
+          } else {
+            image.data[i] = r
+            image.data[i + 1] = g
+            image.data[i + 2] = b
+            image.data[i + 3] = 255
+          }
         }
       }
     }

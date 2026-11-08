@@ -25,6 +25,12 @@ uniform vec4 hover;      // x, y, strength, displacement / radius
 uniform vec2 hoverShape; // radius, boost
 uniform float printFront; // print-in front in cells along x; large once printed
 uniform float printSpan;  // cells over which a cell steps 0 -> 50% -> 100%
+uniform float warp;       // how far, in noise units, a slower noise layer bends the field
+uniform float fade;       // fraction of the height, from the bottom, over which the field dissolves
+uniform vec2 tone;        // band of value just above the threshold drawn soft, and its alpha
+uniform vec3 toneColor;   // color of the soft dots
+uniform float hoverGlow;  // how fully soft dots light up to the main color under the cursor
+uniform vec4 calm;        // x, y, radius in cells, and how much fill is taken out there
 uniform int ringCount;
 uniform vec4 rings[${MAX_RINGS}];      // x, y, radius, fade
 uniform vec3 ringShape[${MAX_RINGS}];  // width, strength, boost
@@ -99,8 +105,20 @@ void main() {
 
   float u = (s.x * rotation.x - s.y * rotation.y) * scale;
   float v = (s.x * rotation.y + s.y * rotation.x) * scale;
+  // A slower layer bends the coordinates, so features flow like smoke rather than sitting on the grid.
+  if (warp > 0.0) {
+    u += (noise(vec3(u * 0.45 + 17.0, v * 0.45, z * 0.6)) - 0.5) * warp;
+    v += (noise(vec3(u * 0.45, v * 0.45 + 43.0, z * 0.6)) - 0.5) * warp;
+  }
   float n = noise(vec3(u, v, z)) * (1.0 - detail) + noise(vec3(u * 2.1 + 31.4, v * 2.1, z * 1.6)) * detail;
   float value = (n - 0.5) * contrast + density + boost;
+  // Toward the bottom the fill thins out, so the field dissolves into the page instead of ending on a line.
+  if (fade > 0.0) value -= smoothT(clamp((cell.y / size.y - (1.0 - fade)) / fade, 0.0, 1.0)) * (density + 0.25);
+  // A soft clearing, e.g. around the avatar, so whatever sits there never reads against busy dots.
+  if (calm.w > 0.0) {
+    vec2 d = cell - calm.xy;
+    value -= exp(-dot(d, d) / (calm.z * calm.z)) * calm.w;
+  }
   float threshold = bayer(ivec2(cell));
   if (value <= threshold) discard;
   // Printing in: behind the front a cell shows in full, just behind it only half the dots (the
@@ -108,7 +126,19 @@ void main() {
   float printed = clamp((printFront - cell.x) / printSpan, 0.0, 1.0);
   if (printed < 1.0 / 3.0) discard;
   if (printed < 2.0 / 3.0 && threshold > 0.5) discard;
-  outColor = vec4(color, 1.0);
+  // Dots only just over their threshold sit on the edges of a feature; drawing them soft gives the
+  // field a second tone and some depth without leaving the 1-bit grid.
+  // Near the cursor they light up to the main color, so moving across the field reads as a lamp.
+  float lit = 0.0;
+  if (hoverGlow > 0.0 && hover.z > 0.003) {
+    vec2 d = cell - hover.xy;
+    float r = hoverShape.x * 1.6;
+    lit = exp(-dot(d, d) / (r * r)) * hover.z * hoverGlow;
+  }
+  bool soft = value - threshold < tone.x;
+  float alpha = soft ? mix(tone.y, 1.0, lit) : 1.0;
+  vec3 rgb = soft ? mix(toneColor, color, lit) : color;
+  outColor = vec4(rgb * alpha, alpha);
 }`
 
 export type DitherFrame = {
@@ -125,6 +155,14 @@ export type DitherFrame = {
   /** Print-in front in cells along x; anything past the canvas width means fully printed. */
   printFront: number
   printSpan: number
+  warp: number
+  fade: number
+  /** Band above the threshold drawn soft, and the alpha it gets. */
+  tone: [number, number]
+  toneRgb: [number, number, number]
+  hoverGlow: number
+  /** A clearing at x, y with this radius, all in cells, and how much fill it takes out. */
+  calm: [number, number, number, number]
   matrixSize: 2 | 4 | 8
   hover: { x: number; y: number; strength: number; displacement: number; radius: number; boost: number }
   rings: { x: number; y: number; radius: number; fade: number; width: number; strength: number; boost: number }[]
@@ -170,7 +208,8 @@ export function createDitherRenderer(canvas: HTMLCanvasElement): DitherRenderer 
     size: at('size'), scale: at('scale'), rotation: at('rotation'), z: at('z'), density: at('density'),
     contrast: at('contrast'), detail: at('detail'), color: at('color'), matrixBits: at('matrixBits'),
     hover: at('hover'), hoverShape: at('hoverShape'), ringCount: at('ringCount'), rings: at('rings'), ringShape: at('ringShape'),
-    printFront: at('printFront'), printSpan: at('printSpan'),
+    printFront: at('printFront'), printSpan: at('printSpan'), warp: at('warp'), fade: at('fade'), tone: at('tone'),
+    toneColor: at('toneColor'), hoverGlow: at('hoverGlow'), calm: at('calm'),
   }
   const rings = new Float32Array(MAX_RINGS * 4)
   const ringShape = new Float32Array(MAX_RINGS * 3)
@@ -191,6 +230,12 @@ export function createDitherRenderer(canvas: HTMLCanvasElement): DitherRenderer 
       gl.uniform1i(u.matrixBits, Math.log2(frame.matrixSize))
       gl.uniform1f(u.printFront, frame.printFront)
       gl.uniform1f(u.printSpan, Math.max(1, frame.printSpan))
+      gl.uniform1f(u.warp, frame.warp)
+      gl.uniform1f(u.fade, frame.fade)
+      gl.uniform2f(u.tone, frame.tone[0], frame.tone[1])
+      gl.uniform3f(u.toneColor, frame.toneRgb[0] / 255, frame.toneRgb[1] / 255, frame.toneRgb[2] / 255)
+      gl.uniform1f(u.hoverGlow, frame.hoverGlow)
+      gl.uniform4f(u.calm, ...frame.calm)
       const { hover } = frame
       gl.uniform4f(u.hover, hover.x, hover.y, hover.strength, hover.displacement / hover.radius)
       gl.uniform2f(u.hoverShape, hover.radius, hover.boost)
