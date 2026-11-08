@@ -65,7 +65,14 @@ export function ProfileSection() {
 
   return (
     <section id="profile" aria-labelledby="profile-name">
-      <div className="relative left-1/2 h-72 w-screen -translate-x-1/2 overflow-hidden bg-background text-foreground sm:h-96">
+      {/* Rapid clicks on the banner send rings, so a double or triple click here must not start a
+          word selection, which would grab the avatar and name beside it. */}
+      <div
+        className="relative left-1/2 h-72 w-screen -translate-x-1/2 overflow-hidden bg-background text-foreground sm:h-96"
+        onMouseDown={(event) => {
+          if (event.detail > 1) event.preventDefault()
+        }}
+      >
         <motion.div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -89,7 +96,8 @@ export function ProfileSection() {
         <motion.img
           src={portfolioOwner.profilePicture}
           alt={portfolioOwner.profilePictureAlt}
-          className="size-44 object-contain sm:size-56"
+          className="size-44 object-contain select-none sm:size-56"
+          draggable={false}
           fetchPriority="high"
           width={448}
           height={448}
