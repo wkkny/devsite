@@ -5,16 +5,14 @@ import { ThemeContext, type Theme } from '@/components/theme-context'
 import { PixelReveal, type RevealColors } from '@/components/pixel-reveal'
 import { ThemeWave } from '@/components/theme-wave'
 import { sendDitherPulse } from '@/lib/dither-pulse'
+import { prefersReducedMotion, REDUCED_MOTION_QUERY } from '@/lib/media'
 import { WAVE_DURATION, WAVE_EASE, waveRadius, type WaveClock, type WaveOrigin } from '@/lib/theme-wave'
 
 // Matches --background in index.css, so the browser UI follows the site theme.
 const THEME_COLORS: Record<Theme, string> = { light: '#ffffff', dark: '#060606' }
-// The view-transition wave is the theme switch everywhere, phones included; only reduced motion
-// skips it.
-const SKIP_THEME_WAVE_QUERY = '(prefers-reduced-motion: reduce)'
 // Fallback only, for browsers without View Transitions: the full-screen pixel cover is too heavy
 // for phones, so they switch instantly there instead.
-const SKIP_FALLBACK_COVER_QUERY = '(prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 768px)'
+const SKIP_FALLBACK_COVER_QUERY = `${REDUCED_MOTION_QUERY}, (pointer: coarse), (max-width: 768px)`
 
 function readColors(): RevealColors {
   const styles = getComputedStyle(document.documentElement)
@@ -138,7 +136,9 @@ function ThemeProvider({ children }: { children: ReactNode }) {
       return true
     }
     const nextTheme = themeRef.current === 'dark' ? 'light' : 'dark'
-    if (typeof document.startViewTransition === 'function' && !window.matchMedia(SKIP_THEME_WAVE_QUERY).matches) {
+    // The view-transition wave is the theme switch everywhere, phones included; only reduced
+    // motion skips it.
+    if (typeof document.startViewTransition === 'function' && !prefersReducedMotion()) {
       waveTheme(nextTheme, origin ?? { x: window.innerWidth, y: 0 })
       return true
     }
