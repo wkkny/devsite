@@ -1,22 +1,22 @@
 import {
-  createUpstashSpotifyStateStore,
-  hasSpotifySharedStateConfiguration,
-  requiresSpotifySharedState,
-  type SpotifyStateStore,
-} from "./_spotify-shared-state.js"
-import { memorySpotifyStateStore } from "./_spotify-memory-state.js"
+  createUpstashNowPlayingStateStore,
+  hasNowPlayingSharedStateConfiguration,
+  requiresNowPlayingSharedState,
+  type NowPlayingStateStore,
+} from "./_now-playing-shared-state.js"
+import { memoryNowPlayingStateStore } from "./_now-playing-memory-state.js"
 
 let storeInitialized = false
-let stateStore: SpotifyStateStore | null = null
+let stateStore: NowPlayingStateStore | null = null
 
-export function getSpotifyStateStore(): SpotifyStateStore | null {
+export function getNowPlayingStateStore(): NowPlayingStateStore | null {
   if (storeInitialized) return stateStore
   storeInitialized = true
 
-  if (hasSpotifySharedStateConfiguration()) {
-    stateStore = createUpstashSpotifyStateStore()
-  } else if (!requiresSpotifySharedState()) {
-    stateStore = memorySpotifyStateStore
+  if (hasNowPlayingSharedStateConfiguration()) {
+    stateStore = createUpstashNowPlayingStateStore()
+  } else if (!requiresNowPlayingSharedState()) {
+    stateStore = memoryNowPlayingStateStore
   }
 
   return stateStore

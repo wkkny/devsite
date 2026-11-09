@@ -6,6 +6,7 @@ import {
   type NowPlayingResponse,
 } from "../shared/now-playing.js"
 
+// The data is Last.fm scrobbles; the keys keep their original prefix so a deploy keeps the live state.
 const SNAPSHOT_KEY = "spotify:now-playing:snapshot:v1"
 const COOLDOWN_KEY = "spotify:now-playing:cooldown-until:v1"
 const BACKOFF_KEY = "spotify:now-playing:backoff-until:v1"
@@ -35,14 +36,14 @@ export type StoredSnapshot = {
   fetchedAt: number
 }
 
-export type SharedSpotifyState = {
+export type SharedNowPlayingState = {
   snapshot: StoredSnapshot | null
   cooldownUntil: number
   backoffUntil: number
 }
 
-export interface SpotifyStateStore {
-  read(): Promise<SharedSpotifyState>
+export interface NowPlayingStateStore {
+  read(): Promise<SharedNowPlayingState>
   writeSnapshot(snapshot: StoredSnapshot): Promise<void>
   extendCooldown(retryAfterSeconds: number): Promise<number>
   extendBackoff(retryAfterSeconds: number): Promise<number>
@@ -55,10 +56,10 @@ type RedisResponse = {
   error?: unknown
 }
 
-class SpotifySharedStateError extends Error {
-  constructor(message = "Spotify shared state is unavailable") {
+class NowPlayingSharedStateError extends Error {
+  constructor(message = "Now-playing shared state is unavailable") {
     super(message)
-    this.name = "SpotifySharedStateError"
+    this.name = "NowPlayingSharedStateError"
   }
 }
 
@@ -76,12 +77,12 @@ function getRedisCredentials() {
   }
 }
 
-export function hasSpotifySharedStateConfiguration() {
+export function hasNowPlayingSharedStateConfiguration() {
   const { url, token } = getRedisCredentials()
   return Boolean(url && token)
 }
 
-export function requiresSpotifySharedState() {
+export function requiresNowPlayingSharedState() {
   return process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview"
 }
 
@@ -89,18 +90,18 @@ function getConfiguration() {
   const { url, token } = getRedisCredentials()
 
   if (!url || !token) {
-    throw new SpotifySharedStateError("Spotify shared state is not configured")
+    throw new NowPlayingSharedStateError("Now-playing shared state is not configured")
   }
 
   let parsedUrl: URL
   try {
     parsedUrl = new URL(url)
   } catch {
-    throw new SpotifySharedStateError("Spotify shared state URL is invalid")
+    throw new NowPlayingSharedStateError("Now-playing shared state URL is invalid")
   }
 
   if (parsedUrl.protocol !== "https:") {
-    throw new SpotifySharedStateError("Spotify shared state URL must use HTTPS")
+    throw new NowPlayingSharedStateError("Now-playing shared state URL must use HTTPS")
   }
 
   return { url: parsedUrl.toString().replace(/\/$/, ""), token }
@@ -121,23 +122,23 @@ async function runRedisCommand<T>(command: Array<string | number>): Promise<T> {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
   } catch {
-    throw new SpotifySharedStateError()
+    throw new NowPlayingSharedStateError()
   }
 
   let payload: unknown
   try {
     payload = await response.json()
   } catch {
-    throw new SpotifySharedStateError()
+    throw new NowPlayingSharedStateError()
   }
 
   if (typeof payload !== "object" || payload === null) {
-    throw new SpotifySharedStateError()
+    throw new NowPlayingSharedStateError()
   }
 
   const redisResponse = payload as RedisResponse
   if (!response.ok || typeof redisResponse.error === "string") {
-    throw new SpotifySharedStateError()
+    throw new NowPlayingSharedStateError()
   }
 
   return redisResponse.result as T
@@ -162,7 +163,7 @@ function parseSnapshot(value: unknown): StoredSnapshot | null {
   }
 }
 
-export function createUpstashSpotifyStateStore(): SpotifyStateStore {
+export function createUpstashNowPlayingStateStore(): NowPlayingStateStore {
   return {
     async read() {
       const values = await runRedisCommand<Array<string | null>>([
@@ -173,7 +174,7 @@ export function createUpstashSpotifyStateStore(): SpotifyStateStore {
       ])
 
       if (!Array.isArray(values) || values.length !== 3) {
-        throw new SpotifySharedStateError()
+        throw new NowPlayingSharedStateError()
       }
 
       const cooldownValue = Number(values[1])

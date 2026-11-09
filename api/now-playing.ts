@@ -2,13 +2,13 @@ import type { VercelRequest, VercelResponse } from "@vercel/node"
 
 import { createNowPlayingService } from "./_now-playing-service.js"
 import { getLastfmPlayback } from "./_lastfm.js"
-import { getSpotifyStateStore } from "./_spotify-store.js"
+import { getNowPlayingStateStore } from "./_now-playing-store.js"
 
 const CACHE_CONTROL =
   "public, max-age=0, s-maxage=30, stale-while-revalidate=30"
 
 const getNowPlaying = createNowPlayingService({
-  stateStore: getSpotifyStateStore(),
+  stateStore: getNowPlayingStateStore(),
   getPlayback: getLastfmPlayback,
 })
 

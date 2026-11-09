@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { createNowPlayingService } from '../api/_now-playing-service'
-import type { SharedSpotifyState, SpotifyStateStore } from '../api/_spotify-shared-state'
+import type { SharedNowPlayingState, NowPlayingStateStore } from '../api/_now-playing-shared-state'
 import type { NowPlayingResponse } from '../shared/now-playing'
 
 const now = 1_000_000
@@ -14,8 +14,8 @@ const playback: NowPlayingResponse = {
   },
 }
 
-function setup(latest: SharedSpotifyState) {
-  let state: SharedSpotifyState = { snapshot: null, cooldownUntil: 0, backoffUntil: 0 }
+function setup(latest: SharedNowPlayingState) {
+  let state: SharedNowPlayingState = { snapshot: null, cooldownUntil: 0, backoffUntil: 0 }
   const store = {
     read: vi.fn(async () => state),
     writeSnapshot: vi.fn(async () => {}),
@@ -27,7 +27,7 @@ function setup(latest: SharedSpotifyState) {
       return 'lock-token'
     }),
     releaseRefreshLock: vi.fn(async () => {}),
-  } satisfies SpotifyStateStore
+  } satisfies NowPlayingStateStore
   const getPlayback = vi.fn(async () => playback)
   const service = createNowPlayingService({ stateStore: store, getPlayback, now: () => now })
   return { store, getPlayback, service }

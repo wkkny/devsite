@@ -129,7 +129,7 @@ bun run test:e2e
 bun run build
 ```
 
-The browser tests build the app and serve it with Vite preview, including checks for production assets and optional chunk failures. Shared-state tests exercise independent production Redis adapters through a simulated Redis REST transport.
+The browser tests build the app and serve it with Vite preview, including checks for production assets and optional chunk failures. Shared-state tests (`tests/now-playing-distributed-state.test.ts`) exercise independent production Redis adapters through a simulated Redis REST transport.
 
 The browser tests use mocked responses for Spotify, GitHub contributions, and the visitor counter. They do not need credentials for those services.
 
