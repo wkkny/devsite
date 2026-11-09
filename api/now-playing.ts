@@ -19,6 +19,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method not allowed" })
   }
 
+  // The CDN caches this response for 30 seconds, keyed by URL. Each new query string would
+  // miss that cache, so `?x=1`, `?x=2`, … could reach Last.fm on every request.
   if (Object.keys(req.query ?? {}).length > 0) {
     res.setHeader("Cache-Control", "no-store")
     return res.status(400).json({ error: "Unexpected query parameters" })

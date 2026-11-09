@@ -16,9 +16,43 @@ Copy this whole folder. It imports nothing from the rest of this site, and needs
 
 - React 19 and `react-dom`
 - Tailwind CSS v4 with the shadcn/ui colour tokens: `background`, `foreground`, `muted`,
-  `muted-foreground`, `border`, `input`, `ring` and `primary`, plus `--radius-md`
+  `muted-foreground`, `border`, `input`, `ring` and `primary`, plus `--radius-md` and
+  `--font-mono`
+- The site's `type-label` and `press` utilities, below
 
 Without shadcn, define those CSS variables yourself or pass `color` explicitly.
+
+The year picker, legend and range labels use two utilities this site defines in
+`src/index.css`. Without them they lose their type style and press feedback, with no error.
+Add them to your global stylesheet:
+
+```css
+/* Small uppercase metadata. */
+@utility type-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Colours settle on an expo-out curve; a press dips to 95% and springs back. */
+@utility press {
+  transition-property: color, background-color, border-color, box-shadow, opacity, scale;
+  transition-duration: 180ms, 180ms, 180ms, 180ms, 180ms, 220ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  @media (prefers-reduced-motion: no-preference) {
+    &:active:not(:disabled, [aria-disabled="true"]) {
+      scale: 0.95;
+      transition-duration: 70ms;
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  }
+}
+```
 
 ## `GitHubCalendar` props
 
@@ -100,6 +134,7 @@ same array between renders (state or `useMemo`), since a new array rebuilds the 
 
 | File | |
 |---|---|
+| `index.ts` | The public exports |
 | `github-calendar.tsx` | Fetching, the year picker, loading, errors and retry |
 | `calendar.tsx` | `ContributionCalendar`: rendering, pointer and keyboard handling, legend |
 | `model.ts` | The calendar as plain data: layout, keyboard moves and range totals. Unit-tested |
