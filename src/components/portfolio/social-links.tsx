@@ -1,109 +1,39 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
 import { Menu } from '@base-ui/react/menu'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { FaXTwitter } from 'react-icons/fa6'
 import { FiArrowUpRight, FiCheck, FiChevronDown, FiGithub, FiMail } from 'react-icons/fi'
-import { PiMicrosoftOutlookLogoBold } from 'react-icons/pi'
-import { TbBrandGmail, TbCopy, TbInbox } from 'react-icons/tb'
+import { TbCopy } from 'react-icons/tb'
 
 import { MailFlight } from '@/components/portfolio/mail-flight'
+import { mailApp, mailClients, type MailClient } from '@/components/portfolio/mail-clients'
+import { useEmailFeedback } from '@/components/portfolio/use-email-feedback'
 import { Tooltip, TooltipGroup } from '@/components/tooltip'
 import { portfolioOwner, socialLinks } from '@/data'
 import { EASE_OUT, SPRING_SWAP } from '@/lib/ease'
+import { useMediaQuery } from '@/lib/media'
 
 const socialIcons = {
   x: FaXTwitter,
   github: FiGithub,
 } as const
 
-const emailTo = encodeURIComponent(portfolioOwner.email)
-// A subject that says where the email came from, so it stands out in an inbox and is easy to find
-// later. No body: the visitor knows what they want to say, and Gmail would put the cursor before
-// any text we prefilled.
-const emailSubject = encodeURIComponent('Reaching out via your portfolio')
-
-// No browser API says which mail app a visitor uses, so they pick. The webmail links are
-// undocumented compose URLs; the mail app is whatever the visitor's system handles mailto with.
-const mailClients = [
-  {
-    id: 'gmail',
-    label: 'Gmail',
-    opened: 'Opened Gmail',
-    Icon: TbBrandGmail,
-    // tf=cm is what opens the compose view now; view=cm is the older spelling.
-    href: `https://mail.google.com/mail/?fs=1&to=${emailTo}&su=${emailSubject}&tf=cm`,
-  },
-  {
-    id: 'outlook',
-    label: 'Outlook',
-    opened: 'Opened Outlook',
-    // Phosphor's bold weight, since Tabler has no Outlook and its regular reads thinner.
-    Icon: PiMicrosoftOutlookLogoBold,
-    href: `https://outlook.office.com/mail/deeplink/compose?to=${emailTo}&subject=${emailSubject}`,
-  },
-  {
-    id: 'mailto',
-    label: 'Mail app',
-    // Nothing reports whether a mail app answered, so this one only says it is trying.
-    opened: 'Opening app',
-    Icon: TbInbox,
-    href: `mailto:${portfolioOwner.email}?subject=${emailSubject}`,
-  },
-] as const
-
-type MailClient = (typeof mailClients)[number]
-
-const mailApp = mailClients.find((client) => client.id === 'mailto')!
-
 // Phones and tablets: no hover, and a finger for a pointer. Webmail compose links don't open a
 // compose window in mobile browsers, so there the menu offers only the device's own mail app.
 const TOUCH_QUERY = '(hover: none) and (pointer: coarse)'
-
-function subscribeToTouch(onChange: () => void) {
-  const query = window.matchMedia(TOUCH_QUERY)
-  query.addEventListener('change', onChange)
-  return () => query.removeEventListener('change', onChange)
-}
-
-function useTouchDevice() {
-  return useSyncExternalStore(subscribeToTouch, () => window.matchMedia(TOUCH_QUERY).matches, () => false)
-}
-
-type Feedback =
-  | { kind: 'idle' }
-  | { kind: 'error' }
-  | { kind: 'copied' }
-  | { kind: 'opened'; client: MailClient }
-  | { kind: 'no-mail-app' }
-
-// How long the browser has to give way to a mail app before we suspect none answered the mailto.
-// Chrome and Firefox may first ask in-page whether to open it, which doesn't blur the page, so
-// the result is offered as a question with a way out, and withdrawn if the app opens after all.
-const MAIL_APP_GRACE_MS = 2500
 
 const MENU_LABEL = 'truncate px-2 pt-1.5 pb-1 font-mono text-[11px] text-muted-foreground'
 const MENU_ITEM = 'flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm font-medium text-muted-foreground outline-none select-none pointer-coarse:h-10 data-highlighted:bg-muted data-highlighted:text-foreground'
 
 export function SocialLinks() {
-  const [feedback, setFeedback] = useState<Feedback>({ kind: 'idle' })
-  // Counts each copy or send, so doing it again re-pops the icon and is announced again.
-  const [feedbackCount, setFeedbackCount] = useState(0)
+  const { feedback, feedbackCount, announcement, show, showError, reset, cancel, watchForMailApp, holdOffer } =
+    useEmailFeedback()
   // The client the envelope is flying off to acknowledge, while it flies. The ref lets a landing
   // tell whether a newer action has already replaced its flight.
   const [flight, setFlight] = useState<MailClient | null>(null)
   const flightRef = useRef<MailClient | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  // What the pill is showing, for handlers that outlive the render they came from.
-  const feedbackKind = useRef<Feedback['kind']>('idle')
-  useEffect(() => {
-    feedbackKind.current = feedback.kind
-  })
-  // Whether the visitor is pointing at or focused on the copy offer, which holds it open.
-  const offerHeld = useRef({ hover: false, focus: false })
-  const [announcement, setAnnouncement] = useState('')
-  const stopFeedbackTimer = useRef<(() => void) | null>(null)
-  const stopMailAppCheck = useRef<(() => void) | null>(null)
   // The pill eases to the width of whichever label is showing, measured off a hidden copy.
   const labelMeasureRef = useRef<HTMLSpanElement>(null)
   const [labelWidth, setLabelWidth] = useState<number | null>(null)
@@ -115,107 +45,27 @@ export function SocialLinks() {
     return () => observer.disconnect()
   }, [])
   const reducedMotion = useReducedMotion()
-  const touchDevice = useTouchDevice()
-
-  function clearFeedbackTimeout() {
-    stopFeedbackTimer.current?.()
-    stopFeedbackTimer.current = null
-  }
+  const touchDevice = useMediaQuery(TOUCH_QUERY)
 
   function setFlightClient(client: MailClient | null) {
     flightRef.current = client
     setFlight(client)
   }
 
-  // Every new action starts clean: no earlier flight landing on it, no earlier check reporting.
+  // Every new action starts clean: no earlier flight landing on it, no earlier result or check.
   function cancelPending() {
-    clearFeedbackTimeout()
+    cancel()
     setFlightClient(null)
-    stopMailAppCheck.current?.()
-  }
-
-  useEffect(() => () => {
-    stopFeedbackTimer.current?.()
-    stopMailAppCheck.current?.()
-  }, [])
-
-  function showFeedback(next: Feedback, message: string, duration = 1800) {
-    clearFeedbackTimeout()
-    setFeedback(next)
-    setFeedbackCount((count) => count + 1)
-    // Clear, then set on the next frame, so a repeat is announced instead of ignored.
-    setAnnouncement('')
-    requestAnimationFrame(() => setAnnouncement(message))
-    startFeedbackTimer(duration)
-  }
-
-  // The result stays up for `duration` of the visitor actually looking at it: one sent off to a
-  // webmail tab waits for them to come back before it starts to count down.
-  function startFeedbackTimer(duration: number) {
-    clearFeedbackTimeout()
-    if (document.hidden || !document.hasFocus()) {
-      const resume = () => {
-        if (document.hidden) return
-        stopWaitingForReturn()
-        startFeedbackTimer(duration)
-      }
-      const stopWaitingForReturn = () => {
-        window.removeEventListener('focus', resume)
-        document.removeEventListener('visibilitychange', resume)
-      }
-      window.addEventListener('focus', resume)
-      document.addEventListener('visibilitychange', resume)
-      stopFeedbackTimer.current = stopWaitingForReturn
-      return
-    }
-    const timeout = window.setTimeout(() => {
-      stopFeedbackTimer.current = null
-      setFeedback({ kind: 'idle' })
-    }, duration)
-    stopFeedbackTimer.current = () => window.clearTimeout(timeout)
   }
 
   async function copyEmail() {
     cancelPending()
     try {
       await navigator.clipboard.writeText(portfolioOwner.email)
-      showFeedback({ kind: 'copied' }, 'Email address copied to clipboard.')
+      show({ kind: 'copied' }, 'Email address copied to clipboard.')
     } catch {
-      setFeedback({ kind: 'error' })
-      setAnnouncement('Could not copy email address. Use the email link to open your mail app.')
+      showError('Could not copy email address. Use the email link to open your mail app.')
     }
-  }
-
-  // A mail app taking over blurs or hides the page. If neither happens in time, offer the copy
-  // instead of claiming something opened; if the app turns up late, take the offer back.
-  function watchForMailApp() {
-    let answered = false
-    let offered = false
-    const onLeave = () => {
-      answered = true
-      if (!offered) return
-      stop()
-      clearFeedbackTimeout()
-      setFeedback({ kind: 'idle' })
-    }
-    const timeout = window.setTimeout(() => {
-      if (answered) {
-        stop()
-        return
-      }
-      offered = true
-      offerHeld.current = { hover: false, focus: false }
-      showFeedback({ kind: 'no-mail-app' }, 'Did your mail app open? If not, copy the address instead.', 6000)
-    }, MAIL_APP_GRACE_MS)
-    function stop() {
-      window.clearTimeout(timeout)
-      window.removeEventListener('blur', onLeave)
-      document.removeEventListener('visibilitychange', onLeave)
-      stopMailAppCheck.current = null
-    }
-    window.addEventListener('blur', onLeave)
-    document.addEventListener('visibilitychange', onLeave)
-    stopMailAppCheck.current = stop
   }
 
   // The link itself opens the client, straight from the click; this only acknowledges it. The
@@ -224,20 +74,11 @@ export function SocialLinks() {
     cancelPending()
     if (client.id === 'mailto') watchForMailApp()
     if (reducedMotion) {
-      showFeedback({ kind: 'opened', client }, `${client.opened}.`)
+      show({ kind: 'opened', client }, `${client.opened}.`)
       return
     }
-    setFeedback({ kind: 'idle' })
+    reset()
     setFlightClient(client)
-  }
-
-  // The offer never times out from under someone using it; once they move on, it gives them a
-  // few more seconds.
-  function holdOffer(key: 'hover' | 'focus', held: boolean) {
-    if (feedbackKind.current !== 'no-mail-app') return
-    offerHeld.current[key] = held
-    if (offerHeld.current.hover || offerHeld.current.focus) clearFeedbackTimeout()
-    else startFeedbackTimer(3000)
   }
 
   // The offer's button is about to go, so keyboard focus moves to the pill instead of the page.
@@ -250,7 +91,7 @@ export function SocialLinks() {
     const client = flightRef.current
     if (!client) return
     setFlightClient(null)
-    showFeedback({ kind: 'opened', client }, `${client.opened}.`)
+    show({ kind: 'opened', client }, `${client.opened}.`)
   }
 
   // A webmail tab takes focus straight away, and the page's animation frames stop with it. Land
@@ -285,43 +126,48 @@ export function SocialLinks() {
 
   // The pill only says "Email"; the tooltip gives the address itself.
   const emailTooltip = feedback.kind === 'error' ? 'Could not copy email' : portfolioOwner.email
-  // Results the pill reports itself. The pill stays "Email" for the rest, whose notes sit beside it.
-  const showingFeedback = feedback.kind === 'copied' || feedback.kind === 'opened'
+  // Results the pill reports itself: its label, and the icon at its end. The pill stays "Email"
+  // for the rest, whose notes sit beside it.
+  const pillResult =
+    feedback.kind === 'copied'
+      ? { id: 'copied', label: 'Copied', icon: <FiCheck className="size-3.5 text-green-600 dark:text-green-400" /> }
+      : feedback.kind === 'opened'
+        ? { id: `opened-${feedback.client.id}`, label: feedback.client.opened, icon: <FiArrowUpRight className="size-3.5 text-foreground" /> }
+        : null
+  const showingFeedback = pillResult !== null
 
   // The visible label is also the button's accessible name, so the two never disagree.
-  const labelContent = feedback.kind === 'opened' ? (
-    <span className="text-foreground">{feedback.client.opened}</span>
-  ) : feedback.kind === 'copied' ? (
-    <span className="text-foreground">Copied</span>
-  ) : (
-    'Email'
-  )
-
-  const labelKey = feedback.kind === 'opened'
-    ? `opened-${feedback.client.id}`
-    : showingFeedback ? `${feedback.kind}-label` : 'email-label'
-  const iconKey = showingFeedback ? `${feedback.kind}-icon-${feedbackCount}` : 'chevron'
+  const labelContent = pillResult ? <span className="text-foreground">{pillResult.label}</span> : 'Email'
+  const labelKey = pillResult ? `${pillResult.id}-label` : 'email-label'
+  const iconKey = pillResult ? `${pillResult.id}-icon-${feedbackCount}` : 'chevron'
   // The label rolls: the old text lifts away, the new one rises from just below under a soft blur.
-  const copyMotionInitial = reducedMotion
+  const labelInitial = reducedMotion
     ? { opacity: 0 }
     : { opacity: 0, y: 6, filter: 'blur(2px)' }
-  const copyMotionAnimate = reducedMotion
+  const labelAnimate = reducedMotion
     ? { opacity: 1 }
     : { opacity: 1, y: 0, filter: 'blur(0px)' }
-  const copyMotionExit = reducedMotion
+  const labelExit = reducedMotion
     ? { opacity: 0 }
     : { opacity: 0, y: -6, filter: 'blur(2px)' }
   // The new icon pops in with a small twist; the old one shrinks away. When the envelope takes
   // off, the flying copy replaces it at once instead.
-  const copyIconInitial = reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.5, rotate: -20 }
-  const copyIconAnimate = reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, rotate: 0 }
-  const copyIconExit = reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.5, rotate: 20 }
-  const copyIconVariants = {
-    entering: copyIconInitial,
-    shown: copyIconAnimate,
-    hidden: (launching: boolean) => (launching ? { opacity: 0, transition: { duration: 0 } } : copyIconExit),
+  const iconInitial = reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.5, rotate: -20 }
+  const iconAnimate = reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, rotate: 0 }
+  const iconExit = reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.5, rotate: 20 }
+  const mailIconVariants = {
+    entering: iconInitial,
+    shown: iconAnimate,
+    hidden: (launching: boolean) => (launching ? { opacity: 0, transition: { duration: 0 } } : iconExit),
   }
-  const copyMotionTransition = reducedMotion ? { duration: 0.12, ease: EASE_OUT } : SPRING_SWAP
+  const swapTransition = reducedMotion ? { duration: 0.12, ease: EASE_OUT } : SPRING_SWAP
+  // The notes beside the pill slide in from it.
+  const noteMotion = {
+    initial: reducedMotion ? { opacity: 0 } : { opacity: 0, x: -4 },
+    animate: reducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 },
+    exit: { opacity: 0 },
+    transition: { duration: 0.2, ease: EASE_OUT },
+  }
 
   return (
     <nav aria-label="Social links and contact information" className="mt-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -365,11 +211,11 @@ export function SocialLinks() {
             <AnimatePresence initial={false} mode="popLayout">
               <motion.span
                 key={labelKey}
-                animate={copyMotionAnimate}
+                animate={labelAnimate}
                 className="col-start-1 row-start-1 whitespace-nowrap"
-                exit={copyMotionExit}
-                initial={copyMotionInitial}
-                transition={copyMotionTransition}
+                exit={labelExit}
+                initial={labelInitial}
+                transition={swapTransition}
               >
                 {labelContent}
               </motion.span>
@@ -385,8 +231,8 @@ export function SocialLinks() {
                   className="absolute inset-0 flex items-center justify-center"
                   exit="hidden"
                   initial="entering"
-                  transition={copyMotionTransition}
-                  variants={copyIconVariants}
+                  transition={swapTransition}
+                  variants={mailIconVariants}
                 >
                   <FiMail className="size-4" />
                 </motion.span>
@@ -403,17 +249,13 @@ export function SocialLinks() {
             <AnimatePresence initial={false} mode="popLayout">
               <motion.span
                 key={iconKey}
-                animate={copyIconAnimate}
+                animate={iconAnimate}
                 className="absolute inset-0 flex items-center justify-center"
-                exit={copyIconExit}
-                initial={copyIconInitial}
-                transition={copyMotionTransition}
+                exit={iconExit}
+                initial={iconInitial}
+                transition={swapTransition}
               >
-                {feedback.kind === 'copied' ? (
-                  <FiCheck className="size-3.5 text-green-600 dark:text-green-400" />
-                ) : feedback.kind === 'opened' ? (
-                  <FiArrowUpRight className="size-3.5 text-foreground" />
-                ) : (
+                {pillResult?.icon ?? (
                   <FiChevronDown className="size-3 opacity-60 transition-[rotate] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-aria-expanded:rotate-180 motion-reduce:transition-none" />
                 )}
               </motion.span>
@@ -425,15 +267,12 @@ export function SocialLinks() {
       <AnimatePresence initial={false}>
         {feedback.kind === 'no-mail-app' && (
           <motion.span
+            {...noteMotion}
             className="inline-flex items-center gap-1.5 whitespace-nowrap"
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -4 }}
-            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
-            exit={{ opacity: 0 }}
             onBlur={() => holdOffer('focus', false)}
             onFocus={() => holdOffer('focus', true)}
             onPointerEnter={() => holdOffer('hover', true)}
             onPointerLeave={() => holdOffer('hover', false)}
-            transition={{ duration: 0.2, ease: EASE_OUT }}
           >
             Didn't open?
             <button
@@ -449,12 +288,9 @@ export function SocialLinks() {
       <AnimatePresence initial={false}>
         {feedback.kind === 'error' && (
           <motion.a
+            {...noteMotion}
             className="min-w-0 break-all text-foreground underline underline-offset-4"
-            href={`mailto:${portfolioOwner.email}?subject=${emailSubject}`}
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -4 }}
-            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: EASE_OUT }}
+            href={mailApp.href}
           >
             {portfolioOwner.email}
           </motion.a>

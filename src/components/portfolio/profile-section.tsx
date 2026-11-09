@@ -9,6 +9,7 @@ import { useTheme } from '@/components/theme-context'
 import { ViewerCounter } from '@/components/viewer-counter'
 import { SocialLinks } from '@/components/portfolio/social-links'
 import { EASE_OUT } from '@/lib/ease'
+import { prefersReducedMotion } from '@/lib/media'
 import { portfolioOwner } from '@/data'
 
 // The optional banner chunk is only needed when motion is allowed. It starts downloading as soon as
@@ -16,7 +17,7 @@ import { portfolioOwner } from '@/data'
 // reaches it.
 const loadBanner = () => import('./profile-banner').catch(() => ({ default: () => null }))
 const bannerChunk =
-  typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? loadBanner() : null
+  typeof window !== 'undefined' && !prefersReducedMotion() ? loadBanner() : null
 const ProfileBanner = lazy<ComponentType>(() => bannerChunk ?? loadBanner())
 
 // A sliver of blade is already there at first paint, and the expo-out curve puts about 40% of the

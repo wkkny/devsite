@@ -3,6 +3,7 @@ import { useAnimationFrame, useSpring } from 'motion/react'
 
 import { createDitherRenderer, type DitherRenderer } from '@/lib/dither-gl'
 import { DITHER_PULSE_EVENT, type DitherPulse } from '@/lib/dither-pulse'
+import { prefersReducedMotion } from '@/lib/media'
 import { cn } from '@/lib/utils'
 
 export type DitherCanvasProps = Omit<ComponentProps<'canvas'>, 'width' | 'height'> & {
@@ -295,7 +296,7 @@ export function DitherCanvas({
     }
 
     const handlePulse = (event: Event) => {
-      if (!shockwave || !(event instanceof CustomEvent) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      if (!shockwave || !(event instanceof CustomEvent) || prefersReducedMotion()) return
       const pulse = event.detail as DitherPulse
       const rect = canvas.getBoundingClientRect()
       const cellsPerPx = canvas.width / rect.width

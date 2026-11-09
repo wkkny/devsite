@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { FiArrowUpRight, FiGrid, FiList } from 'react-icons/fi'
 
@@ -8,19 +8,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ProjectCard, type ProjectView } from '@/components/portfolio/project-card'
 import { portfolioOwner, projects } from '@/data'
 import { LAYOUT_SWAP } from '@/lib/ease'
+import { useMediaQuery } from '@/lib/media'
 import { revealFade, revealItem, revealRise, revealStagger, revealViewport } from '@/lib/reveal'
 
 const desktopProjectsQuery = '(min-width: 768px)'
-
-function subscribeToDesktopProjects(onChange: () => void) {
-  const mediaQuery = window.matchMedia(desktopProjectsQuery)
-  mediaQuery.addEventListener('change', onChange)
-  return () => mediaQuery.removeEventListener('change', onChange)
-}
-
-function isDesktopProjectsWidth() {
-  return window.matchMedia(desktopProjectsQuery).matches
-}
 
 // The pressed fill is drawn by ViewPill instead, so it can slide between the two buttons.
 const VIEW_ITEM = 'relative isolate hover:bg-muted/40 aria-pressed:bg-transparent data-[pressed]:bg-transparent data-[pressed]:hover:bg-transparent'
@@ -39,7 +30,7 @@ function ViewPill({ reducedMotion }: { reducedMotion: boolean | null }) {
 
 export function ProjectsSection() {
   const reducedMotion = useReducedMotion()
-  const desktopProjects = useSyncExternalStore(subscribeToDesktopProjects, isDesktopProjectsWidth, () => false)
+  const desktopProjects = useMediaQuery(desktopProjectsQuery)
   const [projectView, setProjectView] = useState<ProjectView>('grid')
   const [hasSwitchedView, setHasSwitchedView] = useState(false)
   // The list row under the pointer, which holds the shared hover highlight.

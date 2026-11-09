@@ -5,10 +5,10 @@ import {
   LastfmTimeoutError,
 } from "./_lastfm.js"
 import type {
-  SharedSpotifyState,
-  SpotifyStateStore,
+  SharedNowPlayingState,
+  NowPlayingStateStore,
   StoredSnapshot,
-} from "./_spotify-shared-state.js"
+} from "./_now-playing-shared-state.js"
 
 const SNAPSHOT_FRESH_MS = 2 * 60 * 1_000
 const EMPTY_REFRESH_RETRY_SECONDS = 5
@@ -30,12 +30,12 @@ export type NowPlayingOutcome =
     }
 
 type NowPlayingServiceDependencies = {
-  stateStore: SpotifyStateStore | null
+  stateStore: NowPlayingStateStore | null
   getPlayback: () => Promise<NowPlayingResponse>
   now?: () => number
 }
 
-function asRecentPlayback(state: SharedSpotifyState): NowPlayingResponse | null {
+function asRecentPlayback(state: SharedNowPlayingState): NowPlayingResponse | null {
   const playback = state.snapshot?.playback
   if (!playback) return null
   if (!playback.track) return playback
@@ -74,7 +74,7 @@ export function createNowPlayingService({
 }: NowPlayingServiceDependencies) {
   let localRefreshInFlight: Promise<NowPlayingOutcome> | undefined
 
-  function stateOutcome(state: SharedSpotifyState): NowPlayingOutcome | null {
+  function stateOutcome(state: SharedNowPlayingState): NowPlayingOutcome | null {
     const currentTime = now()
     const rateLimited = state.cooldownUntil > currentTime
     const until = Math.max(state.cooldownUntil, state.backoffUntil)
@@ -94,9 +94,9 @@ export function createNowPlayingService({
   }
 
   async function refreshPlayback(
-    state: SharedSpotifyState,
+    state: SharedNowPlayingState,
     lockToken: string,
-    store: SpotifyStateStore,
+    store: NowPlayingStateStore,
   ): Promise<NowPlayingOutcome> {
     let keepLockUntilExpiry = false
 
@@ -218,7 +218,7 @@ export function createNowPlayingService({
       }
     }
 
-    let state: SharedSpotifyState
+    let state: SharedNowPlayingState
     try {
       state = await stateStore.read()
     } catch {

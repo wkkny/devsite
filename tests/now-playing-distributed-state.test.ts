@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNowPlayingService } from '../api/_now-playing-service'
-import { createUpstashSpotifyStateStore } from '../api/_spotify-shared-state'
+import { createUpstashNowPlayingStateStore } from '../api/_now-playing-shared-state'
 import { LastfmRequestError, LastfmTimeoutError } from '../api/_lastfm'
 
 const track = { title: 'Runaway', artist: 'Kanye West', spotifyUrl: 'https://open.spotify.com/track/3DK6m7It6Pw857FcQftMds' }
@@ -65,14 +65,14 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-describe('distributed Spotify state through the production Redis adapter', () => {
+describe('distributed now-playing state through the production Redis adapter', () => {
   it.each([new LastfmTimeoutError(), new LastfmRequestError(500), new Error('network failure')])('shares upstream failure backoff across cold instances: %s', async (error) => {
     redisTransport()
     const getPlayback = vi.fn().mockRejectedValue(error)
-    const first = createNowPlayingService({ stateStore: createUpstashSpotifyStateStore(), getPlayback })
+    const first = createNowPlayingService({ stateStore: createUpstashNowPlayingStateStore(), getPlayback })
     expect(await first()).toMatchObject({ kind: 'unavailable', retryAfterSeconds: 60 })
     vi.advanceTimersByTime(10_000)
-    const second = createNowPlayingService({ stateStore: createUpstashSpotifyStateStore(), getPlayback })
+    const second = createNowPlayingService({ stateStore: createUpstashNowPlayingStateStore(), getPlayback })
     expect(await second()).toEqual({ kind: 'unavailable', status: 503, retryAfterSeconds: 50 })
     expect(await second()).toMatchObject({ retryAfterSeconds: 50 })
     expect(getPlayback).toHaveBeenCalledTimes(1)
@@ -84,11 +84,11 @@ describe('distributed Spotify state through the production Redis adapter', () =>
 
   it('preserves a shared track as recent during timeout backoff', async () => {
     redisTransport()
-    const store = createUpstashSpotifyStateStore()
+    const store = createUpstashNowPlayingStateStore()
     await store.writeSnapshot({ playback: playing, fetchedAt: Date.now() - 120_001 })
     const getPlayback = vi.fn().mockRejectedValue(new LastfmTimeoutError())
     const first = createNowPlayingService({ stateStore: store, getPlayback })
-    const second = createNowPlayingService({ stateStore: createUpstashSpotifyStateStore(), getPlayback })
+    const second = createNowPlayingService({ stateStore: createUpstashNowPlayingStateStore(), getPlayback })
     const expected = { kind: 'playback', playback: { status: 'recent', track }, stale: true, retryAfterSeconds: 60 }
     expect(await first()).toEqual(expected)
     expect(await second()).toEqual(expected)
@@ -97,8 +97,8 @@ describe('distributed Spotify state through the production Redis adapter', () =>
 
   it.each(['cooldown', 'backoff', 'snapshot'])('rereads %s published before acquiring the lock', async (update) => {
     redisTransport()
-    const firstStore = createUpstashSpotifyStateStore()
-    const otherStore = createUpstashSpotifyStateStore()
+    const firstStore = createUpstashNowPlayingStateStore()
+    const otherStore = createUpstashNowPlayingStateStore()
     const acquire = firstStore.acquireRefreshLock.bind(firstStore)
     firstStore.acquireRefreshLock = async () => {
       if (update === 'cooldown') await otherStore.extendCooldown(90)
@@ -119,8 +119,8 @@ describe('distributed Spotify state through the production Redis adapter', () =>
     const deferred = Promise.withResolvers<typeof playing>()
     const started = Promise.withResolvers<void>()
     const getPlayback = vi.fn(() => { started.resolve(); return deferred.promise })
-    const first = createNowPlayingService({ stateStore: createUpstashSpotifyStateStore(), getPlayback })
-    const second = createNowPlayingService({ stateStore: createUpstashSpotifyStateStore(), getPlayback })
+    const first = createNowPlayingService({ stateStore: createUpstashNowPlayingStateStore(), getPlayback })
+    const second = createNowPlayingService({ stateStore: createUpstashNowPlayingStateStore(), getPlayback })
     const pending = first()
     await started.promise
     expect(getPlayback).toHaveBeenCalledTimes(1)
@@ -133,8 +133,8 @@ describe('distributed Spotify state through the production Redis adapter', () =>
 
   it('never shortens backoff and cannot release another instance’s lock', async () => {
     redisTransport()
-    const first = createUpstashSpotifyStateStore()
-    const second = createUpstashSpotifyStateStore()
+    const first = createUpstashNowPlayingStateStore()
+    const second = createUpstashNowPlayingStateStore()
     const until = await first.extendBackoff(90)
     expect(await second.extendBackoff(10)).toBe(until)
     const oldToken = await first.acquireRefreshLock()
@@ -152,7 +152,7 @@ describe('distributed Spotify state through the production Redis adapter', () =>
     const { fetch } = redisTransport()
     fetch.mockResolvedValue(Response.json({ error: 'unavailable' }, { status: 503 }))
     const getPlayback = vi.fn().mockResolvedValue(playing)
-    const service = createNowPlayingService({ stateStore: createUpstashSpotifyStateStore(), getPlayback })
+    const service = createNowPlayingService({ stateStore: createUpstashNowPlayingStateStore(), getPlayback })
     expect(await service()).toMatchObject({ kind: 'unavailable', status: 503 })
     expect(getPlayback).not.toHaveBeenCalled()
   })

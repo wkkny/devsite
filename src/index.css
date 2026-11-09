@@ -16,6 +16,7 @@
 }
 
 /* Small uppercase metadata: role, tags, counts, dates and secondary links. */
+/* This and `press` are copied in src/components/github-calendar/README.md; keep them in sync. */
 @utility type-label {
   font-family: var(--font-mono);
   font-size: 11px;

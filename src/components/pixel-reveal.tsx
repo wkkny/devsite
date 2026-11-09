@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
 
 import { cubicBezier, EASE_IN_OUT } from '@/lib/ease'
+import { prefersReducedMotion } from '@/lib/media'
 
 const POOL: [string, number][] = [
   ['@', 1], ['8', 0.97], ['0', 0.94], ['#', 0.85], ['4', 0.78],
@@ -48,8 +49,7 @@ export function PixelReveal({ onCovered, onRevealComplete, colors, origin }: { o
       coveredRef.current?.()
     }
     canvas.hidden = false
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) {
+    if (prefersReducedMotion()) {
       covered()
       releaseCanvas(canvas)
       complete()

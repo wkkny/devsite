@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto"
 
 import type {
-  SharedSpotifyState,
-  SpotifyStateStore,
+  SharedNowPlayingState,
+  NowPlayingStateStore,
   StoredSnapshot,
-} from "./_spotify-shared-state.js"
+} from "./_now-playing-shared-state.js"
 
 const REFRESH_LOCK_MS = 30_000
 
@@ -14,8 +14,8 @@ let backoffUntil = 0
 let lockToken: string | null = null
 let lockExpiresAt = 0
 
-export const memorySpotifyStateStore: SpotifyStateStore = {
-  async read(): Promise<SharedSpotifyState> {
+export const memoryNowPlayingStateStore: NowPlayingStateStore = {
+  async read(): Promise<SharedNowPlayingState> {
     return {
       snapshot: snapshot ? { ...snapshot } : null,
       backoffUntil: backoffUntil > Date.now() ? backoffUntil : 0,

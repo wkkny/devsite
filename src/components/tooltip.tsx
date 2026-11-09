@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactElement, type ReactNode } from 'react'
 import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip'
-import { cn } from 'cn'
+import { cn } from '@/lib/utils'
 
 import { Tooltip as TooltipRoot, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
