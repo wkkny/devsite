@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FiArrowUpRight } from 'react-icons/fi'
 import type { PortfolioProject } from '@/data'
 import { EASE_OUT, LAYOUT_SWAP } from '@/lib/ease'
-import { cn } from 'cn'
+import { cn } from '@/lib/utils'
 
 export type ProjectView = 'grid' | 'list'
 
