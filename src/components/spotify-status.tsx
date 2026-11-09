@@ -208,7 +208,18 @@ export function SpotifyStatus() {
 
   return (
     <>
-      <p className="w-fit min-w-0 max-w-full text-sm leading-6 text-muted-foreground">
+      {/* The track usually arrives after the hero has finished rising, so the status brings its
+          own entrance rather than popping in at full opacity. */}
+      <motion.p
+        className="w-fit min-w-0 max-w-full text-sm leading-6 text-muted-foreground"
+        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, filter: 'blur(4px)' }}
+        animate={
+          reducedMotion
+            ? { opacity: 1 }
+            : { opacity: 1, y: 0, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }
+        }
+        transition={{ duration: reducedMotion ? 0.2 : 0.45, ease: EASE_OUT }}
+      >
         {!useMock && (
           <span className="sr-only">
             {playing ? 'Now playing on Spotify: ' : 'Last played on Spotify: '}
@@ -270,7 +281,7 @@ export function SpotifyStatus() {
             </AnimatePresence>
           </a>
         </Tooltip>
-      </p>
+      </motion.p>
       {useMock && (
         <button
           type="button"
